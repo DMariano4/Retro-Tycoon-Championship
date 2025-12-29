@@ -1,8 +1,18 @@
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, ReactNode, Platform } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
+import Constants from 'expo-constants';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const getBackendUrl = () => {
+  const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
+                 process.env.EXPO_PUBLIC_BACKEND_URL || '';
+  if (typeof window !== 'undefined' && !envUrl) {
+    return '';
+  }
+  return envUrl;
+};
+
+const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_fm_local_save';
 
 export interface Player {
