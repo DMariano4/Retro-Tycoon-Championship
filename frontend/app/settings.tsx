@@ -100,7 +100,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ABOUT</Text>
           <View style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>RETRO FOOTBALL MANAGER</Text>
+            <Text style={styles.aboutTitle}>RETRO CHAMPIONSHIP TYCOON</Text>
             <Text style={styles.aboutVersion}>Version 1.0.0</Text>
             <Text style={styles.aboutDescription}>
               A classic football management simulation inspired by CM 01/02 and Elifoot 98.
