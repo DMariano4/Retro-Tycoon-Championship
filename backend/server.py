@@ -347,7 +347,7 @@ PREMIER_LEAGUE_TEAMS = [
 ]
 
 def generate_player(position: str, ability_range: tuple = (40, 80)) -> Player:
-    """Generate a random player"""
+    """Generate a random player with position-specific stats"""
     age = random.randint(17, 35)
     base_ability = random.randint(ability_range[0], ability_range[1])
     
@@ -359,23 +359,90 @@ def generate_player(position: str, ability_range: tuple = (40, 80)) -> Player:
     else:
         potential = base_ability
     
-    # Position-specific stats
+    # Helper to generate stat with variance
+    def stat(base, bonus=0, variance=15):
+        return min(99, max(1, base + bonus + random.randint(-variance, variance)))
+    
+    # Physical attributes (all positions)
+    pace = stat(base_ability)
+    strength = stat(base_ability)
+    stamina = stat(base_ability + 5)
+    agility = stat(base_ability)
+    
+    # Mental attributes (all positions)
+    work_rate = stat(base_ability)
+    concentration = stat(base_ability)
+    decision_making = stat(base_ability)
+    composure = stat(base_ability)
+    
+    # Position-specific stats with defaults
+    reflexes = stat(30)
+    handling = stat(30)
+    communication = stat(30)
+    tackling = stat(base_ability - 10)
+    marking = stat(base_ability - 10)
+    positioning = stat(base_ability)
+    crossing = stat(base_ability - 10)
+    passing = stat(base_ability)
+    vision = stat(base_ability - 5)
+    dribbling = stat(base_ability - 5)
+    control = stat(base_ability)
+    finishing = stat(base_ability - 10)
+    off_the_ball = stat(base_ability - 5)
+    flair = stat(base_ability - 10)
+    heading = stat(base_ability - 5)
+    
+    # Position-specific boosts
     if position == "GK":
-        handling = base_ability + random.randint(-5, 15)
-        tackling = random.randint(20, 40)
-        shooting = random.randint(10, 30)
-    elif position == "DEF":
-        handling = random.randint(10, 30)
-        tackling = base_ability + random.randint(-5, 15)
-        shooting = random.randint(30, 50)
-    elif position == "MID":
-        handling = random.randint(10, 30)
-        tackling = base_ability + random.randint(-10, 10)
-        shooting = base_ability + random.randint(-10, 10)
-    else:  # FWD
-        handling = random.randint(10, 30)
-        tackling = random.randint(20, 40)
-        shooting = base_ability + random.randint(-5, 15)
+        reflexes = stat(base_ability, 10)
+        handling = stat(base_ability, 10)
+        communication = stat(base_ability, 5)
+        positioning = stat(base_ability, 5)
+        tackling = stat(20)
+        finishing = stat(15)
+    elif position in ["CB"]:
+        tackling = stat(base_ability, 10)
+        marking = stat(base_ability, 10)
+        positioning = stat(base_ability, 5)
+        heading = stat(base_ability, 5)
+        strength = stat(base_ability, 5)
+    elif position in ["LB", "RB"]:
+        tackling = stat(base_ability, 5)
+        marking = stat(base_ability, 5)
+        positioning = stat(base_ability)
+        crossing = stat(base_ability, 10)
+        pace = stat(base_ability, 5)
+        stamina = stat(base_ability, 5)
+    elif position == "DM":
+        tackling = stat(base_ability, 10)
+        passing = stat(base_ability, 5)
+        positioning = stat(base_ability, 5)
+        stamina = stat(base_ability, 5)
+        work_rate = stat(base_ability, 5)
+    elif position == "CM":
+        passing = stat(base_ability, 10)
+        vision = stat(base_ability, 5)
+        stamina = stat(base_ability, 5)
+        tackling = stat(base_ability)
+        dribbling = stat(base_ability)
+        control = stat(base_ability, 5)
+    elif position == "AM":
+        passing = stat(base_ability, 5)
+        vision = stat(base_ability, 10)
+        dribbling = stat(base_ability, 5)
+        control = stat(base_ability, 5)
+        flair = stat(base_ability, 5)
+    elif position in ["LW", "RW"]:
+        pace = stat(base_ability, 10)
+        dribbling = stat(base_ability, 10)
+        crossing = stat(base_ability, 5)
+        flair = stat(base_ability, 5)
+        off_the_ball = stat(base_ability, 5)
+    elif position == "ST":
+        finishing = stat(base_ability, 15)
+        off_the_ball = stat(base_ability, 10)
+        heading = stat(base_ability, 5)
+        composure = stat(base_ability, 5)
     
     value = int(base_ability * base_ability * 1000 * (1 + (30 - age) / 30))
     wage = int(value / 50)
@@ -387,13 +454,36 @@ def generate_player(position: str, ability_range: tuple = (40, 80)) -> Player:
         nationality=random.choice(NATIONALITIES),
         position=position,
         preferred_positions=[position],
-        pace=random.randint(base_ability - 15, min(99, base_ability + 15)),
-        shooting=min(99, max(1, shooting)),
-        passing=random.randint(base_ability - 15, min(99, base_ability + 15)),
-        tackling=min(99, max(1, tackling)),
-        heading=random.randint(base_ability - 15, min(99, base_ability + 15)),
-        stamina=random.randint(60, 99),
-        handling=min(99, max(1, handling)),
+        # Physical
+        pace=pace,
+        strength=strength,
+        stamina=stamina,
+        agility=agility,
+        # Mental
+        work_rate=work_rate,
+        concentration=concentration,
+        decision_making=decision_making,
+        composure=composure,
+        # Technical - GK
+        reflexes=reflexes,
+        handling=handling,
+        communication=communication,
+        # Technical - Defenders
+        tackling=tackling,
+        marking=marking,
+        positioning=positioning,
+        crossing=crossing,
+        # Technical - Midfielders
+        passing=passing,
+        vision=vision,
+        dribbling=dribbling,
+        control=control,
+        # Technical - Forwards
+        finishing=finishing,
+        off_the_ball=off_the_ball,
+        flair=flair,
+        heading=heading,
+        # Overall
         current_ability=base_ability,
         potential_ability=potential,
         value=value,
