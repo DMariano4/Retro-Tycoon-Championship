@@ -1073,4 +1073,87 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
   },
+  // Search styles
+  searchSection: {
+    marginBottom: 16,
+  },
+  searchRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  searchInputContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d2137',
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  searchInput: {
+    flex: 1,
+    paddingVertical: 10,
+    color: '#fff',
+    fontSize: 13,
+  },
+  positionFilterScroll: {
+    flexGrow: 0,
+  },
+  positionFilterContent: {
+    gap: 6,
+    paddingRight: 16,
+  },
+  positionChip: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    backgroundColor: '#0d2137',
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  positionChipActive: {
+    backgroundColor: '#1a4a3c',
+    borderColor: '#00ff88',
+  },
+  positionChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6a8aaa',
+  },
+  positionChipTextActive: {
+    color: '#00ff88',
+  },
+  noResults: {
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: '#0d2137',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  noResultsText: {
+    color: '#6a8aaa',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  // Squad position badges
+  playerNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  positionBadge: {
+    backgroundColor: '#1a4a6c',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  positionBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4a9eff',
+  },
 });
