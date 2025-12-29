@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Dimensions, TextInput } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -7,6 +7,14 @@ import { useGame } from '../src/context/GameContext';
 import { useAuth } from '../src/context/AuthContext';
 
 const { width } = Dimensions.get('window');
+
+// Position display names
+const POSITION_GROUPS: Record<string, string[]> = {
+  'GOALKEEPERS': ['GK'],
+  'DEFENDERS': ['CB', 'LB', 'RB'],
+  'MIDFIELDERS': ['DM', 'CM', 'AM'],
+  'FORWARDS': ['LW', 'RW', 'ST']
+};
 
 type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers';
 
