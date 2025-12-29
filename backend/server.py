@@ -508,12 +508,18 @@ def generate_squad(division: int) -> List[Player]:
     
     ability_range = ability_ranges.get(division, (40, 70))
     
-    # Generate players by position
+    # Generate players by specific positions
     positions = {
         "GK": 2,
-        "DEF": 6,
-        "MID": 6,
-        "FWD": 4
+        "CB": 4,
+        "LB": 2,
+        "RB": 2,
+        "DM": 2,
+        "CM": 3,
+        "AM": 2,
+        "LW": 2,
+        "RW": 2,
+        "ST": 3
     }
     
     for position, count in positions.items():
