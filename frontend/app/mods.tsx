@@ -1,11 +1,21 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
+import Constants from 'expo-constants';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const getBackendUrl = () => {
+  const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
+                 process.env.EXPO_PUBLIC_BACKEND_URL || '';
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return '';
+  }
+  return envUrl;
+};
+
+const BACKEND_URL = getBackendUrl();
 
 export default function ModsScreen() {
   const [loading, setLoading] = useState(false);
