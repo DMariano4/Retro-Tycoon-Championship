@@ -547,13 +547,13 @@ def generate_player(position: str, ability_range: tuple = (40, 80)) -> Player:
         potential_ability=potential,
         value=value,
         wage=wage,
-        contract_end=2024 + random.randint(1, 5),
+        contract_end=f"{2025 + random.randint(1, 4)}-06-30",  # Contracts expire June 30th
         morale=random.randint(60, 90),
         fitness=random.randint(80, 100),
         form=random.randint(50, 80)
     )
 
-def generate_squad(division: int) -> List[Player]:
+def generate_squad(division: int, season_year: int = 2025) -> List[Player]:
     """Generate a full squad based on division quality"""
     squad = []
     
