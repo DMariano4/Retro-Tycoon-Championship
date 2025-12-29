@@ -38,29 +38,29 @@ export default function TeamSelectScreen() {
   }, []);
 
   const fetchTeams = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const apiUrl = `${BACKEND_URL}/api/teams`;
-      console.log('Fetching teams from:', apiUrl);
-      const response = await fetch(apiUrl);
-      console.log('Response status:', response.status);
-      if (response.ok) {
-        const data = await response.json();
+    console.log('fetchTeams started');
+    setLoading(true);
+    setError(null);
+    
+    const apiUrl = `${BACKEND_URL}/api/teams`;
+    console.log('Fetching teams from:', apiUrl);
+    
+    fetch(apiUrl)
+      .then(response => {
+        console.log('Response status:', response.status);
+        return response.json();
+      })
+      .then(data => {
         console.log('Teams loaded:', data.length);
         setTeams(data);
-        console.log('setTeams called');
-      } else {
-        setError(`Failed to load teams: ${response.status}`);
-      }
-    } catch (err: any) {
-      console.error('Failed to fetch teams:', err);
-      setError(err.message || 'Network error');
-    } finally {
-      console.log('Setting loading to false');
-      setLoading(false);
-      console.log('Loading set to false, teams:', teams.length);
-    }
+        setLoading(false);
+        console.log('State updated');
+      })
+      .catch(err => {
+        console.error('Fetch error:', err);
+        setError(err.message || 'Network error');
+        setLoading(false);
+      });
   };
 
   const handleStartGame = async () => {
