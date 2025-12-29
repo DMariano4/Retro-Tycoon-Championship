@@ -127,14 +127,30 @@ export default function TeamSelectScreen() {
           <Text style={styles.loadingText}>No teams available</Text>
         </View>
       ) : (
-        <FlatList
-          data={teams}
-          renderItem={renderTeam}
-          keyExtractor={item => item.id}
+        <ScrollView 
           style={styles.teamList}
           contentContainerStyle={styles.teamListContent}
           showsVerticalScrollIndicator={false}
-        />
+        >
+          {teams.map(item => (
+            <TouchableOpacity
+              key={item.id}
+              style={[
+                styles.teamCard,
+                selectedTeam?.id === item.id && styles.teamCardSelected
+              ]}
+              onPress={() => setSelectedTeam(item)}
+            >
+              <View style={styles.teamInfo}>
+                <Text style={styles.teamName}>{item.name}</Text>
+                <Text style={styles.teamStadium}>{item.stadium}</Text>
+              </View>
+              {selectedTeam?.id === item.id && (
+                <Ionicons name="checkmark-circle" size={24} color="#00ff88" />
+              )}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       )}
 
       {selectedTeam && (
