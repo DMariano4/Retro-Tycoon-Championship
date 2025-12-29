@@ -31,13 +31,20 @@ export default function TeamSelectScreen() {
   const [saveName, setSaveName] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [, forceUpdate] = useState({});
   const { createNewGame, isLoading: gameLoading } = useGame();
 
   useEffect(() => {
+    console.log('Component mounted, fetching teams');
     fetchTeams();
   }, []);
 
-  const fetchTeams = async () => {
+  // Debug log on state changes
+  useEffect(() => {
+    console.log('Teams state changed:', teams.length, 'loading:', loading);
+  }, [teams, loading]);
+
+  const fetchTeams = () => {
     console.log('fetchTeams started');
     setLoading(true);
     setError(null);
@@ -48,13 +55,25 @@ export default function TeamSelectScreen() {
     fetch(apiUrl)
       .then(response => {
         console.log('Response status:', response.status);
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return response.json();
       })
       .then(data => {
-        console.log('Teams loaded:', data.length);
-        setTeams(data);
-        setLoading(false);
-        console.log('State updated');
+        console.log('Teams loaded:', data.length, data[0]?.name);
+        // Force batch updates
+        setTeams(prev => {
+          console.log('Setting teams from', prev.length, 'to', data.length);
+          return [...data];
+        });
+        setLoading(prev => {
+          console.log('Setting loading from', prev, 'to false');
+          return false;
+        });
+        // Force re-render after state updates
+        setTimeout(() => {
+          console.log('Forcing update');
+          forceUpdate({});
+        }, 100);
       })
       .catch(err => {
         console.error('Fetch error:', err);
