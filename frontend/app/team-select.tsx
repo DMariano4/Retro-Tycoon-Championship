@@ -30,6 +30,7 @@ export default function TeamSelectScreen() {
   const [selectedTeam, setSelectedTeam] = useState<TeamOption | null>(null);
   const [saveName, setSaveName] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { createNewGame, isLoading: gameLoading } = useGame();
 
   useEffect(() => {
@@ -38,13 +39,22 @@ export default function TeamSelectScreen() {
 
   const fetchTeams = async () => {
     try {
-      const response = await fetch(`${BACKEND_URL}/api/teams`);
+      setLoading(true);
+      setError(null);
+      const apiUrl = `${BACKEND_URL}/api/teams`;
+      console.log('Fetching teams from:', apiUrl);
+      const response = await fetch(apiUrl);
+      console.log('Response status:', response.status);
       if (response.ok) {
         const data = await response.json();
+        console.log('Teams loaded:', data.length);
         setTeams(data);
+      } else {
+        setError(`Failed to load teams: ${response.status}`);
       }
-    } catch (error) {
-      console.error('Failed to fetch teams:', error);
+    } catch (err: any) {
+      console.error('Failed to fetch teams:', err);
+      setError(err.message || 'Network error');
     } finally {
       setLoading(false);
     }
