@@ -625,14 +625,14 @@ def generate_teams(division: int = 1) -> List[Team]:
             formation="4-4-2",
             primary_color=data["primary"],
             secondary_color=data["secondary"],
-            squad=generate_squad(division)
+            squad=generate_squad(division, season_year=2025)
         )
         teams.append(team)
     
     return teams
 
-def generate_fixtures(team_ids: List[str], team_names: Dict[str, str]) -> List[Fixture]:
-    """Generate a full season of fixtures using round-robin algorithm"""
+def generate_fixtures(team_ids: List[str], team_names: Dict[str, str], season_year: int = 2025) -> List[Fixture]:
+    """Generate a full season of fixtures using round-robin algorithm with real dates"""
     fixtures = []
     n = len(team_ids)
     
@@ -640,18 +640,37 @@ def generate_fixtures(team_ids: List[str], team_names: Dict[str, str]) -> List[F
         team_ids = team_ids + ["BYE"]
         n += 1
     
+    # Season starts August 10, matches typically on Saturdays
+    # 38 matchweeks for 20-team league
+    season_start = datetime(season_year, 8, 10)
+    
     week = 1
-    teams = team_ids.copy()
+    teams_list = team_ids.copy()
     
     for round_num in range((n - 1) * 2):
         is_return = round_num >= (n - 1)
+        
+        # Calculate match date - mostly Saturdays, some midweek
+        # First half: Aug 10 - Dec 26, Second half: Jan 1 - May 25
+        if week <= 19:
+            # First half of season
+            match_date = season_start + timedelta(weeks=week - 1)
+        else:
+            # Second half of season (starts Jan 1)
+            second_half_start = datetime(season_year + 1, 1, 1)
+            match_date = second_half_start + timedelta(weeks=week - 20)
+        
+        # Adjust to nearest Saturday
+        days_until_saturday = (5 - match_date.weekday()) % 7
+        match_date = match_date + timedelta(days=days_until_saturday)
+        match_date_str = match_date.strftime("%Y-%m-%d")
         
         for i in range(n // 2):
             home_idx = i
             away_idx = n - 1 - i
             
-            home = teams[home_idx]
-            away = teams[away_idx]
+            home = teams_list[home_idx]
+            away = teams_list[away_idx]
             
             if home == "BYE" or away == "BYE":
                 continue
@@ -662,6 +681,8 @@ def generate_fixtures(team_ids: List[str], team_names: Dict[str, str]) -> List[F
             fixtures.append(Fixture(
                 id=f"fix_{week}_{i}",
                 week=week,
+                match_date=match_date_str,
+                match_type="league",
                 home_team_id=home,
                 away_team_id=away,
                 home_team_name=team_names.get(home, home),
@@ -669,12 +690,45 @@ def generate_fixtures(team_ids: List[str], team_names: Dict[str, str]) -> List[F
             ))
         
         # Rotate teams (keep first fixed)
-        teams = [teams[0]] + [teams[-1]] + teams[1:-1]
+        teams_list = [teams_list[0]] + [teams_list[-1]] + teams_list[1:-1]
         week += 1
     
     return fixtures
 
-def create_league(teams: List[Team], division: int) -> League:
+def generate_preseason_friendlies(team: Team, all_teams: List[Team], season_year: int = 2025) -> List[Fixture]:
+    """Generate pre-season friendly fixtures for a team"""
+    friendlies = []
+    
+    # 4 friendlies in July
+    friendly_dates = [
+        f"{season_year}-07-12",
+        f"{season_year}-07-19",
+        f"{season_year}-07-26",
+        f"{season_year}-08-02"
+    ]
+    
+    # Pick random opponents (not self)
+    opponents = [t for t in all_teams if t.id != team.id]
+    random.shuffle(opponents)
+    
+    for i, date in enumerate(friendly_dates):
+        opponent = opponents[i % len(opponents)]
+        is_home = random.choice([True, False])
+        
+        friendlies.append(Fixture(
+            id=f"friendly_{team.id}_{i}",
+            week=0,  # Pre-season
+            match_date=date,
+            match_type="friendly",
+            home_team_id=team.id if is_home else opponent.id,
+            away_team_id=opponent.id if is_home else team.id,
+            home_team_name=team.name if is_home else opponent.name,
+            away_team_name=opponent.name if is_home else team.name
+        ))
+    
+    return friendlies
+
+def create_league(teams: List[Team], division: int, season_year: int = 2025) -> League:
     """Create a league with teams and fixtures"""
     league_names = {
         1: "Premier League",
@@ -693,7 +747,7 @@ def create_league(teams: List[Team], division: int) -> League:
         ) for t in teams
     ]
     
-    fixtures = generate_fixtures(team_ids, team_names)
+    fixtures = generate_fixtures(team_ids, team_names, season_year)
     
     return League(
         id=f"league_{division}",
