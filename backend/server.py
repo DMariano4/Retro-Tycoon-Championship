@@ -173,15 +173,18 @@ class GameSave(BaseModel):
     name: str
     created_at: datetime
     updated_at: datetime
-    game_date: str  # in-game date
+    game_date: str  # in-game date (YYYY-MM-DD)
     managed_team_id: str
     managed_team_name: str
-    season: int
+    season: int  # Starting year of season (e.g., 2025 for 2025/26)
+    calendar: SeasonCalendar
     leagues: List[League] = []
     teams: List[Team] = []
     transfer_market: List[TransferListing] = []
     budget: int = 0
     is_cloud: bool = False
+    transfer_window_open: bool = True  # Track if transfers are allowed
+    is_pre_season: bool = True  # Track if in pre-season
 
 class CreateGameRequest(BaseModel):
     team_id: str
@@ -190,6 +193,48 @@ class CreateGameRequest(BaseModel):
 class SaveGameRequest(BaseModel):
     save_data: Dict[str, Any]
     is_cloud: bool = False
+
+# ==================== CALENDAR HELPERS ====================
+
+def create_season_calendar(season_year: int) -> SeasonCalendar:
+    """Create a season calendar starting from July of the given year"""
+    return SeasonCalendar(
+        season_year=season_year,
+        pre_season_start=f"{season_year}-07-01",
+        pre_season_end=f"{season_year}-08-09",
+        season_start=f"{season_year}-08-10",
+        season_end=f"{season_year + 1}-05-25",
+        transfer_window_summer_start=f"{season_year}-07-01",
+        transfer_window_summer_end=f"{season_year}-08-31",
+        transfer_window_winter_start=f"{season_year + 1}-01-01",
+        transfer_window_winter_end=f"{season_year + 1}-01-31",
+        contract_expiry_date=f"{season_year + 1}-06-30"
+    )
+
+def is_transfer_window_open(game_date: str, calendar: SeasonCalendar) -> bool:
+    """Check if current date is within a transfer window"""
+    date = datetime.strptime(game_date, "%Y-%m-%d").date()
+    summer_start = datetime.strptime(calendar.transfer_window_summer_start, "%Y-%m-%d").date()
+    summer_end = datetime.strptime(calendar.transfer_window_summer_end, "%Y-%m-%d").date()
+    winter_start = datetime.strptime(calendar.transfer_window_winter_start, "%Y-%m-%d").date()
+    winter_end = datetime.strptime(calendar.transfer_window_winter_end, "%Y-%m-%d").date()
+    
+    return (summer_start <= date <= summer_end) or (winter_start <= date <= winter_end)
+
+def get_season_phase(game_date: str, calendar: SeasonCalendar) -> str:
+    """Get current phase: pre_season, season, or off_season"""
+    date = datetime.strptime(game_date, "%Y-%m-%d").date()
+    pre_start = datetime.strptime(calendar.pre_season_start, "%Y-%m-%d").date()
+    pre_end = datetime.strptime(calendar.pre_season_end, "%Y-%m-%d").date()
+    season_start = datetime.strptime(calendar.season_start, "%Y-%m-%d").date()
+    season_end = datetime.strptime(calendar.season_end, "%Y-%m-%d").date()
+    
+    if pre_start <= date <= pre_end:
+        return "pre_season"
+    elif season_start <= date <= season_end:
+        return "season"
+    else:
+        return "off_season"
 
 # ==================== AUTH HELPERS ====================
 
