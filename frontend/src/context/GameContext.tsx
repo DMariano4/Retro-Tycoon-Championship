@@ -13,22 +13,45 @@ const getBackendUrl = () => {
 };
 
 const BACKEND_URL = getBackendUrl();
-const LOCAL_SAVE_KEY = 'retro_fm_local_save';
+const LOCAL_SAVE_KEY = 'retro_ct_local_save';
 
 export interface Player {
   id: string;
   name: string;
   age: number;
   nationality: string;
-  position: string;
+  position: string;  // GK, CB, LB, RB, DM, CM, AM, LW, RW, ST
   preferred_positions: string[];
+  // Physical attributes
   pace: number;
-  shooting: number;
-  passing: number;
-  tackling: number;
-  heading: number;
+  strength: number;
   stamina: number;
+  agility: number;
+  // Mental attributes
+  work_rate: number;
+  concentration: number;
+  decision_making: number;
+  composure: number;
+  // Technical - GK
+  reflexes: number;
   handling: number;
+  communication: number;
+  // Technical - Defenders
+  tackling: number;
+  marking: number;
+  positioning: number;
+  crossing: number;
+  // Technical - Midfielders
+  passing: number;
+  vision: number;
+  dribbling: number;
+  control: number;
+  // Technical - Forwards
+  finishing: number;
+  off_the_ball: number;
+  flair: number;
+  heading: number;
+  // Overall
   current_ability: number;
   potential_ability: number;
   value: number;
