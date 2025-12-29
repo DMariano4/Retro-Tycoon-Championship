@@ -432,6 +432,9 @@ function LeagueTab({ league, teamId }: any) {
 function TransfersTab() {
   const { currentSave, makeTransferOffer, getManagedTeam } = useGame();
   const team = getManagedTeam();
+  const [searchPlayer, setSearchPlayer] = useState('');
+  const [searchClub, setSearchClub] = useState('');
+  const [positionFilter, setPositionFilter] = useState<string | null>(null);
 
   const formatValue = (value: number) => {
     if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
@@ -460,6 +463,20 @@ function TransfersTab() {
     );
   };
 
+  // Filter listings
+  const filteredListings = currentSave?.transfer_market
+    .filter(l => l.team_id !== team?.id)
+    .filter(l => {
+      const playerMatch = searchPlayer === '' || 
+        l.player.name.toLowerCase().includes(searchPlayer.toLowerCase());
+      const clubMatch = searchClub === '' || 
+        l.team_name.toLowerCase().includes(searchClub.toLowerCase());
+      const posMatch = positionFilter === null || l.player.position === positionFilter;
+      return playerMatch && clubMatch && posMatch;
+    }) || [];
+
+  const positions = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST'];
+
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={styles.budgetDisplay}>
@@ -467,12 +484,71 @@ function TransfersTab() {
         <Text style={styles.budgetValue}>{formatValue(currentSave?.budget || 0)}</Text>
       </View>
 
+      {/* Search Section */}
+      <View style={styles.searchSection}>
+        <View style={styles.searchRow}>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="person-outline" size={16} color="#4a6a8a" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search player..."
+              placeholderTextColor="#4a6a8a"
+              value={searchPlayer}
+              onChangeText={setSearchPlayer}
+            />
+          </View>
+          <View style={styles.searchInputContainer}>
+            <Ionicons name="shield-outline" size={16} color="#4a6a8a" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search club..."
+              placeholderTextColor="#4a6a8a"
+              value={searchClub}
+              onChangeText={setSearchClub}
+            />
+          </View>
+        </View>
+        
+        {/* Position Filter */}
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          style={styles.positionFilterScroll}
+          contentContainerStyle={styles.positionFilterContent}
+        >
+          <TouchableOpacity
+            style={[styles.positionChip, positionFilter === null && styles.positionChipActive]}
+            onPress={() => setPositionFilter(null)}
+          >
+            <Text style={[styles.positionChipText, positionFilter === null && styles.positionChipTextActive]}>
+              ALL
+            </Text>
+          </TouchableOpacity>
+          {positions.map(pos => (
+            <TouchableOpacity
+              key={pos}
+              style={[styles.positionChip, positionFilter === pos && styles.positionChipActive]}
+              onPress={() => setPositionFilter(positionFilter === pos ? null : pos)}
+            >
+              <Text style={[styles.positionChipText, positionFilter === pos && styles.positionChipTextActive]}>
+                {pos}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+      </View>
+
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>TRANSFER MARKET</Text>
-        {currentSave?.transfer_market
-          .filter(l => l.team_id !== team?.id)
-          .slice(0, 20)
-          .map(listing => (
+        <Text style={styles.sectionTitle}>
+          TRANSFER MARKET ({filteredListings.length} players)
+        </Text>
+        {filteredListings.length === 0 ? (
+          <View style={styles.noResults}>
+            <Ionicons name="search-outline" size={32} color="#4a6a8a" />
+            <Text style={styles.noResultsText}>No players found</Text>
+          </View>
+        ) : (
+          filteredListings.slice(0, 30).map(listing => (
             <TouchableOpacity 
               key={listing.id} 
               style={styles.transferCard}
@@ -485,10 +561,9 @@ function TransfersTab() {
                   {listing.player.position} | {listing.player.age} yrs | {listing.team_name}
                 </Text>
                 <View style={styles.transferStats}>
+                  <Text style={styles.transferStat}>OVR {listing.player.current_ability}</Text>
                   <Text style={styles.transferStat}>PAC {listing.player.pace}</Text>
-                  <Text style={styles.transferStat}>SHO {listing.player.shooting}</Text>
-                  <Text style={styles.transferStat}>PAS {listing.player.passing}</Text>
-                  <Text style={styles.transferStat}>TAC {listing.player.tackling}</Text>
+                  <Text style={styles.transferStat}>STR {listing.player.strength}</Text>
                 </View>
               </View>
               <View style={styles.transferAction}>
@@ -504,7 +579,8 @@ function TransfersTab() {
                 </TouchableOpacity>
               </View>
             </TouchableOpacity>
-          ))}
+          ))
+        )}
       </View>
     </ScrollView>
   );
