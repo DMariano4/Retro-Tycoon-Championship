@@ -92,7 +92,7 @@ class Player(BaseModel):
     potential_ability: int = 60
     value: int = 100000
     wage: int = 1000
-    contract_end: int = 2027
+    contract_end: str = "2027-06-30"  # Contracts expire June 30th
     morale: int = 70
     fitness: int = 100
     form: int = 70
@@ -126,6 +126,8 @@ class TeamStanding(BaseModel):
 class Fixture(BaseModel):
     id: str
     week: int
+    match_date: str  # Actual date of the match (YYYY-MM-DD)
+    match_type: str = "league"  # league, friendly, cup
     home_team_id: str
     away_team_id: str
     home_team_name: str
@@ -134,6 +136,18 @@ class Fixture(BaseModel):
     away_score: Optional[int] = None
     played: bool = False
     events: List[Dict[str, Any]] = []
+
+class SeasonCalendar(BaseModel):
+    season_year: int  # e.g., 2025 for 2025/26 season
+    pre_season_start: str  # July 1
+    pre_season_end: str  # August 9
+    season_start: str  # August 10 (first matchday)
+    season_end: str  # May 25
+    transfer_window_summer_start: str  # July 1
+    transfer_window_summer_end: str  # August 31
+    transfer_window_winter_start: str  # January 1
+    transfer_window_winter_end: str  # January 31
+    contract_expiry_date: str  # June 30
 
 class League(BaseModel):
     id: str
