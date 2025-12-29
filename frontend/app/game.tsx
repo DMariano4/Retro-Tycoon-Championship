@@ -473,7 +473,12 @@ function TransfersTab() {
           .filter(l => l.team_id !== team?.id)
           .slice(0, 20)
           .map(listing => (
-            <View key={listing.id} style={styles.transferCard}>
+            <TouchableOpacity 
+              key={listing.id} 
+              style={styles.transferCard}
+              onPress={() => router.push(`/player/${listing.player.id}`)}
+              activeOpacity={0.8}
+            >
               <View style={styles.transferInfo}>
                 <Text style={styles.transferName}>{listing.player.name}</Text>
                 <Text style={styles.transferMeta}>
@@ -490,12 +495,15 @@ function TransfersTab() {
                 <Text style={styles.transferPrice}>{formatValue(listing.asking_price)}</Text>
                 <TouchableOpacity 
                   style={styles.offerButton}
-                  onPress={() => handleMakeOffer(listing)}
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    handleMakeOffer(listing);
+                  }}
                 >
                   <Text style={styles.offerButtonText}>BID</Text>
                 </TouchableOpacity>
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
       </View>
     </ScrollView>
