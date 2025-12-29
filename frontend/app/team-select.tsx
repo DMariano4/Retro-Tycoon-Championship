@@ -49,6 +49,7 @@ export default function TeamSelectScreen() {
         const data = await response.json();
         console.log('Teams loaded:', data.length);
         setTeams(data);
+        console.log('setTeams called');
       } else {
         setError(`Failed to load teams: ${response.status}`);
       }
@@ -56,7 +57,9 @@ export default function TeamSelectScreen() {
       console.error('Failed to fetch teams:', err);
       setError(err.message || 'Network error');
     } finally {
+      console.log('Setting loading to false');
       setLoading(false);
+      console.log('Loading set to false, teams:', teams.length);
     }
   };
 
