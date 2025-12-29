@@ -245,6 +245,10 @@ function SquadTab({ team }: any) {
     return `£${value}`;
   };
 
+  const handlePlayerPress = (playerId: string) => {
+    router.push(`/player/${playerId}`);
+  };
+
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       {Object.entries(positions).map(([position, players]: [string, any]) => (
@@ -254,7 +258,12 @@ function SquadTab({ team }: any) {
             <Text style={styles.positionCount}>{players.length}</Text>
           </View>
           {players.map((player: any) => (
-            <View key={player.id} style={styles.playerCard}>
+            <TouchableOpacity 
+              key={player.id} 
+              style={styles.playerCard}
+              onPress={() => handlePlayerPress(player.id)}
+              activeOpacity={0.7}
+            >
               <View style={styles.playerInfo}>
                 <Text style={styles.playerName}>{player.name}</Text>
                 <View style={styles.playerMeta}>
@@ -267,8 +276,9 @@ function SquadTab({ team }: any) {
                   <Text style={styles.abilityText}>{player.current_ability}</Text>
                 </View>
                 <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
+                <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
               </View>
-            </View>
+            </TouchableOpacity>
           ))}
         </View>
       ))}
