@@ -651,7 +651,7 @@ def create_league(teams: List[Team], division: int) -> League:
 
 @api_router.get("/")
 async def root():
-    return {"message": "Retro Football Manager API", "version": "1.0.0"}
+    return {"message": "Retro Championship Tycoon API", "version": "1.0.0"}
 
 @api_router.get("/teams")
 async def get_available_teams():
