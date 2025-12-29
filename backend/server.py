@@ -774,7 +774,9 @@ async def get_available_teams():
 
 @api_router.post("/game/new")
 async def create_new_game(req: CreateGameRequest, request: Request):
-    """Create a new game save"""
+    """Create a new game save starting in July 2025 pre-season"""
+    season_year = 2025
+    
     # Generate all teams for the league
     teams = generate_teams(division=1)
     
@@ -783,10 +785,19 @@ async def create_new_game(req: CreateGameRequest, request: Request):
     if not selected_team:
         raise HTTPException(status_code=404, detail="Team not found")
     
-    # Create league
-    league = create_league(teams, division=1)
+    # Create season calendar
+    calendar = create_season_calendar(season_year)
     
-    # Generate transfer market
+    # Create league with proper dates
+    league = create_league(teams, division=1, season_year=season_year)
+    
+    # Generate pre-season friendlies for managed team
+    friendlies = generate_preseason_friendlies(selected_team, teams, season_year)
+    
+    # Add friendlies to fixtures (they go before league fixtures)
+    league.fixtures = friendlies + league.fixtures
+    
+    # Generate transfer market (window is open in pre-season)
     transfer_market = []
     for team in teams:
         # List 1-2 players from each team
@@ -798,7 +809,7 @@ async def create_new_game(req: CreateGameRequest, request: Request):
                     team_id=team.id,
                     team_name=team.name,
                     asking_price=int(player.value * random.uniform(1.1, 1.5)),
-                    listed_date="2024-08-01"
+                    listed_date=f"{season_year}-07-01"
                 ))
     
     game_save = GameSave(
@@ -806,14 +817,17 @@ async def create_new_game(req: CreateGameRequest, request: Request):
         name=req.save_name,
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
-        game_date="2024-08-10",
+        game_date=f"{season_year}-07-01",  # Start July 1st (pre-season)
         managed_team_id=selected_team.id,
         managed_team_name=selected_team.name,
-        season=2024,
+        season=season_year,
+        calendar=calendar,
         leagues=[league],
         teams=teams,
         transfer_market=transfer_market,
-        budget=selected_team.budget
+        budget=selected_team.budget,
+        transfer_window_open=True,
+        is_pre_season=True
     )
     
     # Check if user is authenticated for cloud save option
