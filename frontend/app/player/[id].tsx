@@ -5,11 +5,31 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame, Player } from '../../src/context/GameContext';
 
+// Position groupings for display
+const POSITION_GROUPS: Record<string, string> = {
+  GK: 'Goalkeeper',
+  CB: 'Centre Back',
+  LB: 'Left Back',
+  RB: 'Right Back',
+  DM: 'Defensive Mid',
+  CM: 'Central Mid',
+  AM: 'Attacking Mid',
+  LW: 'Left Winger',
+  RW: 'Right Winger',
+  ST: 'Striker'
+};
+
+const POSITION_CATEGORY: Record<string, string> = {
+  GK: 'GK',
+  CB: 'DEF', LB: 'DEF', RB: 'DEF',
+  DM: 'MID', CM: 'MID', AM: 'MID',
+  LW: 'FWD', RW: 'FWD', ST: 'FWD'
+};
+
 export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { currentSave, getManagedTeam } = useGame();
 
-  // Find the player across all teams
   const findPlayer = (): { player: Player | null; teamName: string } => {
     if (!currentSave) return { player: null, teamName: '' };
     
@@ -24,7 +44,6 @@ export default function PlayerProfileScreen() {
 
   const { player, teamName } = findPlayer();
   const managedTeam = getManagedTeam();
-  const isOurPlayer = managedTeam?.squad.some(p => p.id === id);
 
   if (!player) {
     return (
@@ -96,6 +115,67 @@ export default function PlayerProfileScreen() {
     </View>
   );
 
+  // Get position-specific stats to show
+  const getPositionStats = () => {
+    const category = POSITION_CATEGORY[player.position] || 'MID';
+    
+    switch (category) {
+      case 'GK':
+        return {
+          title: 'GOALKEEPER SKILLS',
+          stats: [
+            { label: 'Reflexes', value: player.reflexes },
+            { label: 'Handling', value: player.handling },
+            { label: 'Communication', value: player.communication },
+            { label: 'Positioning', value: player.positioning },
+          ]
+        };
+      case 'DEF':
+        return {
+          title: 'DEFENSIVE SKILLS',
+          stats: [
+            { label: 'Tackling', value: player.tackling },
+            { label: 'Marking', value: player.marking },
+            { label: 'Positioning', value: player.positioning },
+            { label: 'Heading', value: player.heading },
+            ...(player.position === 'LB' || player.position === 'RB' 
+              ? [{ label: 'Crossing', value: player.crossing }] 
+              : []),
+          ]
+        };
+      case 'MID':
+        return {
+          title: 'MIDFIELD SKILLS',
+          stats: [
+            { label: 'Passing', value: player.passing },
+            { label: 'Vision', value: player.vision },
+            { label: 'Dribbling', value: player.dribbling },
+            { label: 'Control', value: player.control },
+            ...(player.position === 'DM' 
+              ? [{ label: 'Tackling', value: player.tackling }]
+              : [{ label: 'Flair', value: player.flair }]),
+          ]
+        };
+      case 'FWD':
+        return {
+          title: 'ATTACKING SKILLS',
+          stats: [
+            { label: 'Finishing', value: player.finishing },
+            { label: 'Off the Ball', value: player.off_the_ball },
+            { label: 'Dribbling', value: player.dribbling },
+            { label: 'Flair', value: player.flair },
+            ...(player.position === 'ST' 
+              ? [{ label: 'Heading', value: player.heading }]
+              : [{ label: 'Crossing', value: player.crossing }]),
+          ]
+        };
+      default:
+        return { title: 'SKILLS', stats: [] };
+    }
+  };
+
+  const positionStats = getPositionStats();
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -119,8 +199,9 @@ export default function PlayerProfileScreen() {
               <View style={styles.positionTag}>
                 <Text style={styles.positionTagText}>{player.position}</Text>
               </View>
-              <Text style={styles.playerNationality}>{player.nationality}</Text>
+              <Text style={styles.positionFull}>{POSITION_GROUPS[player.position] || player.position}</Text>
             </View>
+            <Text style={styles.playerNationality}>{player.nationality} | {player.age} yrs</Text>
           </View>
           <View style={styles.overallRating}>
             <Text style={styles.overallRatingValue}>{player.current_ability}</Text>
@@ -131,10 +212,6 @@ export default function PlayerProfileScreen() {
         {/* Quick Info */}
         <View style={styles.quickInfoGrid}>
           <View style={styles.quickInfoItem}>
-            <Text style={styles.quickInfoValue}>{player.age}</Text>
-            <Text style={styles.quickInfoLabel}>Age</Text>
-          </View>
-          <View style={styles.quickInfoItem}>
             <Text style={styles.quickInfoValue}>{player.potential_ability}</Text>
             <Text style={styles.quickInfoLabel}>Potential</Text>
           </View>
@@ -143,24 +220,42 @@ export default function PlayerProfileScreen() {
             <Text style={styles.quickInfoLabel}>Fitness</Text>
           </View>
           <View style={styles.quickInfoItem}>
-            <Text style={styles.quickInfoValue}>{getMoraleText(player.morale)}</Text>
-            <Text style={styles.quickInfoLabel}>Morale</Text>
+            <Text style={[styles.quickInfoValue, { color: getAbilityColor(player.form) }]}>
+              {getFormText(player.form).substring(0, 4)}
+            </Text>
+            <Text style={styles.quickInfoLabel}>Form</Text>
           </View>
         </View>
 
-        {/* Base Stats */}
+        {/* Position-Specific Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>BASE STATS</Text>
+          <Text style={styles.sectionTitle}>{positionStats.title}</Text>
+          <View style={styles.statsCard}>
+            {positionStats.stats.map((stat, index) => (
+              <StatBar key={index} label={stat.label} value={stat.value} />
+            ))}
+          </View>
+        </View>
+
+        {/* Physical Attributes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>PHYSICAL</Text>
           <View style={styles.statsCard}>
             <StatBar label="Pace" value={player.pace} />
-            <StatBar label="Shooting" value={player.shooting} />
-            <StatBar label="Passing" value={player.passing} />
-            <StatBar label="Tackling" value={player.tackling} />
-            <StatBar label="Heading" value={player.heading} />
+            <StatBar label="Strength" value={player.strength} />
             <StatBar label="Stamina" value={player.stamina} />
-            {player.position === 'GK' && (
-              <StatBar label="Handling" value={player.handling} />
-            )}
+            <StatBar label="Agility" value={player.agility} />
+          </View>
+        </View>
+
+        {/* Mental Attributes */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>MENTAL</Text>
+          <View style={styles.statsCard}>
+            <StatBar label="Work Rate" value={player.work_rate} />
+            <StatBar label="Concentration" value={player.concentration} />
+            <StatBar label="Decision Making" value={player.decision_making} />
+            <StatBar label="Composure" value={player.composure} />
           </View>
         </View>
 
@@ -204,7 +299,7 @@ export default function PlayerProfileScreen() {
           </View>
         </View>
 
-        {/* Form & Condition */}
+        {/* Condition */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>CONDITION</Text>
           <View style={styles.infoCard}>
@@ -229,7 +324,7 @@ export default function PlayerProfileScreen() {
           </View>
         </View>
 
-        {/* Career Stats (placeholder - would need tracking) */}
+        {/* Career Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>CAREER STATS</Text>
           <View style={styles.careerStatsGrid}>
@@ -247,7 +342,7 @@ export default function PlayerProfileScreen() {
             </View>
             <View style={styles.careerStatItem}>
               <Text style={styles.careerStatValue}>-</Text>
-              <Text style={styles.careerStatLabel}>Clean Sheets</Text>
+              <Text style={styles.careerStatLabel}>Rating</Text>
             </View>
           </View>
           <Text style={styles.careerNote}>Stats tracking coming in future update</Text>
@@ -315,7 +410,7 @@ const styles = StyleSheet.create({
     marginLeft: 16,
   },
   playerName: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
     color: '#fff',
   },
@@ -328,36 +423,41 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    marginTop: 8,
+    marginTop: 6,
   },
   positionTag: {
     backgroundColor: '#1a4a3c',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 4,
   },
   positionTagText: {
     color: '#00ff88',
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '700',
+  },
+  positionFull: {
+    color: '#6a8aaa',
+    fontSize: 11,
   },
   playerNationality: {
     color: '#6a8aaa',
-    fontSize: 12,
+    fontSize: 11,
+    marginTop: 4,
   },
   overallRating: {
     alignItems: 'center',
     backgroundColor: '#1a4a3c',
-    padding: 12,
+    padding: 10,
     borderRadius: 8,
   },
   overallRatingValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '900',
     color: '#00ff88',
   },
   overallRatingLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#00ff88',
     fontWeight: '600',
   },
