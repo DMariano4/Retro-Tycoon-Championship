@@ -26,12 +26,21 @@ interface TeamOption {
 }
 
 export default function TeamSelectScreen() {
-  const [teams, setTeams] = useState<TeamOption[]>([]);
-  const [selectedTeam, setSelectedTeam] = useState<TeamOption | null>(null);
-  const [saveName, setSaveName] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [, forceUpdate] = useState({});
+  // Use a single state object to avoid React 19 batching issues
+  const [state, setState] = useState<{
+    teams: TeamOption[];
+    selectedTeam: TeamOption | null;
+    saveName: string;
+    loading: boolean;
+    error: string | null;
+  }>({
+    teams: [],
+    selectedTeam: null,
+    saveName: '',
+    loading: true,
+    error: null
+  });
+
   const { createNewGame, isLoading: gameLoading } = useGame();
 
   useEffect(() => {
@@ -39,15 +48,9 @@ export default function TeamSelectScreen() {
     fetchTeams();
   }, []);
 
-  // Debug log on state changes
-  useEffect(() => {
-    console.log('Teams state changed:', teams.length, 'loading:', loading);
-  }, [teams, loading]);
-
   const fetchTeams = () => {
     console.log('fetchTeams started');
-    setLoading(true);
-    setError(null);
+    setState(prev => ({ ...prev, loading: true, error: null }));
     
     const apiUrl = `${BACKEND_URL}/api/teams`;
     console.log('Fetching teams from:', apiUrl);
@@ -59,28 +62,33 @@ export default function TeamSelectScreen() {
         return response.json();
       })
       .then(data => {
-        console.log('Teams loaded:', data.length, data[0]?.name);
-        // Force batch updates
-        setTeams(prev => {
-          console.log('Setting teams from', prev.length, 'to', data.length);
-          return [...data];
-        });
-        setLoading(prev => {
-          console.log('Setting loading from', prev, 'to false');
-          return false;
-        });
-        // Force re-render after state updates
-        setTimeout(() => {
-          console.log('Forcing update');
-          forceUpdate({});
-        }, 100);
+        console.log('Teams loaded:', data.length);
+        setState(prev => ({
+          ...prev,
+          teams: data,
+          loading: false
+        }));
+        console.log('State updated with teams');
       })
       .catch(err => {
         console.error('Fetch error:', err);
-        setError(err.message || 'Network error');
-        setLoading(false);
+        setState(prev => ({
+          ...prev,
+          error: err.message || 'Network error',
+          loading: false
+        }));
       });
   };
+
+  const setSelectedTeam = (team: TeamOption | null) => {
+    setState(prev => ({ ...prev, selectedTeam: team }));
+  };
+
+  const setSaveName = (name: string) => {
+    setState(prev => ({ ...prev, saveName: name }));
+  };
+
+  const { teams, selectedTeam, saveName, loading, error } = state;
 
   const handleStartGame = async () => {
     if (!selectedTeam) {
