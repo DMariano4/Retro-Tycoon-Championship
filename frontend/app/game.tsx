@@ -236,16 +236,14 @@ function SquadTab({ team }: any) {
   if (!team) return null;
 
   const groupByPosition = () => {
-    const groups: any = { GK: [], DEF: [], MID: [], FWD: [] };
-    team.squad.forEach((player: any) => {
-      if (groups[player.position]) {
-        groups[player.position].push(player);
-      }
-    });
+    const groups: Record<string, any[]> = {};
+    for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+      groups[groupName] = team.squad.filter((p: any) => positions.includes(p.position));
+    }
     return groups;
   };
 
-  const positions = groupByPosition();
+  const positionGroups = groupByPosition();
 
   const formatValue = (value: number) => {
     if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
@@ -259,10 +257,10 @@ function SquadTab({ team }: any) {
 
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {Object.entries(positions).map(([position, players]: [string, any]) => (
-        <View key={position} style={styles.positionGroup}>
+      {Object.entries(positionGroups).map(([groupName, players]: [string, any[]]) => (
+        <View key={groupName} style={styles.positionGroup}>
           <View style={styles.positionHeader}>
-            <Text style={styles.positionTitle}>{position === 'GK' ? 'GOALKEEPERS' : position === 'DEF' ? 'DEFENDERS' : position === 'MID' ? 'MIDFIELDERS' : 'FORWARDS'}</Text>
+            <Text style={styles.positionTitle}>{groupName}</Text>
             <Text style={styles.positionCount}>{players.length}</Text>
           </View>
           {players.map((player: any) => (
@@ -273,7 +271,12 @@ function SquadTab({ team }: any) {
               activeOpacity={0.7}
             >
               <View style={styles.playerInfo}>
-                <Text style={styles.playerName}>{player.name}</Text>
+                <View style={styles.playerNameRow}>
+                  <View style={styles.positionBadge}>
+                    <Text style={styles.positionBadgeText}>{player.position}</Text>
+                  </View>
+                  <Text style={styles.playerName}>{player.name}</Text>
+                </View>
                 <View style={styles.playerMeta}>
                   <Text style={styles.playerAge}>{player.age} yrs</Text>
                   <Text style={styles.playerNat}>{player.nationality}</Text>
