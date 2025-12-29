@@ -208,11 +208,30 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    gap: 12,
   },
   loadingText: {
     color: '#6a8aaa',
     marginTop: 12,
     fontSize: 14,
+  },
+  errorText: {
+    color: '#ff6b6b',
+    fontSize: 14,
+    textAlign: 'center',
+    maxWidth: 280,
+  },
+  retryButton: {
+    backgroundColor: '#1a4a6c',
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '700',
   },
   teamList: {
     flex: 1,
