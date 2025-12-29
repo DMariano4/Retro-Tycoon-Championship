@@ -127,7 +127,7 @@ export default function TeamSelectScreen() {
       </View>
 
       <View style={styles.divisionBadge}>
-        <Text style={styles.divisionText}>PREMIER LEAGUE</Text>
+        <Text style={styles.divisionText}>PREMIER LEAGUE - {loading ? 'LOADING' : `${teams.length} TEAMS`}</Text>
       </View>
 
       {loading ? (
