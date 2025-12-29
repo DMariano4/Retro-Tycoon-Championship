@@ -3,8 +3,18 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { Platform } from 'react-native';
+import Constants from 'expo-constants';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const getBackendUrl = () => {
+  const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
+                 process.env.EXPO_PUBLIC_BACKEND_URL || '';
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return '';
+  }
+  return envUrl;
+};
+
+const BACKEND_URL = getBackendUrl();
 
 interface User {
   user_id: string;
