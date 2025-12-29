@@ -25,7 +25,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'football_manager')]
 
 # Create the main app
-app = FastAPI(title="Retro Football Manager API")
+app = FastAPI(title="Retro Championship Tycoon API")
 api_router = APIRouter(prefix="/api")
 
 # Configure logging
@@ -56,15 +56,38 @@ class Player(BaseModel):
     name: str
     age: int
     nationality: str
-    position: str  # GK, DEF, MID, FWD
+    position: str  # GK, CB, LB, RB, DM, CM, AM, LW, RW, ST
     preferred_positions: List[str] = []
+    # Physical attributes (all positions)
     pace: int = 50
-    shooting: int = 50
-    passing: int = 50
-    tackling: int = 50
-    heading: int = 50
+    strength: int = 50
     stamina: int = 50
-    handling: int = 50  # for GK
+    agility: int = 50
+    # Mental attributes (all positions)
+    work_rate: int = 50
+    concentration: int = 50
+    decision_making: int = 50
+    composure: int = 50
+    # Technical - Goalkeeper
+    reflexes: int = 50
+    handling: int = 50
+    communication: int = 50
+    # Technical - Defenders
+    tackling: int = 50
+    marking: int = 50
+    positioning: int = 50
+    crossing: int = 50  # for fullbacks
+    # Technical - Midfielders
+    passing: int = 50
+    vision: int = 50
+    dribbling: int = 50
+    control: int = 50
+    # Technical - Forwards
+    finishing: int = 50
+    off_the_ball: int = 50
+    flair: int = 50
+    heading: int = 50
+    # Overall ratings
     current_ability: int = 50
     potential_ability: int = 60
     value: int = 100000
