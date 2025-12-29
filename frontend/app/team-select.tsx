@@ -1,11 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
+import Constants from 'expo-constants';
 
-const BACKEND_URL = process.env.EXPO_PUBLIC_BACKEND_URL || '';
+const getBackendUrl = () => {
+  const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
+                 process.env.EXPO_PUBLIC_BACKEND_URL || '';
+  // For web in preview, use relative URLs
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    return '';
+  }
+  return envUrl;
+};
+
+const BACKEND_URL = getBackendUrl();
 
 interface TeamOption {
   id: string;
