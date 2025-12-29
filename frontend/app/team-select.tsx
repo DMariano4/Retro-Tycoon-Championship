@@ -113,6 +113,19 @@ export default function TeamSelectScreen() {
           <ActivityIndicator size="large" color="#00ff88" />
           <Text style={styles.loadingText}>Loading teams...</Text>
         </View>
+      ) : error ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="alert-circle" size={48} color="#ff6b6b" />
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchTeams}>
+            <Text style={styles.retryButtonText}>Retry</Text>
+          </TouchableOpacity>
+        </View>
+      ) : teams.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <Ionicons name="football-outline" size={48} color="#4a6a8a" />
+          <Text style={styles.loadingText}>No teams available</Text>
+        </View>
       ) : (
         <FlatList
           data={teams}
