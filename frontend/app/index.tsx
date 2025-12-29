@@ -41,7 +41,7 @@ export default function MainMenu() {
         {/* Logo/Title */}
         <View style={styles.logoContainer}>
           <Text style={styles.title}>RETRO</Text>
-          <Text style={styles.subtitle}>FOOTBALL MANAGER</Text>
+          <Text style={styles.subtitle}>CHAMPIONSHIP TYCOON</Text>
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>v1.0</Text>
           </View>
