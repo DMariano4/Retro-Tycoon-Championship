@@ -1,32 +1,41 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGame } from '../src/context/GameContext';
+import { useGame, Player, Team } from '../src/context/GameContext';
 
 const { width } = Dimensions.get('window');
 
-type MatchState = 'pre' | 'live' | 'post';
+type MatchState = 'pre' | 'live' | 'paused' | 'post';
 
 export default function MatchScreen() {
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, saveGame } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, saveGame, updateFormation } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [events, setEvents] = useState<any[]>([]);
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [homeScore, setHomeScore] = useState(0);
   const [awayScore, setAwayScore] = useState(0);
-  const [speed, setSpeed] = useState(1); // 1x, 2x, 4x
+  const [speed, setSpeed] = useState(1);
   const [currentMinute, setCurrentMinute] = useState(0);
+  const [showSubstitutionModal, setShowSubstitutionModal] = useState(false);
+  const [showTacticsModal, setShowTacticsModal] = useState(false);
+  const [selectedFormation, setSelectedFormation] = useState('4-4-2');
+  const [substitutions, setSubstitutions] = useState<{ out: string; in: string }[]>([]);
   const scrollRef = useRef<ScrollView>(null);
 
   const managedTeam = getManagedTeam();
   const league = getLeague();
 
-  // Get current fixture
   const fixture = league?.fixtures.find(
     f => !f.played && (f.home_team_id === managedTeam?.id || f.away_team_id === managedTeam?.id)
   );
+
+  useEffect(() => {
+    if (managedTeam) {
+      setSelectedFormation(managedTeam.formation);
+    }
+  }, [managedTeam]);
 
   useEffect(() => {
     if (matchState === 'live' && events.length > 0) {
@@ -46,21 +55,18 @@ export default function MatchScreen() {
   }, [matchState, speed, events]);
 
   useEffect(() => {
-    // Reveal events as time passes
     if (events.length > 0 && currentEventIndex < events.length) {
       const nextEvent = events[currentEventIndex];
       if (currentMinute >= nextEvent.minute) {
-        // Update scores for goals
         if (nextEvent.type === 'GOAL') {
-          if (nextEvent.team === fixture?.home_team_name.slice(0, 3).toUpperCase() || 
-              (managedTeam && fixture?.home_team_id === managedTeam.id && nextEvent.team === managedTeam.short_name)) {
+          const homeTeam = currentSave?.teams.find(t => t.id === fixture?.home_team_id);
+          if (nextEvent.team === homeTeam?.short_name) {
             setHomeScore(prev => prev + 1);
           } else {
             setAwayScore(prev => prev + 1);
           }
         }
         setCurrentEventIndex(prev => prev + 1);
-        // Auto scroll to bottom
         setTimeout(() => {
           scrollRef.current?.scrollToEnd({ animated: true });
         }, 100);
@@ -70,7 +76,6 @@ export default function MatchScreen() {
 
   const handleStartMatch = async () => {
     if (!fixture) return;
-
     const result = await simulateMatch(fixture.id, speed);
     if (result) {
       setEvents(result.events);
@@ -78,9 +83,22 @@ export default function MatchScreen() {
     }
   };
 
+  const handlePause = () => {
+    setMatchState('paused');
+  };
+
+  const handleResume = () => {
+    setMatchState('live');
+  };
+
   const handleFinish = async () => {
     await saveGame(false);
     router.replace('/game');
+  };
+
+  const handleFormationChange = (formation: string) => {
+    setSelectedFormation(formation);
+    updateFormation(formation, {});
   };
 
   const getEventIcon = (type: string) => {
@@ -120,40 +138,78 @@ export default function MatchScreen() {
   }
 
   const isHome = fixture.home_team_id === managedTeam.id;
+  const homeTeam = currentSave?.teams.find(t => t.id === fixture.home_team_id);
+  const awayTeam = currentSave?.teams.find(t => t.id === fixture.away_team_id);
+  const formations = ['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2', '4-2-3-1'];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Match Header */}
-      <View style={styles.matchHeader}>
-        <View style={styles.teamContainer}>
+      {/* Improved Scoreboard - Horizontal layout */}
+      <View style={styles.scoreboard}>
+        <View style={styles.scoreboardTeam}>
           <Text style={[
-            styles.teamName,
-            isHome && styles.teamNameHighlight
-          ]} numberOfLines={2}>
+            styles.scoreboardTeamName,
+            isHome && styles.scoreboardTeamHighlight
+          ]} numberOfLines={1}>
             {fixture.home_team_name}
           </Text>
+          <Text style={styles.scoreboardScore}>{homeScore}</Text>
         </View>
         
-        <View style={styles.scoreContainer}>
-          <Text style={styles.score}>{homeScore}</Text>
-          <Text style={styles.scoreSeparator}>-</Text>
-          <Text style={styles.score}>{awayScore}</Text>
-          {matchState === 'live' && (
-            <Text style={styles.minute}>{currentMinute}'</Text>
+        <View style={styles.scoreboardCenter}>
+          {matchState === 'live' || matchState === 'paused' ? (
+            <View style={styles.minuteContainer}>
+              <Text style={styles.minuteText}>{currentMinute}'</Text>
+              {matchState === 'paused' && (
+                <Text style={styles.pausedText}>PAUSED</Text>
+              )}
+            </View>
+          ) : matchState === 'post' ? (
+            <Text style={styles.fullTimeLabel}>FT</Text>
+          ) : (
+            <Text style={styles.vsText}>vs</Text>
           )}
         </View>
         
-        <View style={styles.teamContainer}>
+        <View style={styles.scoreboardTeam}>
+          <Text style={styles.scoreboardScore}>{awayScore}</Text>
           <Text style={[
-            styles.teamName,
-            !isHome && styles.teamNameHighlight
-          ]} numberOfLines={2}>
+            styles.scoreboardTeamName,
+            !isHome && styles.scoreboardTeamHighlight
+          ]} numberOfLines={1}>
             {fixture.away_team_name}
           </Text>
         </View>
       </View>
 
-      {/* Speed Controls */}
+      {/* Match Controls (when paused) */}
+      {matchState === 'paused' && (
+        <View style={styles.pauseControls}>
+          <TouchableOpacity 
+            style={styles.pauseControlButton}
+            onPress={() => setShowTacticsModal(true)}
+          >
+            <Ionicons name="grid-outline" size={20} color="#4a9eff" />
+            <Text style={styles.pauseControlText}>Tactics</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.pauseControlButton}
+            onPress={() => setShowSubstitutionModal(true)}
+          >
+            <Ionicons name="swap-horizontal" size={20} color="#00ff88" />
+            <Text style={styles.pauseControlText}>Subs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.pauseControlButton, styles.resumeButton]}
+            onPress={handleResume}
+          >
+            <Ionicons name="play" size={20} color="#0a1628" />
+            <Text style={[styles.pauseControlText, { color: '#0a1628' }]}>Resume</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Speed Controls (pre-match) */}
       {matchState === 'pre' && (
         <View style={styles.speedControls}>
           <Text style={styles.speedLabel}>Commentary Speed:</Text>
@@ -161,16 +217,12 @@ export default function MatchScreen() {
             {[1, 2, 4].map(s => (
               <TouchableOpacity
                 key={s}
-                style={[
-                  styles.speedButton,
-                  speed === s && styles.speedButtonActive
-                ]}
+                style={[styles.speedButton, speed === s && styles.speedButtonActive]}
                 onPress={() => setSpeed(s)}
               >
-                <Text style={[
-                  styles.speedButtonText,
-                  speed === s && styles.speedButtonTextActive
-                ]}>{s}x</Text>
+                <Text style={[styles.speedButtonText, speed === s && styles.speedButtonTextActive]}>
+                  {s}x
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -238,22 +290,24 @@ export default function MatchScreen() {
       {/* Footer */}
       {matchState === 'live' && (
         <View style={styles.liveFooter}>
-          <View style={styles.speedButtons}>
-            {[1, 2, 4].map(s => (
-              <TouchableOpacity
-                key={s}
-                style={[
-                  styles.speedButton,
-                  speed === s && styles.speedButtonActive
-                ]}
-                onPress={() => setSpeed(s)}
-              >
-                <Text style={[
-                  styles.speedButtonText,
-                  speed === s && styles.speedButtonTextActive
-                ]}>{s}x</Text>
-              </TouchableOpacity>
-            ))}
+          <View style={styles.liveControls}>
+            <View style={styles.speedButtons}>
+              {[1, 2, 4].map(s => (
+                <TouchableOpacity
+                  key={s}
+                  style={[styles.speedButton, speed === s && styles.speedButtonActive]}
+                  onPress={() => setSpeed(s)}
+                >
+                  <Text style={[styles.speedButtonText, speed === s && styles.speedButtonTextActive]}>
+                    {s}x
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
+              <Ionicons name="pause" size={20} color="#fff" />
+              <Text style={styles.pauseButtonText}>PAUSE</Text>
+            </TouchableOpacity>
           </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${(currentMinute / 90) * 100}%` }]} />
@@ -269,6 +323,118 @@ export default function MatchScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Tactics Modal */}
+      <Modal
+        visible={showTacticsModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowTacticsModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>TACTICS</Text>
+              <TouchableOpacity onPress={() => setShowTacticsModal(false)}>
+                <Ionicons name="close" size={24} color="#6a8aaa" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSectionTitle}>Formation</Text>
+            <View style={styles.formationGrid}>
+              {formations.map(formation => (
+                <TouchableOpacity
+                  key={formation}
+                  style={[
+                    styles.formationOption,
+                    selectedFormation === formation && styles.formationOptionActive
+                  ]}
+                  onPress={() => handleFormationChange(formation)}
+                >
+                  <Text style={[
+                    styles.formationOptionText,
+                    selectedFormation === formation && styles.formationOptionTextActive
+                  ]}>
+                    {formation}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowTacticsModal(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>APPLY</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Substitution Modal */}
+      <Modal
+        visible={showSubstitutionModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowSubstitutionModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>SUBSTITUTIONS</Text>
+              <TouchableOpacity onPress={() => setShowSubstitutionModal(false)}>
+                <Ionicons name="close" size={24} color="#6a8aaa" />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={styles.modalSectionTitle}>
+              {substitutions.length}/3 substitutions made
+            </Text>
+            
+            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
+              <Text style={styles.subsListTitle}>ON PITCH</Text>
+              {managedTeam.squad.slice(0, 11).map(player => (
+                <View key={player.id} style={styles.subPlayerRow}>
+                  <View style={styles.subPlayerInfo}>
+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
+                    <Text style={styles.subPlayerName}>{player.name}</Text>
+                  </View>
+                  <TouchableOpacity 
+                    style={styles.subButton}
+                    disabled={substitutions.length >= 3}
+                  >
+                    <Ionicons name="swap-horizontal" size={16} color="#ff6b6b" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+              
+              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
+              {managedTeam.squad.slice(11).map(player => (
+                <View key={player.id} style={styles.subPlayerRow}>
+                  <View style={styles.subPlayerInfo}>
+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
+                    <Text style={styles.subPlayerName}>{player.name}</Text>
+                  </View>
+                  <View style={styles.subAbility}>
+                    <Text style={styles.subAbilityText}>{player.current_ability}</Text>
+                  </View>
+                </View>
+              ))}
+            </ScrollView>
+
+            <Text style={styles.subsNote}>
+              Tap a player on pitch, then a bench player to substitute
+            </Text>
+
+            <TouchableOpacity 
+              style={styles.modalCloseButton}
+              onPress={() => setShowSubstitutionModal(false)}
+            >
+              <Text style={styles.modalCloseButtonText}>DONE</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -300,47 +466,95 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  matchHeader: {
+  // New horizontal scoreboard
+  scoreboard: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: 20,
+    padding: 16,
     backgroundColor: '#0d2137',
     borderBottomWidth: 2,
     borderBottomColor: '#1a4a6c',
   },
-  teamContainer: {
-    flex: 1,
+  scoreboardTeam: {
+    flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+    gap: 8,
   },
-  teamName: {
-    fontSize: 14,
+  scoreboardTeamName: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#9ab8d8',
-    textAlign: 'center',
+    flex: 1,
   },
-  teamNameHighlight: {
+  scoreboardTeamHighlight: {
     color: '#00ff88',
   },
-  scoreContainer: {
-    alignItems: 'center',
-    paddingHorizontal: 20,
-  },
-  score: {
-    fontSize: 40,
+  scoreboardScore: {
+    fontSize: 32,
     fontWeight: '900',
     color: '#fff',
+    minWidth: 40,
+    textAlign: 'center',
   },
-  scoreSeparator: {
-    fontSize: 24,
-    color: '#4a6a8a',
-    marginHorizontal: 8,
+  scoreboardCenter: {
+    alignItems: 'center',
+    paddingHorizontal: 12,
   },
-  minute: {
-    fontSize: 14,
+  minuteContainer: {
+    alignItems: 'center',
+  },
+  minuteText: {
+    fontSize: 18,
+    fontWeight: '800',
     color: '#00ff88',
-    marginTop: 4,
+  },
+  pausedText: {
+    fontSize: 10,
+    color: '#ff6b6b',
     fontWeight: '700',
+    marginTop: 2,
+  },
+  fullTimeLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#4a9eff',
+  },
+  vsText: {
+    fontSize: 14,
+    color: '#4a6a8a',
+    fontWeight: '600',
+  },
+  // Pause controls
+  pauseControls: {
+    flexDirection: 'row',
+    padding: 12,
+    gap: 8,
+    backgroundColor: '#0d1a28',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a3a5c',
+  },
+  pauseControlButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#0d2137',
+    paddingVertical: 12,
+    borderRadius: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  resumeButton: {
+    backgroundColor: '#00ff88',
+    borderColor: '#00ff88',
+  },
+  pauseControlText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   speedControls: {
     padding: 16,
@@ -502,8 +716,26 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d2137',
     borderTopWidth: 1,
     borderTopColor: '#1a4a6c',
-    alignItems: 'center',
     gap: 12,
+  },
+  liveControls: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  pauseButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ff6b6b',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    gap: 6,
+  },
+  pauseButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
   },
   progressBar: {
     width: '100%',
@@ -533,6 +765,129 @@ const styles = StyleSheet.create({
   },
   finishButtonText: {
     fontSize: 16,
+    fontWeight: '800',
+    color: '#0a1628',
+    letterSpacing: 1,
+  },
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#0d2137',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 2,
+  },
+  modalSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    marginBottom: 12,
+  },
+  formationGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 20,
+  },
+  formationOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    backgroundColor: '#0a1628',
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+  },
+  formationOptionActive: {
+    borderColor: '#00ff88',
+    backgroundColor: '#1a4a3c',
+  },
+  formationOptionText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#6a8aaa',
+  },
+  formationOptionTextActive: {
+    color: '#00ff88',
+  },
+  subsList: {
+    maxHeight: 300,
+  },
+  subsListTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4a9eff',
+    marginBottom: 8,
+  },
+  subPlayerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0a1628',
+    padding: 12,
+    borderRadius: 6,
+    marginBottom: 6,
+  },
+  subPlayerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  subPlayerPosition: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#4a9eff',
+    width: 30,
+  },
+  subPlayerName: {
+    fontSize: 13,
+    color: '#fff',
+  },
+  subButton: {
+    padding: 8,
+  },
+  subAbility: {
+    backgroundColor: '#1a4a3c',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  subAbilityText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#00ff88',
+  },
+  subsNote: {
+    fontSize: 11,
+    color: '#4a6a8a',
+    textAlign: 'center',
+    marginVertical: 12,
+    fontStyle: 'italic',
+  },
+  modalCloseButton: {
+    backgroundColor: '#00ff88',
+    paddingVertical: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalCloseButtonText: {
+    fontSize: 14,
     fontWeight: '800',
     color: '#0a1628',
     letterSpacing: 1,
