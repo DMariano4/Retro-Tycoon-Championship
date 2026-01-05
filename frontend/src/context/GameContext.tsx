@@ -56,7 +56,7 @@ export interface Player {
   potential_ability: number;
   value: number;
   wage: number;
-  contract_end: number;
+  contract_end: string;  // Now a date string (YYYY-MM-DD)
   morale: number;
   fitness: number;
   form: number;
@@ -93,6 +93,8 @@ export interface TeamStanding {
 export interface Fixture {
   id: string;
   week: number;
+  match_date: string;  // YYYY-MM-DD
+  match_type: string;  // league, friendly, cup
   home_team_id: string;
   away_team_id: string;
   home_team_name: string;
@@ -101,6 +103,19 @@ export interface Fixture {
   away_score: number | null;
   played: boolean;
   events: any[];
+}
+
+export interface SeasonCalendar {
+  season_year: number;
+  pre_season_start: string;
+  pre_season_end: string;
+  season_start: string;
+  season_end: string;
+  transfer_window_summer_start: string;
+  transfer_window_summer_end: string;
+  transfer_window_winter_start: string;
+  transfer_window_winter_end: string;
+  contract_expiry_date: string;
 }
 
 export interface League {
