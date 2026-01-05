@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Football Tycoon 26",
+    "slug": "football-tycoon-26",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
