@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Football Tycoon 26",
-    "slug": "football-tycoon-26",
+    "name": "Retro Football Championship",
+    "slug": "retro-football-championship",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "football-tycoon-26",
+    "scheme": "retro-football-championship",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
