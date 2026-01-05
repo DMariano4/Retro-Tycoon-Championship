@@ -40,8 +40,8 @@ export default function MainMenu() {
       <View style={styles.content}>
         {/* Logo/Title */}
         <View style={styles.logoContainer}>
-          <Text style={styles.title}>RETRO</Text>
-          <Text style={styles.subtitle}>CHAMPIONSHIP TYCOON</Text>
+          <Text style={styles.title}>FOOTBALL</Text>
+          <Text style={styles.subtitle}>TYCOON 26</Text>
           <View style={styles.versionBadge}>
             <Text style={styles.versionText}>v1.0</Text>
           </View>

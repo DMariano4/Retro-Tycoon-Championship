@@ -25,7 +25,7 @@ client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ.get('DB_NAME', 'football_manager')]
 
 # Create the main app
-app = FastAPI(title="Retro Championship Tycoon API")
+app = FastAPI(title="Football Tycoon 26 API")
 api_router = APIRouter(prefix="/api")
 
 # Configure logging
@@ -764,7 +764,7 @@ def create_league(teams: List[Team], division: int, season_year: int = 2025) -> 
 
 @api_router.get("/")
 async def root():
-    return {"message": "Retro Championship Tycoon API", "version": "1.0.0"}
+    return {"message": "Football Tycoon 26 API", "version": "1.0.0"}
 
 @api_router.get("/teams")
 async def get_available_teams():
