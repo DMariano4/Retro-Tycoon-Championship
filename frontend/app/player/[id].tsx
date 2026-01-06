@@ -100,6 +100,65 @@ export default function PlayerProfileScreen() {
     return 'Terrible';
   };
 
+  const isOwnPlayer = managedTeam?.squad.some(p => p.id === player.id);
+
+  const handleRenewContract = () => {
+    if (!isOwnPlayer) {
+      Alert.alert('Not Your Player', 'This player is not in your squad.');
+      return;
+    }
+    setShowActionsMenu(false);
+    Alert.alert(
+      'Renew Contract',
+      `Offer new contract to ${player.name}?\n\nCurrent wage: ${formatWage(player.wage)}\nExpires: ${player.contract_end}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Offer Contract',
+          onPress: () => {
+            Alert.alert('Success', 'Contract renewal negotiations will be implemented in future update.');
+          }
+        }
+      ]
+    );
+  };
+
+  const handleListForTransfer = () => {
+    if (!isOwnPlayer) {
+      Alert.alert('Not Your Player', 'You can only list your own players for transfer.');
+      return;
+    }
+    setShowActionsMenu(false);
+    Alert.alert(
+      'List for Transfer',
+      `List ${player.name} on the transfer market?\n\nSuggested price: ${formatValue(player.value * 1.2)}`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'List Player',
+          onPress: () => {
+            listPlayerForSale(player.id, Math.floor(player.value * 1.2));
+            Alert.alert('Listed', `${player.name} has been listed for transfer.`);
+          }
+        }
+      ]
+    );
+  };
+
+  // Generate mock form history (last 10 matches)
+  const formHistory = Array.from({ length: 10 }, (_, i) => ({
+    match: `Match ${10 - i}`,
+    rating: (player.form + Math.random() * 20 - 10).toFixed(1),
+    result: Math.random() > 0.5 ? 'W' : Math.random() > 0.5 ? 'D' : 'L'
+  }));
+
+  // Generate mock career stats by season
+  const careerStatsBySeason = [
+    { season: '2024/25', apps: Math.floor(Math.random() * 30), goals: Math.floor(Math.random() * 15), assists: Math.floor(Math.random() * 10) },
+    { season: '2023/24', apps: Math.floor(Math.random() * 35), goals: Math.floor(Math.random() * 12), assists: Math.floor(Math.random() * 8) },
+    { season: '2022/23', apps: Math.floor(Math.random() * 28), goals: Math.floor(Math.random() * 10), assists: Math.floor(Math.random() * 6) },
+  ];
+
   const StatBar = ({ label, value }: { label: string; value: number }) => (
     <View style={styles.statBarContainer}>
       <View style={styles.statBarLabel}>
