@@ -83,19 +83,6 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Mods Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MODS</Text>
-          <TouchableOpacity style={styles.settingItem} onPress={() => router.push('/mods')}>
-            <Ionicons name="folder-open-outline" size={24} color="#00ff88" />
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingTitle}>Manage Mods</Text>
-              <Text style={styles.settingSubtitle}>Import custom teams via CSV</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
-          </TouchableOpacity>
-        </View>
-
         {/* About Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ABOUT</Text>
