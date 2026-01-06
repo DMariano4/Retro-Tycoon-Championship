@@ -1022,8 +1022,10 @@ const styles = StyleSheet.create({
   transferCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'center',
     backgroundColor: '#0d2137',
-    padding: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
     borderColor: '#1a4a6c',
@@ -1031,6 +1033,7 @@ const styles = StyleSheet.create({
   },
   transferInfo: {
     flex: 1,
+    marginRight: 12,
   },
   transferName: {
     fontSize: 14,
