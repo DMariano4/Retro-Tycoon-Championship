@@ -28,7 +28,9 @@ const POSITION_CATEGORY: Record<string, string> = {
 
 export default function PlayerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { currentSave, getManagedTeam } = useGame();
+  const { currentSave, getManagedTeam, listPlayerForSale } = useGame();
+  const [showActionsMenu, setShowActionsMenu] = useState(false);
+  const [showFormHistory, setShowFormHistory] = useState(false);
 
   const findPlayer = (): { player: Player | null; teamName: string } => {
     if (!currentSave) return { player: null, teamName: '' };
