@@ -360,14 +360,21 @@ export default function PlayerProfileScreen() {
           </View>
         </View>
 
-        {/* Condition */}
+        {/* Condition & Form */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CONDITION</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>CURRENT FORM</Text>
+            <TouchableOpacity onPress={() => setShowFormHistory(!showFormHistory)}>
+              <Text style={styles.expandLink}>
+                {showFormHistory ? 'Hide History' : 'View History'}
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.infoCard}>
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Current Form</Text>
+              <Text style={styles.infoLabel}>Recent Form</Text>
               <Text style={[styles.infoValue, { color: getAbilityColor(player.form) }]}>
-                {getFormText(player.form)}
+                {getFormText(player.form)} ({player.form}/100)
               </Text>
             </View>
             <View style={styles.infoRow}>
@@ -383,34 +390,154 @@ export default function PlayerProfileScreen() {
               </Text>
             </View>
           </View>
+
+          {/* Form History */}
+          {showFormHistory && (
+            <View style={styles.formHistoryCard}>
+              <Text style={styles.formHistoryTitle}>Last 10 Matches</Text>
+              {formHistory.map((match, index) => (
+                <View key={index} style={styles.formHistoryRow}>
+                  <Text style={styles.formHistoryMatch}>{match.match}</Text>
+                  <View style={styles.formHistoryResult}>
+                    <Text style={[
+                      styles.formHistoryResultText,
+                      { color: match.result === 'W' ? '#00ff88' : match.result === 'D' ? '#ffcc00' : '#ff6b6b' }
+                    ]}>
+                      {match.result}
+                    </Text>
+                  </View>
+                  <Text style={styles.formHistoryRating}>Rating: {match.rating}</Text>
+                </View>
+              ))}
+              <Text style={styles.formHistoryNote}>
+                * Mock data - full match tracking coming soon
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Career Stats */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CAREER STATS</Text>
-          <View style={styles.careerStatsGrid}>
-            <View style={styles.careerStatItem}>
-              <Text style={styles.careerStatValue}>-</Text>
-              <Text style={styles.careerStatLabel}>Apps</Text>
+          <Text style={styles.sectionTitle}>CAREER STATISTICS</Text>
+          
+          {/* Season Stats */}
+          <View style={styles.careerStatsTable}>
+            <View style={styles.careerStatsHeader}>
+              <Text style={[styles.careerStatsHeaderText, { flex: 2 }]}>Season</Text>
+              <Text style={styles.careerStatsHeaderText}>Apps</Text>
+              <Text style={styles.careerStatsHeaderText}>Goals</Text>
+              <Text style={styles.careerStatsHeaderText}>Assists</Text>
             </View>
-            <View style={styles.careerStatItem}>
-              <Text style={styles.careerStatValue}>-</Text>
-              <Text style={styles.careerStatLabel}>Goals</Text>
-            </View>
-            <View style={styles.careerStatItem}>
-              <Text style={styles.careerStatValue}>-</Text>
-              <Text style={styles.careerStatLabel}>Assists</Text>
-            </View>
-            <View style={styles.careerStatItem}>
-              <Text style={styles.careerStatValue}>-</Text>
-              <Text style={styles.careerStatLabel}>Rating</Text>
+            {careerStatsBySeason.map((season, index) => (
+              <View key={index} style={styles.careerStatsRow}>
+                <Text style={[styles.careerStatsCell, { flex: 2, fontWeight: '600' }]}>{season.season}</Text>
+                <Text style={styles.careerStatsCell}>{season.apps}</Text>
+                <Text style={styles.careerStatsCell}>{season.goals}</Text>
+                <Text style={styles.careerStatsCell}>{season.assists}</Text>
+              </View>
+            ))}
+            <View style={[styles.careerStatsRow, styles.careerStatsTotalRow]}>
+              <Text style={[styles.careerStatsCell, { flex: 2, fontWeight: '700', color: '#00ff88' }]}>
+                Total Career
+              </Text>
+              <Text style={[styles.careerStatsCell, { fontWeight: '700', color: '#00ff88' }]}>
+                {careerStatsBySeason.reduce((sum, s) => sum + s.apps, 0)}
+              </Text>
+              <Text style={[styles.careerStatsCell, { fontWeight: '700', color: '#00ff88' }]}>
+                {careerStatsBySeason.reduce((sum, s) => sum + s.goals, 0)}
+              </Text>
+              <Text style={[styles.careerStatsCell, { fontWeight: '700', color: '#00ff88' }]}>
+                {careerStatsBySeason.reduce((sum, s) => sum + s.assists, 0)}
+              </Text>
             </View>
           </View>
-          <Text style={styles.careerNote}>Stats tracking coming in future update</Text>
+          <Text style={styles.careerNote}>* Mock data - full career tracking in development</Text>
         </View>
+
+        {/* Actions Button */}
+        {isOwnPlayer && (
+          <TouchableOpacity 
+            style={styles.actionsButton}
+            onPress={() => setShowActionsMenu(true)}
+          >
+            <Ionicons name="menu-outline" size={20} color="#fff" />
+            <Text style={styles.actionsButtonText}>PLAYER ACTIONS</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+
+      {/* Actions Menu Modal */}
+      <Modal
+        visible={showActionsMenu}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowActionsMenu(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowActionsMenu(false)}
+        >
+          <View style={styles.actionsModal}>
+            <View style={styles.actionsModalHeader}>
+              <Text style={styles.actionsModalTitle}>Player Actions</Text>
+              <TouchableOpacity onPress={() => setShowActionsMenu(false)}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.actionItem} onPress={handleRenewContract}>
+              <Ionicons name="document-text-outline" size={24} color="#4a9eff" />
+              <View style={styles.actionItemInfo}>
+                <Text style={styles.actionItemTitle}>Renew Contract</Text>
+                <Text style={styles.actionItemSubtitle}>Offer new contract terms</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.actionItem} onPress={handleListForTransfer}>
+              <Ionicons name="swap-horizontal-outline" size={24} color="#ffcc00" />
+              <View style={styles.actionItemInfo}>
+                <Text style={styles.actionItemTitle}>List for Transfer</Text>
+                <Text style={styles.actionItemSubtitle}>Put player on transfer market</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => {
+                setShowActionsMenu(false);
+                Alert.alert('Coming Soon', 'Player training feature will be added in future update.');
+              }}
+            >
+              <Ionicons name="fitness-outline" size={24} color="#00ff88" />
+              <View style={styles.actionItemInfo}>
+                <Text style={styles.actionItemTitle}>Individual Training</Text>
+                <Text style={styles.actionItemSubtitle}>Set training focus</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.actionItem, { borderBottomWidth: 0 }]}
+              onPress={() => {
+                setShowActionsMenu(false);
+                Alert.alert('Coming Soon', 'Squad role assignment will be added in future update.');
+              }}
+            >
+              <Ionicons name="star-outline" size={24} color="#ff9f43" />
+              <View style={styles.actionItemInfo}>
+                <Text style={styles.actionItemTitle}>Squad Role</Text>
+                <Text style={styles.actionItemSubtitle}>Set as captain, vice-captain, etc.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
