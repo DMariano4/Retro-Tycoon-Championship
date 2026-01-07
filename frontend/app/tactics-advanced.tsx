@@ -273,6 +273,15 @@ export default function AdvancedTacticsScreen() {
           </View>
         </View>
 
+        {/* Visual Pitch Preview */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>FORMATION PREVIEW</Text>
+          <Text style={styles.sectionDescription}>Visual representation on the pitch</Text>
+          <View style={styles.pitchWrapper}>
+            <FootballPitch formation={formation} />
+          </View>
+        </View>
+
         {/* Team Mentality */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>TEAM MENTALITY</Text>
