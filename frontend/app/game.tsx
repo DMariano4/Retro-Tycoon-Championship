@@ -299,45 +299,103 @@ function SquadTab({ team }: any) {
 
 // Tactics Tab
 function TacticsTab({ team }: any) {
-  const { updateFormation } = useGame();
-  const [selectedFormation, setSelectedFormation] = useState(team?.formation || '4-4-2');
-
-  const formations = ['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2', '4-2-3-1'];
-
-  const handleFormationChange = (formation: string) => {
-    setSelectedFormation(formation);
-    updateFormation(formation, {});
-  };
-
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      {/* Current Formation Display */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>FORMATION</Text>
-        <View style={styles.formationGrid}>
-          {formations.map(formation => (
-            <TouchableOpacity
-              key={formation}
-              style={[
-                styles.formationButton,
-                selectedFormation === formation && styles.formationButtonActive
-              ]}
-              onPress={() => handleFormationChange(formation)}
-            >
-              <Text style={[
-                styles.formationText,
-                selectedFormation === formation && styles.formationTextActive
-              ]}>{formation}</Text>
-            </TouchableOpacity>
-          ))}
+        <Text style={styles.sectionTitle}>CURRENT FORMATION</Text>
+        <View style={styles.currentFormationCard}>
+          <Ionicons name="grid-outline" size={48} color="#4a9eff" />
+          <Text style={styles.currentFormation}>{team?.formation || '4-4-2'}</Text>
+          <Text style={styles.currentFormationLabel}>Formation</Text>
         </View>
       </View>
 
+      {/* Advanced Tactics Button */}
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>FORMATION PREVIEW</Text>
-        <View style={styles.pitchPreview}>
-          <View style={styles.pitchLine} />
-          <Text style={styles.formationDisplay}>{selectedFormation}</Text>
-          <Text style={styles.pitchNote}>Full tactics editor coming soon</Text>
+        <TouchableOpacity 
+          style={styles.advancedTacticsButton}
+          onPress={() => router.push('/tactics-advanced')}
+        >
+          <View style={styles.advancedTacticsIconContainer}>
+            <Ionicons name="settings-outline" size={32} color="#00ff88" />
+          </View>
+          <View style={styles.advancedTacticsInfo}>
+            <Text style={styles.advancedTacticsTitle}>Advanced Tactics</Text>
+            <Text style={styles.advancedTacticsDescription}>
+              CM01/02 inspired tactics system
+            </Text>
+            <View style={styles.advancedTacticsTags}>
+              <View style={styles.advancedTacticsTag}>
+                <Text style={styles.advancedTacticsTagText}>Formation</Text>
+              </View>
+              <View style={styles.advancedTacticsTag}>
+                <Text style={styles.advancedTacticsTagText}>Mentality</Text>
+              </View>
+              <View style={styles.advancedTacticsTag}>
+                <Text style={styles.advancedTacticsTagText}>Passing</Text>
+              </View>
+              <View style={styles.advancedTacticsTag}>
+                <Text style={styles.advancedTacticsTagText}>Tempo</Text>
+              </View>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={24} color="#4a6a8a" />
+        </TouchableOpacity>
+      </View>
+
+      {/* Tactical Overview */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>TACTICAL FEATURES</Text>
+        
+        <View style={styles.featureCard}>
+          <Ionicons name="flash-outline" size={24} color="#4a9eff" />
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>Team Mentality</Text>
+            <Text style={styles.featureDescription}>
+              Control attacking/defensive balance
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="git-network-outline" size={24} color="#4a9eff" />
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>Passing Style</Text>
+            <Text style={styles.featureDescription}>
+              Direct, mixed, or short passing
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="timer-outline" size={24} color="#4a9eff" />
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>Tempo Control</Text>
+            <Text style={styles.featureDescription}>
+              Adjust speed of play
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="shield-outline" size={24} color="#4a9eff" />
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>Defensive Options</Text>
+            <Text style={styles.featureDescription}>
+              Tackling, pressing, offside trap
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.featureCard}>
+          <Ionicons name="rocket-outline" size={24} color="#4a9eff" />
+          <View style={styles.featureInfo}>
+            <Text style={styles.featureTitle}>Counter Attack</Text>
+            <Text style={styles.featureDescription}>
+              Exploit opponent's attacking play
+            </Text>
+          </View>
         </View>
       </View>
     </ScrollView>
