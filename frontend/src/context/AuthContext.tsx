@@ -116,9 +116,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         ? window.location.origin + '/'
         : Linking.createURL('/');
       
-      // Include app name for better UX in auth screen
+      // Include app name and additional context for better UX in auth screen
       const appName = 'Retro Championship Tycoon';
-      const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}&app_name=${encodeURIComponent(appName)}`;
+      const appDescription = 'Football Management Game';
+      const authUrl = `https://auth.emergentagent.com/?redirect=${encodeURIComponent(redirectUrl)}&app_name=${encodeURIComponent(appName)}&app_description=${encodeURIComponent(appDescription)}&source=mobile_app`;
       
       if (Platform.OS === 'web') {
         window.location.href = authUrl;
