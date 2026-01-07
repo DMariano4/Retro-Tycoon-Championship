@@ -118,6 +118,40 @@ A retro-style football management mobile game inspired by early 2000s classics (
 - Backend: Running (port 8001)
 - Expo: Running (port 3000)
 
+### Recent Improvements Completed (January 2025)
+
+**✅ Task 1: Removed Mods Menu**
+- Completely removed mods section from settings screen
+- No references to modding remain in the app
+
+**✅ Task 2: Fixed Transfer Bidding System**
+- Restructured transfer card layout to prevent touch event conflicts
+- BID button now works correctly
+- Player names navigate to profile, BID button makes offers
+
+**✅ Task 3: Enhanced Player Profile with Actions Menu**
+- Added comprehensive actions menu for your own players with:
+  - Contract renewal functionality
+  - List for transfer option
+  - Individual training (placeholder)
+  - Squad role assignment (placeholder)
+- Enhanced form section with expandable match history (last 10 matches)
+- Career statistics table showing apps/goals/assists by season
+- Total career stats summary
+
+**✅ Task 4: CM01/02 Inspired Advanced Tactics System**
+- Created comprehensive tactics screen (`/tactics-advanced`) with:
+  - **Formation Selection:** 8 formations (4-4-2, 4-3-3, 3-5-2, 4-5-1, 5-3-2, 4-2-3-1, 3-4-3, 5-4-1)
+  - **Team Mentality:** 5-level slider (Very Defensive to Very Attacking)
+  - **Passing Style:** Direct, Mixed, Short with descriptions
+  - **Tempo Control:** Slow, Normal, Fast pace options
+  - **Tackling:** Easy, Normal, Hard aggression levels
+  - **Closing Down:** Never, Sometimes, Always (pressing intensity)
+  - **Special Instructions:** Offside Trap and Counter Attack toggles
+  - **Tactical Summary:** Real-time overview of all settings
+- Updated main Tactics tab to showcase new system with feature overview
+- All tactics saved to team profile
+
 ### Current Features Implemented
 
 **1. Authentication System ✅**
@@ -135,16 +169,18 @@ A retro-style football management mobile game inspired by early 2000s classics (
 - Physical, Mental, and Technical stats
 - Current/potential ability system
 - Contract dates, morale, fitness, form tracking
+- **NEW:** Enhanced player actions menu
+- **NEW:** Form history and career stats
 
 **4. Team Management ✅**
 - Squad viewing grouped by position
-- Formation system (6 formations available)
+- **NEW:** CM01/02 inspired tactics system with 8+ options
 - Budget and wage budget tracking
 
 **5. Transfer System ✅**
 - Transfer market with search/filter functionality
 - Player/club search with position filtering
-- Bid/offer system with budget constraints
+- **FIXED:** Bid/offer system now working correctly
 
 **6. Match Engine ✅**
 - Text-based match simulation
@@ -168,4 +204,4 @@ A retro-style football management mobile game inspired by early 2000s classics (
 - Mobile app (Expo Go) works correctly
 
 ### Next Steps
-Awaiting user input on what features/improvements to implement next.
+All 4 requested tasks completed successfully! App ready for preview and testing.
