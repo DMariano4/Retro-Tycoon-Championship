@@ -150,6 +150,65 @@ const CLOSING_DOWN_OPTIONS = [
   { id: 'always', label: 'Always', description: 'High press' },
 ];
 
+// Football Pitch Visualization Component
+function FootballPitch({ formation }: { formation: string }) {
+  const positions = FORMATION_POSITIONS[formation] || FORMATION_POSITIONS['4-4-2'];
+  const pitchWidth = Math.min(screenWidth - 32, 350);
+  const pitchHeight = pitchWidth * 1.4; // Classic pitch ratio
+
+  return (
+    <View style={[styles.pitchContainer, { width: pitchWidth, height: pitchHeight }]}>
+      {/* Pitch background and markings */}
+      <View style={styles.pitch}>
+        {/* Center line */}
+        <View style={[styles.centerLine, { top: pitchHeight / 2 }]} />
+        
+        {/* Center circle */}
+        <View style={[styles.centerCircle, { 
+          top: pitchHeight / 2 - 30, 
+          left: pitchWidth / 2 - 30 
+        }]} />
+        
+        {/* Penalty boxes */}
+        <View style={[styles.penaltyBox, styles.penaltyBoxTop, {
+          width: pitchWidth * 0.6,
+          left: pitchWidth * 0.2,
+        }]} />
+        <View style={[styles.penaltyBox, styles.penaltyBoxBottom, {
+          width: pitchWidth * 0.6,
+          left: pitchWidth * 0.2,
+        }]} />
+        
+        {/* Goal areas */}
+        <View style={[styles.goalArea, styles.goalAreaTop, {
+          width: pitchWidth * 0.35,
+          left: pitchWidth * 0.325,
+        }]} />
+        <View style={[styles.goalArea, styles.goalAreaBottom, {
+          width: pitchWidth * 0.35,
+          left: pitchWidth * 0.325,
+        }]} />
+      </View>
+
+      {/* Player positions */}
+      {positions.map((pos, index) => (
+        <View
+          key={index}
+          style={[
+            styles.playerDot,
+            {
+              left: (pos.x / 100) * pitchWidth - 20,
+              bottom: (pos.y / 100) * pitchHeight - 20,
+            },
+          ]}
+        >
+          <Text style={styles.playerLabel}>{pos.position}</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function AdvancedTacticsScreen() {
   const { getManagedTeam, updateFormation } = useGame();
   const team = getManagedTeam();
