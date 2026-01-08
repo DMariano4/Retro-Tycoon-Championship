@@ -574,25 +574,6 @@ function TransfersTab() {
       Alert.alert('Error', result.error || 'Failed to complete transfer');
     }
   };
-    Alert.alert(
-      'Make Offer',
-      `Offer ${formatValue(listing.asking_price)} for ${listing.player.name}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Make Offer',
-          onPress: async () => {
-            const success = await makeTransferOffer(listing.id, listing.asking_price);
-            if (success) {
-              Alert.alert('Success', `${listing.player.name} has joined your squad!`);
-            } else {
-              Alert.alert('Rejected', 'The offer was rejected or you cannot afford this player.');
-            }
-          }
-        }
-      ]
-    );
-  };
 
   // Filter listings
   const filteredListings = currentSave?.transfer_market
