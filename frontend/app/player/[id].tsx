@@ -127,7 +127,7 @@ export default function PlayerProfileScreen() {
     if (proposedWage < minimumWage) {
       Alert.alert(
         'Offer Too Low',
-        `${player.name} will not accept less than ${formatWage(minimumWage)} per week.\n\nCurrent wage: ${formatWage(player.wage)}\nYour offer: ${formatWage(proposedWage)}\nMinimum acceptable: ${formatWage(minimumWage)}`,
+        `${player.name} will not accept less than ${formatWage(minimumWage)} per week.\n\nCurrent wage: ${formatWage(player.wage)}\nYour offer: ${formatWage(proposedWage)}`,
         [
           { text: 'Revise Offer', style: 'cancel' },
           {
@@ -136,6 +136,17 @@ export default function PlayerProfileScreen() {
             onPress: () => setShowContractModal(false)
           }
         ]
+      );
+      return;
+    }
+
+    // Check if player has already renewed contract this season
+    const currentSeason = currentSave?.season || 2025;
+    if (player.last_contract_renewal && player.last_contract_renewal === currentSeason) {
+      Alert.alert(
+        'Contract Already Renewed',
+        `${player.name} has already renewed their contract this season. You can only renew once per season per player.`,
+        [{ text: 'OK', onPress: () => setShowContractModal(false) }]
       );
       return;
     }
@@ -151,9 +162,9 @@ export default function PlayerProfileScreen() {
           text: 'Confirm',
           onPress: () => {
             // Update player contract in the game context
-            // This will be handled by a new context function
             player.wage = proposedWage;
             player.contract_end = newContractEnd;
+            player.last_contract_renewal = currentSeason; // Mark as renewed this season
             setShowContractModal(false);
             Alert.alert('Success', 'Contract has been updated!');
           }
