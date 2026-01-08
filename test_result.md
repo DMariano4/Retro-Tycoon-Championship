@@ -152,6 +152,18 @@ A retro-style football management mobile game inspired by early 2000s classics (
 - Updated main Tactics tab to showcase new system with feature overview
 - All tactics saved to team profile
 
+**✅ Task 5: Visual Football Pitch Preview**
+- Added real-time visual pitch representation in Advanced Tactics screen
+- Shows player positions on a football field based on selected formation
+- Features:
+  - Green pitch with white markings (center line, circle, penalty boxes, goal areas)
+  - Blue player dots with position labels (GK, CB, LB, RB, DM, CM, AM, LW, RW, ST)
+  - Accurate position mapping for all 8 formations
+  - Instant updates when changing formation
+  - Retro aesthetic blending with game's dark blue/green theme
+  - Responsive sizing for mobile devices
+- Inspired by CM01/02 tactical board visualization
+
 ### Current Features Implemented
 
 **1. Authentication System ✅**
