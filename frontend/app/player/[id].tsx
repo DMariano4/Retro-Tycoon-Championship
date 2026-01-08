@@ -310,7 +310,7 @@ export default function PlayerProfileScreen() {
             <Text style={styles.playerNationality}>{player.nationality} | {player.age} yrs</Text>
           </View>
           <View style={styles.overallRating}>
-            <Text style={styles.overallRatingValue}>{player.current_ability}</Text>
+            <Text style={styles.overallRatingValue}>{convertTo20Scale(player.current_ability)}</Text>
             <Text style={styles.overallRatingLabel}>OVR</Text>
           </View>
         </View>
@@ -318,7 +318,7 @@ export default function PlayerProfileScreen() {
         {/* Quick Info */}
         <View style={styles.quickInfoGrid}>
           <View style={styles.quickInfoItem}>
-            <Text style={styles.quickInfoValue}>{player.potential_ability}</Text>
+            <Text style={styles.quickInfoValue}>{convertTo20Scale(player.potential_ability)}</Text>
             <Text style={styles.quickInfoLabel}>Potential</Text>
           </View>
           <View style={styles.quickInfoItem}>
