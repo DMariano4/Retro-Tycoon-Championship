@@ -668,7 +668,17 @@ export default function PlayerProfileScreen() {
                   <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
                 </TouchableOpacity>
                 <View style={styles.wageValueContainer}>
-                  <Text style={styles.wageValue}>{proposedWage.toLocaleString()}</Text>
+                  <TextInput
+                    style={styles.wageInput}
+                    value={proposedWage.toLocaleString()}
+                    onChangeText={(text) => {
+                      const numericValue = parseInt(text.replace(/,/g, '')) || 0;
+                      setProposedWage(numericValue);
+                    }}
+                    keyboardType="numeric"
+                    selectTextOnFocus
+                    returnKeyType="done"
+                  />
                   <Text style={styles.wageValueLabel}>per week</Text>
                 </View>
                 <TouchableOpacity
