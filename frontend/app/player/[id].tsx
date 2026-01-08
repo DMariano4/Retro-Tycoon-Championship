@@ -681,27 +681,9 @@ export default function PlayerProfileScreen() {
               <View style={styles.wagePresets}>
                 <TouchableOpacity
                   style={styles.wagePresetButton}
-                  onPress={() => setProposedWage(Math.floor(player.wage * 0.9))}
-                >
-                  <Text style={styles.wagePresetText}>90%</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.wagePresetButton}
                   onPress={() => setProposedWage(player.wage)}
                 >
-                  <Text style={styles.wagePresetText}>Current</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.wagePresetButton}
-                  onPress={() => setProposedWage(Math.floor(player.wage * 1.1))}
-                >
-                  <Text style={styles.wagePresetText}>+10%</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.wagePresetButton}
-                  onPress={() => setProposedWage(Math.floor(player.wage * 1.2))}
-                >
-                  <Text style={styles.wagePresetText}>+20%</Text>
+                  <Text style={styles.wagePresetText}>Current Wage</Text>
                 </TouchableOpacity>
               </View>
 
@@ -711,20 +693,8 @@ export default function PlayerProfileScreen() {
                   <Text style={styles.wageInfoValue}>{formatWage(player.wage)}</Text>
                 </View>
                 <View style={styles.wageInfoRow}>
-                  <Text style={styles.wageInfoLabel}>Minimum Acceptable:</Text>
-                  <Text style={[styles.wageInfoValue, { color: '#ff6b6b' }]}>
-                    {formatWage(Math.floor(player.wage * 0.9))}
-                  </Text>
-                </View>
-                <View style={styles.wageInfoRow}>
                   <Text style={styles.wageInfoLabel}>Your Offer:</Text>
-                  <Text style={[
-                    styles.wageInfoValue,
-                    { 
-                      color: proposedWage >= Math.floor(player.wage * 0.9) ? '#00ff88' : '#ff6b6b',
-                      fontWeight: '700'
-                    }
-                  ]}>
+                  <Text style={[styles.wageInfoValue, { fontWeight: '700' }]}>
                     {formatWage(proposedWage)}
                   </Text>
                 </View>
