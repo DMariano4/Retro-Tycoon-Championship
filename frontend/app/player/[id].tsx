@@ -112,15 +112,50 @@ export default function PlayerProfileScreen() {
       return;
     }
     setShowActionsMenu(false);
+    // Initialize with current values
+    const currentYear = parseInt(player.contract_end.split('-')[0]);
+    const currentMonth = parseInt(player.contract_end.split('-')[1]);
+    setContractYear(currentYear + 1); // Offer 1 year extension by default
+    setContractMonth(currentMonth);
+    setProposedWage(player.wage); // Start with current wage
+    setShowContractModal(true);
+  };
+
+  const handleContractOffer = () => {
+    const minimumWage = Math.floor(player.wage * 0.9);
+    
+    if (proposedWage < minimumWage) {
+      Alert.alert(
+        'Offer Too Low',
+        `${player.name} will not accept less than ${formatWage(minimumWage)} per week.\n\nCurrent wage: ${formatWage(player.wage)}\nYour offer: ${formatWage(proposedWage)}\nMinimum acceptable: ${formatWage(minimumWage)}`,
+        [
+          { text: 'Revise Offer', style: 'cancel' },
+          {
+            text: 'Cancel Negotiation',
+            style: 'destructive',
+            onPress: () => setShowContractModal(false)
+          }
+        ]
+      );
+      return;
+    }
+
+    // Contract accepted!
+    const newContractEnd = `${contractYear}-${String(contractMonth).padStart(2, '0')}-30`;
+    
     Alert.alert(
-      'Renew Contract',
-      `Offer new contract to ${player.name}?\n\nCurrent wage: ${formatWage(player.wage)}\nExpires: ${player.contract_end}`,
+      'Contract Accepted!',
+      `${player.name} has agreed to the new contract:\n\nNew wage: ${formatWage(proposedWage)}/week\nContract until: ${newContractEnd}`,
       [
-        { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Offer Contract',
+          text: 'Confirm',
           onPress: () => {
-            Alert.alert('Success', 'Contract renewal negotiations will be implemented in future update.');
+            // Update player contract in the game context
+            // This will be handled by a new context function
+            player.wage = proposedWage;
+            player.contract_end = newContractEnd;
+            setShowContractModal(false);
+            Alert.alert('Success', 'Contract has been updated!');
           }
         }
       ]
