@@ -1166,6 +1166,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontWeight: '600',
   },
+  datePickerNote: {
+    fontSize: 10,
+    color: '#6a8aaa',
+    marginTop: 6,
+    fontStyle: 'italic',
+  },
   pickerButtons: {
     flexDirection: 'row',
     gap: 8,
