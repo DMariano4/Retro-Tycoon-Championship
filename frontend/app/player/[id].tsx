@@ -119,6 +119,7 @@ export default function PlayerProfileScreen() {
     setContractYear(currentYear + 1); // Offer 1 year extension by default
     setContractMonth(currentMonth);
     setProposedWage(player.wage); // Start with current wage
+    setWageInputText(player.wage.toLocaleString());
     setShowContractModal(true);
   };
 
