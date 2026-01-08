@@ -289,7 +289,7 @@ function SquadTab({ team }: any) {
               </View>
               <View style={styles.playerStats}>
                 <View style={styles.abilityBadge}>
-                  <Text style={styles.abilityText}>{player.current_ability}</Text>
+                  <Text style={styles.abilityText}>{convertTo20Scale(player.current_ability)}</Text>
                 </View>
                 <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
