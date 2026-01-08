@@ -577,6 +577,172 @@ export default function PlayerProfileScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Contract Renewal Modal */}
+      <Modal
+        visible={showContractModal}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowContractModal(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowContractModal(false)}
+        >
+          <View style={styles.contractModal} onStartShouldSetResponder={() => true}>
+            <View style={styles.contractModalHeader}>
+              <Text style={styles.contractModalTitle}>CONTRACT RENEWAL</Text>
+              <TouchableOpacity onPress={() => setShowContractModal(false)}>
+                <Ionicons name="close" size={24} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.contractPlayerInfo}>
+              <Text style={styles.contractPlayerName}>{player.name}</Text>
+              <Text style={styles.contractCurrentInfo}>
+                Current: {formatWage(player.wage)}/week • Expires {player.contract_end}
+              </Text>
+            </View>
+
+            {/* Contract End Date */}
+            <View style={styles.contractSection}>
+              <Text style={styles.contractSectionTitle}>CONTRACT UNTIL</Text>
+              <View style={styles.datePickers}>
+                <View style={styles.datePickerGroup}>
+                  <Text style={styles.datePickerLabel}>Year</Text>
+                  <View style={styles.pickerButtons}>
+                    {[2026, 2027, 2028, 2029, 2030].map(year => (
+                      <TouchableOpacity
+                        key={year}
+                        style={[
+                          styles.pickerButton,
+                          contractYear === year && styles.pickerButtonActive
+                        ]}
+                        onPress={() => setContractYear(year)}
+                      >
+                        <Text style={[
+                          styles.pickerButtonText,
+                          contractYear === year && styles.pickerButtonTextActive
+                        ]}>
+                          {year}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={styles.datePickerGroup}>
+                  <Text style={styles.datePickerLabel}>Month</Text>
+                  <View style={styles.pickerButtons}>
+                    {[1, 6, 12].map(month => (
+                      <TouchableOpacity
+                        key={month}
+                        style={[
+                          styles.pickerButton,
+                          contractMonth === month && styles.pickerButtonActive
+                        ]}
+                        onPress={() => setContractMonth(month)}
+                      >
+                        <Text style={[
+                          styles.pickerButtonText,
+                          contractMonth === month && styles.pickerButtonTextActive
+                        ]}>
+                          {month === 1 ? 'Jan' : month === 6 ? 'Jun' : 'Dec'}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+            </View>
+
+            {/* Weekly Wage */}
+            <View style={styles.contractSection}>
+              <Text style={styles.contractSectionTitle}>WEEKLY WAGE</Text>
+              <View style={styles.wageInputContainer}>
+                <Text style={styles.wageInputPrefix}>£</Text>
+                <TouchableOpacity
+                  style={styles.wageButton}
+                  onPress={() => setProposedWage(Math.max(0, proposedWage - 1000))}
+                >
+                  <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
+                </TouchableOpacity>
+                <View style={styles.wageValueContainer}>
+                  <Text style={styles.wageValue}>{proposedWage.toLocaleString()}</Text>
+                  <Text style={styles.wageValueLabel}>per week</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.wageButton}
+                  onPress={() => setProposedWage(proposedWage + 1000)}
+                >
+                  <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.wagePresets}>
+                <TouchableOpacity
+                  style={styles.wagePresetButton}
+                  onPress={() => setProposedWage(Math.floor(player.wage * 0.9))}
+                >
+                  <Text style={styles.wagePresetText}>90%</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.wagePresetButton}
+                  onPress={() => setProposedWage(player.wage)}
+                >
+                  <Text style={styles.wagePresetText}>Current</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.wagePresetButton}
+                  onPress={() => setProposedWage(Math.floor(player.wage * 1.1))}
+                >
+                  <Text style={styles.wagePresetText}>+10%</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.wagePresetButton}
+                  onPress={() => setProposedWage(Math.floor(player.wage * 1.2))}
+                >
+                  <Text style={styles.wagePresetText}>+20%</Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.wageInfo}>
+                <View style={styles.wageInfoRow}>
+                  <Text style={styles.wageInfoLabel}>Current Wage:</Text>
+                  <Text style={styles.wageInfoValue}>{formatWage(player.wage)}</Text>
+                </View>
+                <View style={styles.wageInfoRow}>
+                  <Text style={styles.wageInfoLabel}>Minimum Acceptable:</Text>
+                  <Text style={[styles.wageInfoValue, { color: '#ff6b6b' }]}>
+                    {formatWage(Math.floor(player.wage * 0.9))}
+                  </Text>
+                </View>
+                <View style={styles.wageInfoRow}>
+                  <Text style={styles.wageInfoLabel}>Your Offer:</Text>
+                  <Text style={[
+                    styles.wageInfoValue,
+                    { 
+                      color: proposedWage >= Math.floor(player.wage * 0.9) ? '#00ff88' : '#ff6b6b',
+                      fontWeight: '700'
+                    }
+                  ]}>
+                    {formatWage(proposedWage)}
+                  </Text>
+                </View>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={styles.contractOfferButton}
+              onPress={handleContractOffer}
+            >
+              <Ionicons name="document-text" size={20} color="#0a1628" />
+              <Text style={styles.contractOfferButtonText}>OFFER CONTRACT</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </SafeAreaView>
   );
 }
