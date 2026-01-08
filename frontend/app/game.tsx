@@ -684,9 +684,9 @@ function TransfersTab() {
                   {listing.player.position} | {listing.player.age} yrs | {listing.team_name}
                 </Text>
                 <View style={styles.transferStats}>
-                  <Text style={styles.transferStat}>OVR {listing.player.current_ability}</Text>
-                  <Text style={styles.transferStat}>PAC {listing.player.pace}</Text>
-                  <Text style={styles.transferStat}>STR {listing.player.strength}</Text>
+                  <Text style={styles.transferStat}>OVR {convertTo20Scale(listing.player.current_ability)}</Text>
+                  <Text style={styles.transferStat}>PAC {convertTo20Scale(listing.player.pace)}</Text>
+                  <Text style={styles.transferStat}>STR {convertTo20Scale(listing.player.strength)}</Text>
                 </View>
               </TouchableOpacity>
               <View style={styles.transferAction}>
