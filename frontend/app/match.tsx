@@ -247,6 +247,9 @@ export default function MatchScreen() {
   useEffect(() => {
     if (managedTeam) {
       setSelectedFormation(managedTeam.formation);
+      // Initialize current squad (first 11) and bench (rest)
+      setCurrentSquad(managedTeam.squad.slice(0, 11));
+      setBenchPlayers(managedTeam.squad.slice(11));
     }
   }, [managedTeam]);
 
