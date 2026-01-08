@@ -532,6 +532,8 @@ function TransfersTab() {
     setSelectedListing(listing);
     setProposedFee(listing.asking_price);
     setProposedWage(listing.player.wage);
+    setFeeInputText(listing.asking_price.toLocaleString());
+    setWageInputText(listing.player.wage.toLocaleString());
     setShowOfferModal(true);
   };
 
