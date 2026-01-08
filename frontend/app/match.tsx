@@ -222,6 +222,9 @@ export default function MatchScreen() {
   const [showTacticsModal, setShowTacticsModal] = useState(false);
   const [selectedFormation, setSelectedFormation] = useState('4-4-2');
   const [substitutions, setSubstitutions] = useState<{ out: string; in: string }[]>([]);
+  const [currentSquad, setCurrentSquad] = useState<Player[]>([]);
+  const [benchPlayers, setBenchPlayers] = useState<Player[]>([]);
+  const [selectedPlayerOut, setSelectedPlayerOut] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
 
   // Match statistics
