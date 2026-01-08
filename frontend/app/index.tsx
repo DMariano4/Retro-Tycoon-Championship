@@ -104,7 +104,6 @@ export default function MainMenu() {
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>Early 2000s Classics Inspired</Text>
-          <Text style={styles.footerSubtext}>Like CM 01/02 & Elifoot 98</Text>
         </View>
       </View>
     </SafeAreaView>
