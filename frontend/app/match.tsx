@@ -940,37 +940,52 @@ export default function MatchScreen() {
             
             <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
               <Text style={styles.subsListTitle}>ON PITCH</Text>
-              {managedTeam.squad.slice(0, 11).map(player => (
-                <View key={player.id} style={styles.subPlayerRow}>
+              {currentSquad.map(player => (
+                <TouchableOpacity 
+                  key={player.id} 
+                  style={[
+                    styles.subPlayerRow,
+                    selectedPlayerOut === player.id && styles.subPlayerRowSelected
+                  ]}
+                  onPress={() => handleSelectPlayerOut(player.id)}
+                >
                   <View style={styles.subPlayerInfo}>
                     <Text style={styles.subPlayerPosition}>{player.position}</Text>
                     <Text style={styles.subPlayerName}>{player.name}</Text>
+                    <Text style={styles.subPlayerAbility}>{player.current_ability}</Text>
                   </View>
-                  <TouchableOpacity 
-                    style={styles.subButton}
-                    disabled={substitutions.length >= 3}
-                  >
-                    <Ionicons name="swap-horizontal" size={16} color="#ff6b6b" />
-                  </TouchableOpacity>
-                </View>
+                  {selectedPlayerOut === player.id && (
+                    <Ionicons name="checkmark-circle" size={20} color="#ff6b6b" />
+                  )}
+                </TouchableOpacity>
               ))}
               
               <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-              {managedTeam.squad.slice(11).map(player => (
-                <View key={player.id} style={styles.subPlayerRow}>
+              {benchPlayers.map(player => (
+                <TouchableOpacity 
+                  key={player.id} 
+                  style={styles.subPlayerRow}
+                  onPress={() => handleMakeSubstitution(player.id)}
+                  disabled={!selectedPlayerOut}
+                >
                   <View style={styles.subPlayerInfo}>
                     <Text style={styles.subPlayerPosition}>{player.position}</Text>
                     <Text style={styles.subPlayerName}>{player.name}</Text>
+                    <View style={styles.subAbility}>
+                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
+                    </View>
                   </View>
-                  <View style={styles.subAbility}>
-                    <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-                  </View>
-                </View>
+                  {selectedPlayerOut && (
+                    <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
+                  )}
+                </TouchableOpacity>
               ))}
             </ScrollView>
 
             <Text style={styles.subsNote}>
-              Tap a player on pitch, then a bench player to substitute
+              {selectedPlayerOut 
+                ? 'Tap a bench player to bring them on'
+                : 'Tap a player on the pitch to substitute them off'}
             </Text>
 
             <TouchableOpacity 
