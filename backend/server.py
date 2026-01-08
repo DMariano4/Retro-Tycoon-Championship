@@ -553,15 +553,15 @@ def generate_squad(division: int, season_year: int = 2025) -> List[Player]:
     """Generate a full squad based on division quality"""
     squad = []
     
-    # Ability ranges by division
+    # Ability ranges by division (1-20 scale)
     ability_ranges = {
-        1: (55, 85),  # Premier League
-        2: (45, 75),  # Championship
-        3: (35, 65),  # League One
-        4: (25, 55)   # League Two
+        1: (11, 17),  # Premier League
+        2: (9, 15),   # Championship
+        3: (7, 13),   # League One
+        4: (5, 11)    # League Two
     }
     
-    ability_range = ability_ranges.get(division, (40, 70))
+    ability_range = ability_ranges.get(division, (8, 14))
     
     # Generate players by specific positions
     positions = {
