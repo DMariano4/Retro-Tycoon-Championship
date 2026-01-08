@@ -710,6 +710,7 @@ export default function PlayerProfileScreen() {
                   </Text>
                 </View>
               </View>
+            </View>
             </ScrollView>
 
             <TouchableOpacity
