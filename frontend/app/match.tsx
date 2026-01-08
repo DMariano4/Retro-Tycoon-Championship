@@ -1643,6 +1643,12 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 6,
     marginBottom: 6,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  subPlayerRowSelected: {
+    borderColor: '#ff6b6b',
+    backgroundColor: '#2a1628',
   },
   subPlayerInfo: {
     flex: 1,
@@ -1659,6 +1665,12 @@ const styles = StyleSheet.create({
   subPlayerName: {
     fontSize: 13,
     color: '#fff',
+    flex: 1,
+  },
+  subPlayerAbility: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6a8aaa',
   },
   subButton: {
     padding: 8,
