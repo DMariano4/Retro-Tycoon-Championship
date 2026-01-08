@@ -126,10 +126,17 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
   const pitchWidth = Math.min(width - 32, 380);
   const pitchHeight = pitchWidth * 0.65; // Wider pitch for side-by-side view
 
-  // Flip away team positions vertically
-  const awayFlipped = awayPositions.map(pos => ({
+  // Map positions to pitch sections to avoid overlap
+  // Home team uses bottom 45% (0-45% from bottom)
+  // Away team uses top 45% (55-100% from bottom) 
+  const homeAdjusted = homePositions.map(pos => ({
     ...pos,
-    y: 100 - pos.y
+    y: pos.y * 0.45 // Scale to bottom 45%
+  }));
+
+  const awayAdjusted = awayPositions.map(pos => ({
+    ...pos,
+    y: 55 + ((100 - pos.y) * 0.45) // Flip and scale to top 45%
   }));
 
   return (
@@ -162,7 +169,7 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
       </View>
 
       {/* Home team players (bottom) */}
-      {homePositions.map((pos, index) => (
+      {homeAdjusted.map((pos, index) => (
         <View
           key={`home-${index}`}
           style={[
@@ -179,7 +186,7 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
       ))}
 
       {/* Away team players (top) */}
-      {awayFlipped.map((pos, index) => (
+      {awayAdjusted.map((pos, index) => (
         <View
           key={`away-${index}`}
           style={[
