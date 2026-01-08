@@ -449,6 +449,8 @@ export default function MatchScreen() {
       case 'SAVE': return 'hand-left';
       case 'CHANCE': return 'flash';
       case 'FOUL': return 'warning';
+      case 'SUBSTITUTION': return 'swap-horizontal';
+      case 'TACTICAL_CHANGE': return 'grid-outline';
       default: return 'ellipse';
     }
   };
@@ -460,6 +462,8 @@ export default function MatchScreen() {
       case 'SAVE': return '#4a9eff';
       case 'CHANCE': return '#ff9f43';
       case 'FOUL': return '#ff6b6b';
+      case 'SUBSTITUTION': return '#9b59b6';
+      case 'TACTICAL_CHANGE': return '#3498db';
       default: return '#6a8aaa';
     }
   };
