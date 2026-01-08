@@ -8,10 +8,210 @@ import { useGame, Player, Team } from '../src/context/GameContext';
 const { width } = Dimensions.get('window');
 
 type MatchState = 'pre' | 'live' | 'paused' | 'post';
+type MatchTab = 'pitch' | 'commentary' | 'stats';
+
+// Formation positions mapping (reusing from tactics-advanced)
+const FORMATION_POSITIONS: Record<string, { position: string; x: number; y: number }[]> = {
+  '4-4-2': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LB', x: 15, y: 25 },
+    { position: 'CB', x: 38, y: 22 },
+    { position: 'CB', x: 62, y: 22 },
+    { position: 'RB', x: 85, y: 25 },
+    { position: 'LM', x: 15, y: 50 },
+    { position: 'CM', x: 38, y: 48 },
+    { position: 'CM', x: 62, y: 48 },
+    { position: 'RM', x: 85, y: 50 },
+    { position: 'ST', x: 38, y: 75 },
+    { position: 'ST', x: 62, y: 75 },
+  ],
+  '4-3-3': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LB', x: 15, y: 25 },
+    { position: 'CB', x: 38, y: 22 },
+    { position: 'CB', x: 62, y: 22 },
+    { position: 'RB', x: 85, y: 25 },
+    { position: 'CM', x: 30, y: 48 },
+    { position: 'CM', x: 50, y: 45 },
+    { position: 'CM', x: 70, y: 48 },
+    { position: 'LW', x: 15, y: 75 },
+    { position: 'ST', x: 50, y: 78 },
+    { position: 'RW', x: 85, y: 75 },
+  ],
+  '3-5-2': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'CB', x: 25, y: 22 },
+    { position: 'CB', x: 50, y: 20 },
+    { position: 'CB', x: 75, y: 22 },
+    { position: 'LM', x: 10, y: 48 },
+    { position: 'CM', x: 30, y: 45 },
+    { position: 'CM', x: 50, y: 48 },
+    { position: 'CM', x: 70, y: 45 },
+    { position: 'RM', x: 90, y: 48 },
+    { position: 'ST', x: 38, y: 75 },
+    { position: 'ST', x: 62, y: 75 },
+  ],
+  '4-5-1': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LB', x: 15, y: 25 },
+    { position: 'CB', x: 38, y: 22 },
+    { position: 'CB', x: 62, y: 22 },
+    { position: 'RB', x: 85, y: 25 },
+    { position: 'LM', x: 15, y: 50 },
+    { position: 'CM', x: 32, y: 48 },
+    { position: 'CM', x: 50, y: 45 },
+    { position: 'CM', x: 68, y: 48 },
+    { position: 'RM', x: 85, y: 50 },
+    { position: 'ST', x: 50, y: 78 },
+  ],
+  '5-3-2': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LWB', x: 10, y: 28 },
+    { position: 'CB', x: 28, y: 22 },
+    { position: 'CB', x: 50, y: 20 },
+    { position: 'CB', x: 72, y: 22 },
+    { position: 'RWB', x: 90, y: 28 },
+    { position: 'CM', x: 30, y: 48 },
+    { position: 'CM', x: 50, y: 45 },
+    { position: 'CM', x: 70, y: 48 },
+    { position: 'ST', x: 38, y: 75 },
+    { position: 'ST', x: 62, y: 75 },
+  ],
+  '4-2-3-1': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LB', x: 15, y: 25 },
+    { position: 'CB', x: 38, y: 22 },
+    { position: 'CB', x: 62, y: 22 },
+    { position: 'RB', x: 85, y: 25 },
+    { position: 'DM', x: 38, y: 40 },
+    { position: 'DM', x: 62, y: 40 },
+    { position: 'LM', x: 15, y: 58 },
+    { position: 'AM', x: 50, y: 60 },
+    { position: 'RM', x: 85, y: 58 },
+    { position: 'ST', x: 50, y: 78 },
+  ],
+  '3-4-3': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'CB', x: 25, y: 22 },
+    { position: 'CB', x: 50, y: 20 },
+    { position: 'CB', x: 75, y: 22 },
+    { position: 'LM', x: 15, y: 48 },
+    { position: 'CM', x: 38, y: 45 },
+    { position: 'CM', x: 62, y: 45 },
+    { position: 'RM', x: 85, y: 48 },
+    { position: 'LW', x: 20, y: 75 },
+    { position: 'ST', x: 50, y: 78 },
+    { position: 'RW', x: 80, y: 75 },
+  ],
+  '5-4-1': [
+    { position: 'GK', x: 50, y: 5 },
+    { position: 'LWB', x: 10, y: 28 },
+    { position: 'CB', x: 28, y: 22 },
+    { position: 'CB', x: 50, y: 20 },
+    { position: 'CB', x: 72, y: 22 },
+    { position: 'RWB', x: 90, y: 28 },
+    { position: 'LM', x: 20, y: 50 },
+    { position: 'CM', x: 40, y: 48 },
+    { position: 'CM', x: 60, y: 48 },
+    { position: 'RM', x: 80, y: 50 },
+    { position: 'ST', x: 50, y: 78 },
+  ],
+};
+
+// Pitch visualization component
+function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
+  const homePositions = FORMATION_POSITIONS[homeTeam?.formation || '4-4-2'] || FORMATION_POSITIONS['4-4-2'];
+  const awayPositions = FORMATION_POSITIONS[awayTeam?.formation || '4-4-2'] || FORMATION_POSITIONS['4-4-2'];
+  
+  const pitchWidth = Math.min(width - 32, 380);
+  const pitchHeight = pitchWidth * 0.65; // Wider pitch for side-by-side view
+
+  // Flip away team positions vertically
+  const awayFlipped = awayPositions.map(pos => ({
+    ...pos,
+    y: 100 - pos.y
+  }));
+
+  return (
+    <View style={[styles.miniPitchContainer, { width: pitchWidth, height: pitchHeight }]}>
+      {/* Pitch background */}
+      <View style={styles.miniPitch}>
+        {/* Center line */}
+        <View style={[styles.centerLine, { top: pitchHeight / 2 }]} />
+        
+        {/* Center circle */}
+        <View style={[styles.centerCircle, { 
+          top: pitchHeight / 2 - 25, 
+          left: pitchWidth / 2 - 25,
+          width: 50,
+          height: 50,
+          borderRadius: 25,
+        }]} />
+        
+        {/* Penalty boxes */}
+        <View style={[styles.penaltyBox, styles.penaltyBoxTop, {
+          width: pitchWidth * 0.5,
+          left: pitchWidth * 0.25,
+          height: 50,
+        }]} />
+        <View style={[styles.penaltyBox, styles.penaltyBoxBottom, {
+          width: pitchWidth * 0.5,
+          left: pitchWidth * 0.25,
+          height: 50,
+        }]} />
+      </View>
+
+      {/* Home team players (bottom) */}
+      {homePositions.map((pos, index) => (
+        <View
+          key={`home-${index}`}
+          style={[
+            styles.miniPlayerDot,
+            styles.homePlayerDot,
+            {
+              left: (pos.x / 100) * pitchWidth - 12,
+              bottom: (pos.y / 100) * pitchHeight - 12,
+            },
+          ]}
+        >
+          <Text style={[styles.miniPlayerLabel, styles.homePlayerLabel]}>{pos.position}</Text>
+        </View>
+      ))}
+
+      {/* Away team players (top) */}
+      {awayFlipped.map((pos, index) => (
+        <View
+          key={`away-${index}`}
+          style={[
+            styles.miniPlayerDot,
+            styles.awayPlayerDot,
+            {
+              left: (pos.x / 100) * pitchWidth - 12,
+              bottom: (pos.y / 100) * pitchHeight - 12,
+            },
+          ]}
+        >
+          <Text style={[styles.miniPlayerLabel, styles.awayPlayerLabel]}>{pos.position}</Text>
+        </View>
+      ))}
+
+      {/* Ball position indicator (based on last event) */}
+      {lastEvent && (
+        <View style={[styles.ballIndicator, {
+          left: pitchWidth / 2 - 6,
+          top: lastEvent.team === homeTeam?.short_name ? pitchHeight * 0.7 : pitchHeight * 0.3,
+        }]}>
+          <Ionicons name="football" size={12} color="#fff" />
+        </View>
+      )}
+    </View>
+  );
+}
 
 export default function MatchScreen() {
   const { currentSave, getManagedTeam, getLeague, simulateMatch, saveGame, updateFormation } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
+  const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
   const [currentEventIndex, setCurrentEventIndex] = useState(0);
   const [homeScore, setHomeScore] = useState(0);
@@ -23,6 +223,16 @@ export default function MatchScreen() {
   const [selectedFormation, setSelectedFormation] = useState('4-4-2');
   const [substitutions, setSubstitutions] = useState<{ out: string; in: string }[]>([]);
   const scrollRef = useRef<ScrollView>(null);
+
+  // Match statistics
+  const [matchStats, setMatchStats] = useState({
+    possession: { home: 50, away: 50 },
+    shots: { home: 0, away: 0 },
+    shotsOnTarget: { home: 0, away: 0 },
+    corners: { home: 0, away: 0 },
+    fouls: { home: 0, away: 0 },
+    yellowCards: { home: 0, away: 0 },
+  });
 
   const managedTeam = getManagedTeam();
   const league = getLeague();
@@ -58,18 +268,67 @@ export default function MatchScreen() {
     if (events.length > 0 && currentEventIndex < events.length) {
       const nextEvent = events[currentEventIndex];
       if (currentMinute >= nextEvent.minute) {
+        const homeTeam = currentSave?.teams.find(t => t.id === fixture?.home_team_id);
+        
+        // Update scores
         if (nextEvent.type === 'GOAL') {
-          const homeTeam = currentSave?.teams.find(t => t.id === fixture?.home_team_id);
           if (nextEvent.team === homeTeam?.short_name) {
             setHomeScore(prev => prev + 1);
           } else {
             setAwayScore(prev => prev + 1);
           }
         }
+
+        // Update stats
+        setMatchStats(prev => {
+          const isHome = nextEvent.team === homeTeam?.short_name;
+          const newStats = { ...prev };
+          
+          if (nextEvent.type === 'GOAL' || nextEvent.type === 'CHANCE') {
+            newStats.shots = {
+              home: isHome ? prev.shots.home + 1 : prev.shots.home,
+              away: !isHome ? prev.shots.away + 1 : prev.shots.away,
+            };
+          }
+          
+          if (nextEvent.type === 'GOAL' || nextEvent.type === 'SAVE') {
+            newStats.shotsOnTarget = {
+              home: isHome ? prev.shotsOnTarget.home + 1 : prev.shotsOnTarget.home,
+              away: !isHome ? prev.shotsOnTarget.away + 1 : prev.shotsOnTarget.away,
+            };
+          }
+          
+          if (nextEvent.type === 'YELLOW_CARD') {
+            newStats.yellowCards = {
+              home: isHome ? prev.yellowCards.home + 1 : prev.yellowCards.home,
+              away: !isHome ? prev.yellowCards.away + 1 : prev.yellowCards.away,
+            };
+          }
+          
+          if (nextEvent.type === 'FOUL') {
+            newStats.fouls = {
+              home: isHome ? prev.fouls.home + 1 : prev.fouls.home,
+              away: !isHome ? prev.fouls.away + 1 : prev.fouls.away,
+            };
+          }
+
+          // Update possession based on events
+          const totalEvents = currentEventIndex + 1;
+          const homeEvents = events.slice(0, currentEventIndex + 1).filter(e => e.team === homeTeam?.short_name).length;
+          newStats.possession = {
+            home: Math.round((homeEvents / totalEvents) * 100),
+            away: Math.round(((totalEvents - homeEvents) / totalEvents) * 100),
+          };
+          
+          return newStats;
+        });
+
         setCurrentEventIndex(prev => prev + 1);
-        setTimeout(() => {
-          scrollRef.current?.scrollToEnd({ animated: true });
-        }, 100);
+        if (activeTab === 'commentary') {
+          setTimeout(() => {
+            scrollRef.current?.scrollToEnd({ animated: true });
+          }, 100);
+        }
       }
     }
   }, [currentMinute, events, currentEventIndex]);
@@ -80,6 +339,17 @@ export default function MatchScreen() {
     if (result) {
       setEvents(result.events);
       setMatchState('live');
+      setActiveTab('pitch'); // Start with pitch view
+      
+      // Initialize random stats
+      setMatchStats({
+        possession: { home: 48 + Math.floor(Math.random() * 4), away: 48 + Math.floor(Math.random() * 4) },
+        shots: { home: 0, away: 0 },
+        shotsOnTarget: { home: 0, away: 0 },
+        corners: { home: Math.floor(Math.random() * 6), away: Math.floor(Math.random() * 6) },
+        fouls: { home: 0, away: 0 },
+        yellowCards: { home: 0, away: 0 },
+      });
     }
   };
 
@@ -141,10 +411,11 @@ export default function MatchScreen() {
   const homeTeam = currentSave?.teams.find(t => t.id === fixture.home_team_id);
   const awayTeam = currentSave?.teams.find(t => t.id === fixture.away_team_id);
   const formations = ['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2', '4-2-3-1'];
+  const lastEvent = events[currentEventIndex - 1];
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Improved Scoreboard - Horizontal layout */}
+      {/* Enhanced Scoreboard */}
       <View style={styles.scoreboard}>
         <View style={styles.scoreboardTeam}>
           <Text style={[
@@ -181,6 +452,48 @@ export default function MatchScreen() {
           </Text>
         </View>
       </View>
+
+      {/* Formation Comparison Bar */}
+      {(matchState === 'live' || matchState === 'paused' || matchState === 'post') && (
+        <View style={styles.formationBar}>
+          <View style={styles.formationTeam}>
+            <Ionicons name="grid-outline" size={14} color="#4a9eff" />
+            <Text style={styles.formationText}>{homeTeam?.formation || '4-4-2'}</Text>
+          </View>
+          <Text style={styles.formationVs}>FORMATIONS</Text>
+          <View style={styles.formationTeam}>
+            <Text style={styles.formationText}>{awayTeam?.formation || '4-4-2'}</Text>
+            <Ionicons name="grid-outline" size={14} color="#ff9f43" />
+          </View>
+        </View>
+      )}
+
+      {/* Match Tabs */}
+      {(matchState === 'live' || matchState === 'paused' || matchState === 'post') && (
+        <View style={styles.tabBar}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'pitch' && styles.tabActive]}
+            onPress={() => setActiveTab('pitch')}
+          >
+            <Ionicons name="analytics-outline" size={18} color={activeTab === 'pitch' ? '#00ff88' : '#6a8aaa'} />
+            <Text style={[styles.tabText, activeTab === 'pitch' && styles.tabTextActive]}>Pitch</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'commentary' && styles.tabActive]}
+            onPress={() => setActiveTab('commentary')}
+          >
+            <Ionicons name="list-outline" size={18} color={activeTab === 'commentary' ? '#00ff88' : '#6a8aaa'} />
+            <Text style={[styles.tabText, activeTab === 'commentary' && styles.tabTextActive]}>Commentary</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'stats' && styles.tabActive]}
+            onPress={() => setActiveTab('stats')}
+          >
+            <Ionicons name="stats-chart-outline" size={18} color={activeTab === 'stats' ? '#00ff88' : '#6a8aaa'} />
+            <Text style={[styles.tabText, activeTab === 'stats' && styles.tabTextActive]}>Stats</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Match Controls (when paused) */}
       {matchState === 'paused' && (
@@ -229,8 +542,8 @@ export default function MatchScreen() {
         </View>
       )}
 
-      {/* Commentary Area */}
-      <View style={styles.commentaryContainer}>
+      {/* Main Content Area */}
+      <View style={styles.contentContainer}>
         {matchState === 'pre' ? (
           <View style={styles.preMatchContainer}>
             <Ionicons name="football" size={48} color="#00ff88" />
@@ -239,51 +552,210 @@ export default function MatchScreen() {
             <Text style={styles.preMatchInfo}>
               {isHome ? 'Home' : 'Away'} match at {isHome ? managedTeam.stadium : 'Away Stadium'}
             </Text>
+            <View style={styles.preMatchFormations}>
+              <View style={styles.preMatchFormationItem}>
+                <Text style={styles.preMatchFormationTeam}>{homeTeam?.short_name}</Text>
+                <Text style={styles.preMatchFormationValue}>{homeTeam?.formation || '4-4-2'}</Text>
+              </View>
+              <Text style={styles.preMatchFormationVs}>vs</Text>
+              <View style={styles.preMatchFormationItem}>
+                <Text style={styles.preMatchFormationTeam}>{awayTeam?.short_name}</Text>
+                <Text style={styles.preMatchFormationValue}>{awayTeam?.formation || '4-4-2'}</Text>
+              </View>
+            </View>
             <TouchableOpacity style={styles.startButton} onPress={handleStartMatch}>
               <Ionicons name="play" size={20} color="#0a1628" />
               <Text style={styles.startButtonText}>KICK OFF</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          <ScrollView 
-            ref={scrollRef}
-            style={styles.commentaryScroll}
-            contentContainerStyle={styles.commentaryContent}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.kickoffEvent}>
-              <Text style={styles.kickoffText}>KICK OFF!</Text>
-            </View>
-            
-            {events.slice(0, currentEventIndex).map((event, index) => (
-              <View key={index} style={styles.eventItem}>
-                <View style={styles.eventMinute}>
-                  <Text style={styles.eventMinuteText}>{event.minute}'</Text>
-                </View>
-                <View style={[
-                  styles.eventIcon,
-                  { backgroundColor: `${getEventColor(event.type)}20` }
-                ]}>
-                  <Ionicons 
-                    name={getEventIcon(event.type) as any} 
-                    size={16} 
-                    color={getEventColor(event.type)} 
+          <>
+            {/* Pitch View */}
+            {activeTab === 'pitch' && (
+              <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.pitchViewContainer}>
+                  <MiniPitch 
+                    formation={selectedFormation}
+                    homeTeam={homeTeam}
+                    awayTeam={awayTeam}
+                    lastEvent={lastEvent}
                   />
+                  
+                  {/* Latest Event Display */}
+                  {lastEvent && (
+                    <View style={styles.latestEventCard}>
+                      <View style={[
+                        styles.latestEventIcon,
+                        { backgroundColor: `${getEventColor(lastEvent.type)}20` }
+                      ]}>
+                        <Ionicons 
+                          name={getEventIcon(lastEvent.type) as any} 
+                          size={20} 
+                          color={getEventColor(lastEvent.type)} 
+                        />
+                      </View>
+                      <View style={styles.latestEventContent}>
+                        <Text style={styles.latestEventMinute}>{lastEvent.minute}'</Text>
+                        <Text style={styles.latestEventTeam}>{lastEvent.team}</Text>
+                        <Text style={styles.latestEventDescription}>{lastEvent.description}</Text>
+                      </View>
+                    </View>
+                  )}
                 </View>
-                <View style={styles.eventContent}>
-                  <Text style={styles.eventTeam}>{event.team}</Text>
-                  <Text style={styles.eventDescription}>{event.description}</Text>
-                </View>
-              </View>
-            ))}
-
-            {matchState === 'post' && (
-              <View style={styles.fullTimeEvent}>
-                <Text style={styles.fullTimeText}>FULL TIME</Text>
-                <Text style={styles.finalScore}>{homeScore} - {awayScore}</Text>
-              </View>
+              </ScrollView>
             )}
-          </ScrollView>
+
+            {/* Commentary View */}
+            {activeTab === 'commentary' && (
+              <ScrollView 
+                ref={scrollRef}
+                style={styles.tabContent}
+                contentContainerStyle={styles.commentaryContent}
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.kickoffEvent}>
+                  <Text style={styles.kickoffText}>KICK OFF!</Text>
+                </View>
+                
+                {events.slice(0, currentEventIndex).map((event, index) => (
+                  <View key={index} style={[
+                    styles.eventItem,
+                    { borderLeftColor: getEventColor(event.type) }
+                  ]}>
+                    <View style={styles.eventMinute}>
+                      <Text style={styles.eventMinuteText}>{event.minute}'</Text>
+                    </View>
+                    <View style={[
+                      styles.eventIcon,
+                      { backgroundColor: `${getEventColor(event.type)}20` }
+                    ]}>
+                      <Ionicons 
+                        name={getEventIcon(event.type) as any} 
+                        size={16} 
+                        color={getEventColor(event.type)} 
+                      />
+                    </View>
+                    <View style={styles.eventContent}>
+                      <Text style={styles.eventTeam}>{event.team}</Text>
+                      <Text style={styles.eventDescription}>{event.description}</Text>
+                    </View>
+                  </View>
+                ))}
+
+                {matchState === 'post' && (
+                  <View style={styles.fullTimeEvent}>
+                    <Text style={styles.fullTimeText}>FULL TIME</Text>
+                    <Text style={styles.finalScore}>{homeScore} - {awayScore}</Text>
+                  </View>
+                )}
+              </ScrollView>
+            )}
+
+            {/* Stats View */}
+            {activeTab === 'stats' && (
+              <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+                <View style={styles.statsContainer}>
+                  {/* Possession */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.possession.home}%</Text>
+                      <Text style={styles.statLabel}>POSSESSION</Text>
+                      <Text style={styles.statValue}>{matchStats.possession.away}%</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { width: `${matchStats.possession.home}%` }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { width: `${matchStats.possession.away}%` }]} />
+                    </View>
+                  </View>
+
+                  {/* Shots */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.shots.home}</Text>
+                      <Text style={styles.statLabel}>SHOTS</Text>
+                      <Text style={styles.statValue}>{matchStats.shots.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { 
+                        width: `${(matchStats.shots.home / Math.max(matchStats.shots.home + matchStats.shots.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { 
+                        width: `${(matchStats.shots.away / Math.max(matchStats.shots.home + matchStats.shots.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+
+                  {/* Shots on Target */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.shotsOnTarget.home}</Text>
+                      <Text style={styles.statLabel}>SHOTS ON TARGET</Text>
+                      <Text style={styles.statValue}>{matchStats.shotsOnTarget.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { 
+                        width: `${(matchStats.shotsOnTarget.home / Math.max(matchStats.shotsOnTarget.home + matchStats.shotsOnTarget.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { 
+                        width: `${(matchStats.shotsOnTarget.away / Math.max(matchStats.shotsOnTarget.home + matchStats.shotsOnTarget.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+
+                  {/* Corners */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.corners.home}</Text>
+                      <Text style={styles.statLabel}>CORNERS</Text>
+                      <Text style={styles.statValue}>{matchStats.corners.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { 
+                        width: `${(matchStats.corners.home / Math.max(matchStats.corners.home + matchStats.corners.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { 
+                        width: `${(matchStats.corners.away / Math.max(matchStats.corners.home + matchStats.corners.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+
+                  {/* Fouls */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.fouls.home}</Text>
+                      <Text style={styles.statLabel}>FOULS</Text>
+                      <Text style={styles.statValue}>{matchStats.fouls.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { 
+                        width: `${(matchStats.fouls.home / Math.max(matchStats.fouls.home + matchStats.fouls.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { 
+                        width: `${(matchStats.fouls.away / Math.max(matchStats.fouls.home + matchStats.fouls.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+
+                  {/* Yellow Cards */}
+                  <View style={styles.statItem}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValue}>{matchStats.yellowCards.home}</Text>
+                      <Text style={styles.statLabel}>YELLOW CARDS</Text>
+                      <Text style={styles.statValue}>{matchStats.yellowCards.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, styles.homeStatBar, { 
+                        width: `${(matchStats.yellowCards.home / Math.max(matchStats.yellowCards.home + matchStats.yellowCards.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, styles.awayStatBar, { 
+                        width: `${(matchStats.yellowCards.away / Math.max(matchStats.yellowCards.home + matchStats.yellowCards.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+            )}
+          </>
         )}
       </View>
 
@@ -466,7 +938,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  // New horizontal scoreboard
+  // Scoreboard
   scoreboard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -525,6 +997,60 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#4a6a8a',
     fontWeight: '600',
+  },
+  // Formation comparison bar
+  formationBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#0d1a28',
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a3a5c',
+  },
+  formationTeam: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  formationText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#9ab8d8',
+  },
+  formationVs: {
+    fontSize: 10,
+    color: '#4a6a8a',
+    fontWeight: '600',
+  },
+  // Tab bar
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#0d2137',
+    borderBottomWidth: 2,
+    borderBottomColor: '#1a4a6c',
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 6,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#00ff88',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#6a8aaa',
+  },
+  tabTextActive: {
+    color: '#00ff88',
   },
   // Pause controls
   pauseControls: {
@@ -591,9 +1117,13 @@ const styles = StyleSheet.create({
   speedButtonTextActive: {
     color: '#0a1628',
   },
-  commentaryContainer: {
+  contentContainer: {
     flex: 1,
   },
+  tabContent: {
+    flex: 1,
+  },
+  // Pre-match
   preMatchContainer: {
     flex: 1,
     alignItems: 'center',
@@ -616,6 +1146,30 @@ const styles = StyleSheet.create({
     color: '#6a8aaa',
     marginTop: 8,
   },
+  preMatchFormations: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    marginTop: 16,
+  },
+  preMatchFormationItem: {
+    alignItems: 'center',
+  },
+  preMatchFormationTeam: {
+    fontSize: 12,
+    color: '#6a8aaa',
+    marginBottom: 4,
+  },
+  preMatchFormationValue: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#4a9eff',
+  },
+  preMatchFormationVs: {
+    fontSize: 16,
+    color: '#4a6a8a',
+    fontWeight: '600',
+  },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -632,9 +1186,126 @@ const styles = StyleSheet.create({
     color: '#0a1628',
     letterSpacing: 2,
   },
-  commentaryScroll: {
+  // Pitch view
+  pitchViewContainer: {
+    alignItems: 'center',
+    padding: 16,
+  },
+  miniPitchContainer: {
+    position: 'relative',
+    backgroundColor: '#0d2137',
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  miniPitch: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a5a3f',
+    position: 'relative',
+  },
+  centerLine: {
+    position: 'absolute',
+    width: '100%',
+    height: 2,
+    backgroundColor: '#ffffff',
+    opacity: 0.4,
+  },
+  centerCircle: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    opacity: 0.4,
+  },
+  penaltyBox: {
+    position: 'absolute',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+    opacity: 0.4,
+  },
+  penaltyBoxTop: {
+    top: 0,
+  },
+  penaltyBoxBottom: {
+    bottom: 0,
+  },
+  miniPlayerDot: {
+    position: 'absolute',
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#ffffff',
+  },
+  homePlayerDot: {
+    backgroundColor: '#4a9eff',
+  },
+  awayPlayerDot: {
+    backgroundColor: '#ff9f43',
+  },
+  miniPlayerLabel: {
+    fontSize: 7,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  homePlayerLabel: {
+    color: '#fff',
+  },
+  awayPlayerLabel: {
+    color: '#fff',
+  },
+  ballIndicator: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#ffcc00',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  latestEventCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d2137',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+    width: '100%',
+  },
+  latestEventIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 12,
+  },
+  latestEventContent: {
     flex: 1,
   },
+  latestEventMinute: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4a9eff',
+    marginBottom: 2,
+  },
+  latestEventTeam: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#6a8aaa',
+    marginBottom: 4,
+  },
+  latestEventDescription: {
+    fontSize: 14,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  // Commentary view
   commentaryContent: {
     padding: 16,
     paddingBottom: 100,
@@ -659,8 +1330,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d2137',
     padding: 12,
     borderRadius: 8,
-    borderLeftWidth: 3,
-    borderLeftColor: '#1a4a6c',
+    borderLeftWidth: 4,
   },
   eventMinute: {
     width: 36,
@@ -711,6 +1381,47 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     marginTop: 8,
   },
+  // Stats view
+  statsContainer: {
+    padding: 16,
+  },
+  statItem: {
+    marginBottom: 24,
+  },
+  statHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    letterSpacing: 1,
+  },
+  statValue: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  statBarContainer: {
+    flexDirection: 'row',
+    height: 8,
+    backgroundColor: '#1a3a5c',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  statBar: {
+    height: '100%',
+  },
+  homeStatBar: {
+    backgroundColor: '#4a9eff',
+  },
+  awayStatBar: {
+    backgroundColor: '#ff9f43',
+  },
+  // Footer
   liveFooter: {
     padding: 16,
     backgroundColor: '#0d2137',
