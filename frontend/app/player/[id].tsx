@@ -35,6 +35,7 @@ export default function PlayerProfileScreen() {
   const [contractYear, setContractYear] = useState(2026);
   const [contractMonth, setContractMonth] = useState(6);
   const [proposedWage, setProposedWage] = useState(0);
+  const [wageInputText, setWageInputText] = useState('0');
 
   const findPlayer = (): { player: Player | null; teamName: string } => {
     if (!currentSave) return { player: null, teamName: '' };
