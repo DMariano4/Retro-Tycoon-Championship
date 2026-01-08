@@ -509,6 +509,10 @@ function TransfersTab() {
   const [searchPlayer, setSearchPlayer] = useState('');
   const [searchClub, setSearchClub] = useState('');
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<any>(null);
+  const [proposedFee, setProposedFee] = useState(0);
+  const [proposedWage, setProposedWage] = useState(0);
 
   const formatValue = (value: number) => {
     if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
@@ -516,7 +520,60 @@ function TransfersTab() {
     return `£${value}`;
   };
 
+  const formatWage = (wage: number) => {
+    if (wage >= 1000) return `£${(wage / 1000).toFixed(1)}K`;
+    return `£${wage}`;
+  };
+
   const handleMakeOffer = async (listing: any) => {
+    // Initialize modal with listing data
+    setSelectedListing(listing);
+    setProposedFee(listing.asking_price);
+    setProposedWage(listing.player.wage);
+    setShowOfferModal(true);
+  };
+
+  const handleSubmitOffer = async () => {
+    if (!selectedListing || !team) return;
+
+    const minimumFee = Math.floor(selectedListing.asking_price * 0.9);
+    const minimumWage = Math.floor(selectedListing.player.wage * 0.9);
+
+    // Check if offer is too low (hidden from user)
+    if (proposedFee < minimumFee || proposedWage < minimumWage) {
+      setShowOfferModal(false);
+      Alert.alert(
+        'Offer Rejected',
+        `${selectedListing.team_name} has rejected your transfer proposal for ${selectedListing.player.name}.`,
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    // Check budget
+    if (proposedFee > team.budget) {
+      Alert.alert(
+        'Insufficient Funds',
+        `You don't have enough budget for this transfer.\n\nYour budget: ${formatValue(team.budget)}\nTransfer fee: ${formatValue(proposedFee)}`,
+        [{ text: 'Revise Offer', style: 'cancel' }]
+      );
+      return;
+    }
+
+    // Offer accepted!
+    const result = await makeTransferOffer(selectedListing.id, proposedFee, proposedWage);
+    setShowOfferModal(false);
+
+    if (result.success) {
+      Alert.alert(
+        'Transfer Complete!',
+        `${selectedListing.player.name} has joined your team!\n\nTransfer fee: ${formatValue(proposedFee)}\nWeekly wage: ${formatWage(proposedWage)}`,
+        [{ text: 'Great!' }]
+      );
+    } else {
+      Alert.alert('Error', result.error || 'Failed to complete transfer');
+    }
+  };
     Alert.alert(
       'Make Offer',
       `Offer ${formatValue(listing.asking_price)} for ${listing.player.name}?`,
