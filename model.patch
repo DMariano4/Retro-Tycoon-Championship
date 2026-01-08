@@ -1,203 +1,208 @@
-diff --git a/frontend/app/match.tsx b/frontend/app/match.tsx
-index 71db4da..d7b1e30 100644
---- a/frontend/app/match.tsx
-+++ b/frontend/app/match.tsx
-@@ -1,5 +1,5 @@
- import React, { useState, useEffect, useRef } from 'react';
--import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Dimensions } from 'react-native';
-+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Dimensions, Alert } from 'react-native';
- import { SafeAreaView } from 'react-native-safe-area-context';
- import { router } from 'expo-router';
- import { Ionicons } from '@expo/vector-icons';
-@@ -451,6 +451,48 @@ export default function MatchScreen() {
-     );
-   };
- 
-+  const handleLineupPlayerToggle = (playerId: string) => {
-+    const isInSquad = currentSquad.some(p => p.id === playerId);
-+    
-+    if (isInSquad) {
-+      // Move to bench
-+      if (currentSquad.length <= 11) {
-+        Alert.alert('Minimum Players', 'You must have at least 11 players in your starting lineup.');
-+        return;
-+      }
-+      const player = currentSquad.find(p => p.id === playerId);
-+      if (player) {
-+        setCurrentSquad(prev => prev.filter(p => p.id !== playerId));
-+        setBenchPlayers(prev => [...prev, player]);
-+      }
-+    } else {
-+      // Move to squad
-+      if (currentSquad.length >= 11) {
-+        Alert.alert('Maximum Starters', 'You can only have 11 players in your starting lineup.');
-+        return;
-+      }
-+      const player = benchPlayers.find(p => p.id === playerId);
-+      if (player) {
-+        setBenchPlayers(prev => prev.filter(p => p.id !== playerId));
-+        setCurrentSquad(prev => [...prev, player]);
-+      }
-+    }
-+  };
-+
-+  const handleConfirmLineup = () => {
-+    if (currentSquad.length !== 11) {
-+      Alert.alert('Invalid Lineup', `You must select exactly 11 players. Current: ${currentSquad.length}`);
-+      return;
-+    }
-+    if (benchPlayers.length > 9) {
-+      Alert.alert('Too Many Subs', 'You can have maximum 9 substitutes on the bench.');
-+      return;
-+    }
-+    setLineupConfirmed(true);
-+    setShowLineupModal(false);
-+    Alert.alert('Team Selected', 'Your lineup is ready. You can now start the match!');
-+  };
-+
-   const getEventIcon = (type: string) => {
-     switch (type) {
-       case 'GOAL': return 'football';
-@@ -1023,6 +1065,78 @@ export default function MatchScreen() {
-           </View>
-         </View>
-       </Modal>
-+
-+      {/* Lineup Selection Modal */}
-+      <Modal
-+        visible={showLineupModal}
-+        transparent={true}
-+        animationType="slide"
-+        onRequestClose={() => setShowLineupModal(false)}
-+      >
-+        <View style={styles.modalOverlay}>
-+          <View style={styles.modalContent}>
-+            <View style={styles.modalHeader}>
-+              <Text style={styles.modalTitle}>SELECT LINEUP</Text>
-+              <TouchableOpacity onPress={() => setShowLineupModal(false)}>
-+                <Ionicons name="close" size={24} color="#6a8aaa" />
-+              </TouchableOpacity>
-+            </View>
-+            
-+            <Text style={styles.modalSectionTitle}>
-+              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}/9
-+            </Text>
-+            
-+            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
-+              <Text style={styles.subsListTitle}>STARTING XI</Text>
-+              {currentSquad.map(player => (
-+                <TouchableOpacity 
-+                  key={player.id} 
-+                  style={styles.subPlayerRow}
-+                  onPress={() => handleLineupPlayerToggle(player.id)}
-+                >
-+                  <View style={styles.subPlayerInfo}>
-+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-+                    <Text style={styles.subPlayerName}>{player.name}</Text>
-+                    <View style={styles.subAbility}>
-+                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-+                    </View>
-+                  </View>
-+                  <Ionicons name="arrow-down-circle" size={20} color="#ff6b6b" />
-+                </TouchableOpacity>
-+              ))}
-+              
-+              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-+              {benchPlayers.map(player => (
-+                <TouchableOpacity 
-+                  key={player.id} 
-+                  style={styles.subPlayerRow}
-+                  onPress={() => handleLineupPlayerToggle(player.id)}
-+                >
-+                  <View style={styles.subPlayerInfo}>
-+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-+                    <Text style={styles.subPlayerName}>{player.name}</Text>
-+                    <View style={styles.subAbility}>
-+                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-+                    </View>
-+                  </View>
-+                  <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
-+                </TouchableOpacity>
-+              ))}
-+            </ScrollView>
-+
-+            <Text style={styles.subsNote}>
-+              Tap players to move them between starting XI and bench
-+            </Text>
-+
-+            <TouchableOpacity 
-+              style={styles.modalCloseButton}
-+              onPress={handleConfirmLineup}
-+            >
-+              <Text style={styles.modalCloseButtonText}>CONFIRM LINEUP</Text>
-+            </TouchableOpacity>
-+          </View>
-+        </View>
-+      </Modal>
-     </SafeAreaView>
-   );
- }
-@@ -1731,4 +1845,35 @@ const styles = StyleSheet.create({
-     color: '#0a1628',
-     letterSpacing: 1,
-   },
-+  selectTeamButton: {
-+    flexDirection: 'row',
-+    alignItems: 'center',
-+    backgroundColor: '#4a9eff',
-+    paddingVertical: 16,
-+    paddingHorizontal: 40,
-+    borderRadius: 8,
-+    gap: 12,
-+    marginTop: 24,
-+  },
-+  selectTeamButtonText: {
-+    fontSize: 18,
-+    fontWeight: '900',
-+    color: '#0a1628',
-+    letterSpacing: 2,
-+  },
-+  lineupConfirmedBadge: {
-+    flexDirection: 'row',
-+    alignItems: 'center',
-+    backgroundColor: '#1a4a3c',
-+    paddingVertical: 12,
-+    paddingHorizontal: 20,
-+    borderRadius: 8,
-+    gap: 8,
-+    marginTop: 16,
-+  },
-+  lineupConfirmedText: {
-+    fontSize: 14,
-+    fontWeight: '700',
-+    color: '#00ff88',
-+  },
- });
 diff --git a/model.patch b/model.patch
-index 937e90e..9330af9 100644
+index ec472dd..e69de29 100644
 --- a/model.patch
 +++ b/model.patch
-@@ -1,23 +0,0 @@
--diff --git a/test_result.md b/test_result.md
--index 99e7bb1..8566b3b 100644
----- a/test_result.md
--+++ b/test_result.md
--@@ -152,6 +152,18 @@ A retro-style football management mobile game inspired by early 2000s classics (
-- - Updated main Tactics tab to showcase new system with feature overview
-- - All tactics saved to team profile
+@@ -1,203 +0,0 @@
+-diff --git a/frontend/app/match.tsx b/frontend/app/match.tsx
+-index 71db4da..d7b1e30 100644
+---- a/frontend/app/match.tsx
+-+++ b/frontend/app/match.tsx
+-@@ -1,5 +1,5 @@
+- import React, { useState, useEffect, useRef } from 'react';
+--import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Dimensions } from 'react-native';
+-+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Dimensions, Alert } from 'react-native';
+- import { SafeAreaView } from 'react-native-safe-area-context';
+- import { router } from 'expo-router';
+- import { Ionicons } from '@expo/vector-icons';
+-@@ -451,6 +451,48 @@ export default function MatchScreen() {
+-     );
+-   };
 - 
--+**✅ Task 5: Visual Football Pitch Preview**
--+- Added real-time visual pitch representation in Advanced Tactics screen
--+- Shows player positions on a football field based on selected formation
--+- Features:
--+  - Green pitch with white markings (center line, circle, penalty boxes, goal areas)
--+  - Blue player dots with position labels (GK, CB, LB, RB, DM, CM, AM, LW, RW, ST)
--+  - Accurate position mapping for all 8 formations
--+  - Instant updates when changing formation
--+  - Retro aesthetic blending with game's dark blue/green theme
--+  - Responsive sizing for mobile devices
--+- Inspired by CM01/02 tactical board visualization
+-+  const handleLineupPlayerToggle = (playerId: string) => {
+-+    const isInSquad = currentSquad.some(p => p.id === playerId);
+-+    
+-+    if (isInSquad) {
+-+      // Move to bench
+-+      if (currentSquad.length <= 11) {
+-+        Alert.alert('Minimum Players', 'You must have at least 11 players in your starting lineup.');
+-+        return;
+-+      }
+-+      const player = currentSquad.find(p => p.id === playerId);
+-+      if (player) {
+-+        setCurrentSquad(prev => prev.filter(p => p.id !== playerId));
+-+        setBenchPlayers(prev => [...prev, player]);
+-+      }
+-+    } else {
+-+      // Move to squad
+-+      if (currentSquad.length >= 11) {
+-+        Alert.alert('Maximum Starters', 'You can only have 11 players in your starting lineup.');
+-+        return;
+-+      }
+-+      const player = benchPlayers.find(p => p.id === playerId);
+-+      if (player) {
+-+        setBenchPlayers(prev => prev.filter(p => p.id !== playerId));
+-+        setCurrentSquad(prev => [...prev, player]);
+-+      }
+-+    }
+-+  };
 -+
-- ### Current Features Implemented
-- 
-- **1. Authentication System ✅**
+-+  const handleConfirmLineup = () => {
+-+    if (currentSquad.length !== 11) {
+-+      Alert.alert('Invalid Lineup', `You must select exactly 11 players. Current: ${currentSquad.length}`);
+-+      return;
+-+    }
+-+    if (benchPlayers.length > 9) {
+-+      Alert.alert('Too Many Subs', 'You can have maximum 9 substitutes on the bench.');
+-+      return;
+-+    }
+-+    setLineupConfirmed(true);
+-+    setShowLineupModal(false);
+-+    Alert.alert('Team Selected', 'Your lineup is ready. You can now start the match!');
+-+  };
+-+
+-   const getEventIcon = (type: string) => {
+-     switch (type) {
+-       case 'GOAL': return 'football';
+-@@ -1023,6 +1065,78 @@ export default function MatchScreen() {
+-           </View>
+-         </View>
+-       </Modal>
+-+
+-+      {/* Lineup Selection Modal */}
+-+      <Modal
+-+        visible={showLineupModal}
+-+        transparent={true}
+-+        animationType="slide"
+-+        onRequestClose={() => setShowLineupModal(false)}
+-+      >
+-+        <View style={styles.modalOverlay}>
+-+          <View style={styles.modalContent}>
+-+            <View style={styles.modalHeader}>
+-+              <Text style={styles.modalTitle}>SELECT LINEUP</Text>
+-+              <TouchableOpacity onPress={() => setShowLineupModal(false)}>
+-+                <Ionicons name="close" size={24} color="#6a8aaa" />
+-+              </TouchableOpacity>
+-+            </View>
+-+            
+-+            <Text style={styles.modalSectionTitle}>
+-+              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}/9
+-+            </Text>
+-+            
+-+            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
+-+              <Text style={styles.subsListTitle}>STARTING XI</Text>
+-+              {currentSquad.map(player => (
+-+                <TouchableOpacity 
+-+                  key={player.id} 
+-+                  style={styles.subPlayerRow}
+-+                  onPress={() => handleLineupPlayerToggle(player.id)}
+-+                >
+-+                  <View style={styles.subPlayerInfo}>
+-+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
+-+                    <Text style={styles.subPlayerName}>{player.name}</Text>
+-+                    <View style={styles.subAbility}>
+-+                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
+-+                    </View>
+-+                  </View>
+-+                  <Ionicons name="arrow-down-circle" size={20} color="#ff6b6b" />
+-+                </TouchableOpacity>
+-+              ))}
+-+              
+-+              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
+-+              {benchPlayers.map(player => (
+-+                <TouchableOpacity 
+-+                  key={player.id} 
+-+                  style={styles.subPlayerRow}
+-+                  onPress={() => handleLineupPlayerToggle(player.id)}
+-+                >
+-+                  <View style={styles.subPlayerInfo}>
+-+                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
+-+                    <Text style={styles.subPlayerName}>{player.name}</Text>
+-+                    <View style={styles.subAbility}>
+-+                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
+-+                    </View>
+-+                  </View>
+-+                  <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
+-+                </TouchableOpacity>
+-+              ))}
+-+            </ScrollView>
+-+
+-+            <Text style={styles.subsNote}>
+-+              Tap players to move them between starting XI and bench
+-+            </Text>
+-+
+-+            <TouchableOpacity 
+-+              style={styles.modalCloseButton}
+-+              onPress={handleConfirmLineup}
+-+            >
+-+              <Text style={styles.modalCloseButtonText}>CONFIRM LINEUP</Text>
+-+            </TouchableOpacity>
+-+          </View>
+-+        </View>
+-+      </Modal>
+-     </SafeAreaView>
+-   );
+- }
+-@@ -1731,4 +1845,35 @@ const styles = StyleSheet.create({
+-     color: '#0a1628',
+-     letterSpacing: 1,
+-   },
+-+  selectTeamButton: {
+-+    flexDirection: 'row',
+-+    alignItems: 'center',
+-+    backgroundColor: '#4a9eff',
+-+    paddingVertical: 16,
+-+    paddingHorizontal: 40,
+-+    borderRadius: 8,
+-+    gap: 12,
+-+    marginTop: 24,
+-+  },
+-+  selectTeamButtonText: {
+-+    fontSize: 18,
+-+    fontWeight: '900',
+-+    color: '#0a1628',
+-+    letterSpacing: 2,
+-+  },
+-+  lineupConfirmedBadge: {
+-+    flexDirection: 'row',
+-+    alignItems: 'center',
+-+    backgroundColor: '#1a4a3c',
+-+    paddingVertical: 12,
+-+    paddingHorizontal: 20,
+-+    borderRadius: 8,
+-+    gap: 8,
+-+    marginTop: 16,
+-+  },
+-+  lineupConfirmedText: {
+-+    fontSize: 14,
+-+    fontWeight: '700',
+-+    color: '#00ff88',
+-+  },
+- });
+-diff --git a/model.patch b/model.patch
+-index 937e90e..9330af9 100644
+---- a/model.patch
+-+++ b/model.patch
+-@@ -1,23 +0,0 @@
+--diff --git a/test_result.md b/test_result.md
+--index 99e7bb1..8566b3b 100644
+----- a/test_result.md
+--+++ b/test_result.md
+--@@ -152,6 +152,18 @@ A retro-style football management mobile game inspired by early 2000s classics (
+-- - Updated main Tactics tab to showcase new system with feature overview
+-- - All tactics saved to team profile
+-- 
+--+**✅ Task 5: Visual Football Pitch Preview**
+--+- Added real-time visual pitch representation in Advanced Tactics screen
+--+- Shows player positions on a football field based on selected formation
+--+- Features:
+--+  - Green pitch with white markings (center line, circle, penalty boxes, goal areas)
+--+  - Blue player dots with position labels (GK, CB, LB, RB, DM, CM, AM, LW, RW, ST)
+--+  - Accurate position mapping for all 8 formations
+--+  - Instant updates when changing formation
+--+  - Retro aesthetic blending with game's dark blue/green theme
+--+  - Responsive sizing for mobile devices
+--+- Inspired by CM01/02 tactical board visualization
+--+
+-- ### Current Features Implemented
+-- 
+-- **1. Authentication System ✅**
