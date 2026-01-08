@@ -232,6 +232,8 @@ export default function MatchScreen() {
   const [currentSquad, setCurrentSquad] = useState<Player[]>([]);
   const [benchPlayers, setBenchPlayers] = useState<Player[]>([]);
   const [selectedPlayerOut, setSelectedPlayerOut] = useState<string | null>(null);
+  const [showLineupModal, setShowLineupModal] = useState(false);
+  const [lineupConfirmed, setLineupConfirmed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
   // Match statistics
