@@ -738,17 +738,25 @@ function TransfersTab() {
                     <Text style={styles.transferFeePrefix}>£</Text>
                     <TouchableOpacity
                       style={styles.transferFeeButton}
-                      onPress={() => setProposedFee(Math.max(0, proposedFee - 1000000))}
+                      onPress={() => {
+                        const newFee = Math.max(0, proposedFee - 1000000);
+                        setProposedFee(newFee);
+                        setFeeInputText(newFee.toLocaleString());
+                      }}
                     >
                       <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
                     </TouchableOpacity>
                     <View style={styles.transferFeeValueContainer}>
                       <TextInput
                         style={styles.transferFeeInput}
-                        value={proposedFee.toLocaleString()}
+                        value={feeInputText}
                         onChangeText={(text) => {
+                          setFeeInputText(text);
                           const numericValue = parseInt(text.replace(/,/g, '')) || 0;
                           setProposedFee(numericValue);
+                        }}
+                        onBlur={() => {
+                          setFeeInputText(proposedFee.toLocaleString());
                         }}
                         keyboardType="numeric"
                         selectTextOnFocus
@@ -757,7 +765,11 @@ function TransfersTab() {
                     </View>
                     <TouchableOpacity
                       style={styles.transferFeeButton}
-                      onPress={() => setProposedFee(proposedFee + 1000000)}
+                      onPress={() => {
+                        const newFee = proposedFee + 1000000;
+                        setProposedFee(newFee);
+                        setFeeInputText(newFee.toLocaleString());
+                      }}
                     >
                       <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
                     </TouchableOpacity>
