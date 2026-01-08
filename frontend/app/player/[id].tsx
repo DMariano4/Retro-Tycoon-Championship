@@ -209,10 +209,15 @@ export default function PlayerProfileScreen() {
     { season: '2022/23', apps: Math.floor(Math.random() * 28), goals: Math.floor(Math.random() * 10), assists: Math.floor(Math.random() * 6) },
   ];
 
+  // Convert attribute value from 0-100 to 1-20 scale for display
+  const convertTo20Scale = (value: number): number => {
+    return Math.max(1, Math.min(20, Math.round(value / 5)));
+  };
+
   const StatItem = ({ label, value, color }: { label: string; value: number; color: string }) => (
     <View style={styles.statItem}>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, { color }]}>{value}</Text>
+      <Text style={[styles.statValue, { color }]}>{convertTo20Scale(value)}</Text>
     </View>
   );
 
