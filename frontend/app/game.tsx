@@ -694,6 +694,149 @@ function TransfersTab() {
           ))
         )}
       </View>
+
+      {/* Transfer Offer Modal */}
+      {selectedListing && (
+        <Modal
+          visible={showOfferModal}
+          transparent={true}
+          animationType="slide"
+          onRequestClose={() => setShowOfferModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay}
+            activeOpacity={1}
+            onPress={() => setShowOfferModal(false)}
+          >
+            <View style={styles.transferOfferModal} onStartShouldSetResponder={() => true}>
+              <View style={styles.transferOfferHeader}>
+                <Text style={styles.transferOfferTitle}>MAKE TRANSFER OFFER</Text>
+                <TouchableOpacity onPress={() => setShowOfferModal(false)}>
+                  <Ionicons name="close" size={24} color="#fff" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView showsVerticalScrollIndicator={false}>
+                <View style={styles.transferOfferPlayerInfo}>
+                  <Text style={styles.transferOfferPlayerName}>{selectedListing.player.name}</Text>
+                  <Text style={styles.transferOfferPlayerMeta}>
+                    {selectedListing.player.position} • {selectedListing.player.age} yrs • {selectedListing.team_name}
+                  </Text>
+                  <Text style={styles.transferOfferAskingPrice}>
+                    Asking Price: {formatValue(selectedListing.asking_price)}
+                  </Text>
+                </View>
+
+                {/* Transfer Fee Section */}
+                <View style={styles.transferOfferSection}>
+                  <Text style={styles.transferOfferSectionTitle}>TRANSFER FEE</Text>
+                  <View style={styles.transferFeeInputContainer}>
+                    <Text style={styles.transferFeePrefix}>£</Text>
+                    <TouchableOpacity
+                      style={styles.transferFeeButton}
+                      onPress={() => setProposedFee(Math.max(0, proposedFee - 1000000))}
+                    >
+                      <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
+                    </TouchableOpacity>
+                    <View style={styles.transferFeeValueContainer}>
+                      <TextInput
+                        style={styles.transferFeeInput}
+                        value={proposedFee.toLocaleString()}
+                        onChangeText={(text) => {
+                          const numericValue = parseInt(text.replace(/,/g, '')) || 0;
+                          setProposedFee(numericValue);
+                        }}
+                        keyboardType="numeric"
+                        selectTextOnFocus
+                        returnKeyType="done"
+                      />
+                    </View>
+                    <TouchableOpacity
+                      style={styles.transferFeeButton}
+                      onPress={() => setProposedFee(proposedFee + 1000000)}
+                    >
+                      <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.transferFeePresets}>
+                    <TouchableOpacity
+                      style={styles.transferFeePresetButton}
+                      onPress={() => setProposedFee(selectedListing.asking_price)}
+                    >
+                      <Text style={styles.transferFeePresetText}>Asking Price</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Weekly Wage Section */}
+                <View style={styles.transferOfferSection}>
+                  <Text style={styles.transferOfferSectionTitle}>WEEKLY WAGE</Text>
+                  <View style={styles.wageInputContainer}>
+                    <Text style={styles.wageInputPrefix}>£</Text>
+                    <TouchableOpacity
+                      style={styles.wageButton}
+                      onPress={() => setProposedWage(Math.max(0, proposedWage - 1000))}
+                    >
+                      <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
+                    </TouchableOpacity>
+                    <View style={styles.wageValueContainer}>
+                      <TextInput
+                        style={styles.wageInput}
+                        value={proposedWage.toLocaleString()}
+                        onChangeText={(text) => {
+                          const numericValue = parseInt(text.replace(/,/g, '')) || 0;
+                          setProposedWage(numericValue);
+                        }}
+                        keyboardType="numeric"
+                        selectTextOnFocus
+                        returnKeyType="done"
+                      />
+                      <Text style={styles.wageValueLabel}>per week</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={styles.wageButton}
+                      onPress={() => setProposedWage(proposedWage + 1000)}
+                    >
+                      <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.wagePresets}>
+                    <TouchableOpacity
+                      style={styles.wagePresetButton}
+                      onPress={() => setProposedWage(selectedListing.player.wage)}
+                    >
+                      <Text style={styles.wagePresetText}>Current Wage</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.transferOfferInfo}>
+                    <View style={styles.transferOfferInfoRow}>
+                      <Text style={styles.transferOfferInfoLabel}>Player's Current Wage:</Text>
+                      <Text style={styles.transferOfferInfoValue}>{formatWage(selectedListing.player.wage)}</Text>
+                    </View>
+                    <View style={styles.transferOfferInfoRow}>
+                      <Text style={styles.transferOfferInfoLabel}>Your Offer:</Text>
+                      <Text style={[styles.transferOfferInfoValue, { fontWeight: '700' }]}>
+                        {formatWage(proposedWage)}
+                      </Text>
+                    </View>
+                  </View>
+                </View>
+              </ScrollView>
+
+              <TouchableOpacity
+                style={styles.submitOfferButton}
+                onPress={handleSubmitOffer}
+              >
+                <Ionicons name="paper-plane" size={20} color="#0a1628" />
+                <Text style={styles.submitOfferButtonText}>SUBMIT OFFER</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </Modal>
+      )}
     </ScrollView>
   );
 }
