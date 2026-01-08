@@ -58,44 +58,44 @@ class Player(BaseModel):
     nationality: str
     position: str  # GK, CB, LB, RB, DM, CM, AM, LW, RW, ST
     preferred_positions: List[str] = []
-    # Physical attributes (all positions)
-    pace: int = 50
-    strength: int = 50
-    stamina: int = 50
-    agility: int = 50
-    # Mental attributes (all positions)
-    work_rate: int = 50
-    concentration: int = 50
-    decision_making: int = 50
-    composure: int = 50
-    # Technical - Goalkeeper
-    reflexes: int = 50
-    handling: int = 50
-    communication: int = 50
-    # Technical - Defenders
-    tackling: int = 50
-    marking: int = 50
-    positioning: int = 50
-    crossing: int = 50  # for fullbacks
-    # Technical - Midfielders
-    passing: int = 50
-    vision: int = 50
-    dribbling: int = 50
-    control: int = 50
-    # Technical - Forwards
-    finishing: int = 50
-    off_the_ball: int = 50
-    flair: int = 50
-    heading: int = 50
-    # Overall ratings
-    current_ability: int = 50
-    potential_ability: int = 60
+    # Physical attributes (all positions) - 1-20 scale
+    pace: int = 10
+    strength: int = 10
+    stamina: int = 10
+    agility: int = 10
+    # Mental attributes (all positions) - 1-20 scale
+    work_rate: int = 10
+    concentration: int = 10
+    decision_making: int = 10
+    composure: int = 10
+    # Technical - Goalkeeper - 1-20 scale
+    reflexes: int = 10
+    handling: int = 10
+    communication: int = 10
+    # Technical - Defenders - 1-20 scale
+    tackling: int = 10
+    marking: int = 10
+    positioning: int = 10
+    crossing: int = 10  # for fullbacks
+    # Technical - Midfielders - 1-20 scale
+    passing: int = 10
+    vision: int = 10
+    dribbling: int = 10
+    control: int = 10
+    # Technical - Forwards - 1-20 scale
+    finishing: int = 10
+    off_the_ball: int = 10
+    flair: int = 10
+    heading: int = 10
+    # Overall ratings - 1-20 scale
+    current_ability: int = 10
+    potential_ability: int = 12
     value: int = 100000
     wage: int = 1000
     contract_end: str = "2027-06-30"  # Contracts expire June 30th
-    morale: int = 70
-    fitness: int = 100
-    form: int = 70
+    morale: int = 14  # 1-20 scale
+    fitness: int = 20  # 1-20 scale
+    form: int = 14  # 1-20 scale
 
 class Team(BaseModel):
     id: str
