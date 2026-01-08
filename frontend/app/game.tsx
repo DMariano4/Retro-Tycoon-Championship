@@ -573,14 +573,14 @@ function TransfersTab() {
     const result = await makeTransferOffer(selectedListing.id, proposedFee, proposedWage);
     setShowOfferModal(false);
 
-    if (result.success) {
+    if (result) {
       Alert.alert(
         'Transfer Complete!',
         `${selectedListing.player.name} has joined your team!\n\nTransfer fee: ${formatValue(proposedFee)}\nWeekly wage: ${formatWage(proposedWage)}`,
         [{ text: 'Great!' }]
       );
     } else {
-      Alert.alert('Error', result.error || 'Failed to complete transfer');
+      Alert.alert('Error', 'Failed to complete transfer. Please try again.');
     }
   };
 
