@@ -647,10 +647,27 @@ export default function MatchScreen() {
                 <Text style={styles.preMatchFormationValue}>{awayTeam?.formation || '4-4-2'}</Text>
               </View>
             </View>
-            <TouchableOpacity style={styles.startButton} onPress={handleStartMatch}>
-              <Ionicons name="play" size={20} color="#0a1628" />
-              <Text style={styles.startButtonText}>KICK OFF</Text>
-            </TouchableOpacity>
+
+            {!lineupConfirmed ? (
+              <TouchableOpacity 
+                style={styles.selectTeamButton} 
+                onPress={() => setShowLineupModal(true)}
+              >
+                <Ionicons name="people-outline" size={20} color="#0a1628" />
+                <Text style={styles.selectTeamButtonText}>SELECT TEAM</Text>
+              </TouchableOpacity>
+            ) : (
+              <>
+                <View style={styles.lineupConfirmedBadge}>
+                  <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
+                  <Text style={styles.lineupConfirmedText}>Team Selected</Text>
+                </View>
+                <TouchableOpacity style={styles.startButton} onPress={handleStartMatch}>
+                  <Ionicons name="play" size={20} color="#0a1628" />
+                  <Text style={styles.startButtonText}>KICK OFF</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </View>
         ) : (
           <>
