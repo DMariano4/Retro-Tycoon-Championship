@@ -320,9 +320,14 @@ export default function PlayerProfileScreen() {
         {/* Position-Specific Stats */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>{positionStats.title}</Text>
-          <View style={styles.statsCard}>
+          <View style={styles.statsGrid}>
             {positionStats.stats.map((stat, index) => (
-              <StatBar key={index} label={stat.label} value={stat.value} />
+              <StatItem 
+                key={index} 
+                label={stat.label} 
+                value={stat.value} 
+                color={getAbilityColor(stat.value)}
+              />
             ))}
           </View>
         </View>
@@ -330,22 +335,22 @@ export default function PlayerProfileScreen() {
         {/* Physical Attributes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>PHYSICAL</Text>
-          <View style={styles.statsCard}>
-            <StatBar label="Pace" value={player.pace} />
-            <StatBar label="Strength" value={player.strength} />
-            <StatBar label="Stamina" value={player.stamina} />
-            <StatBar label="Agility" value={player.agility} />
+          <View style={styles.statsGrid}>
+            <StatItem label="Pace" value={player.pace} color={getAbilityColor(player.pace)} />
+            <StatItem label="Strength" value={player.strength} color={getAbilityColor(player.strength)} />
+            <StatItem label="Stamina" value={player.stamina} color={getAbilityColor(player.stamina)} />
+            <StatItem label="Agility" value={player.agility} color={getAbilityColor(player.agility)} />
           </View>
         </View>
 
         {/* Mental Attributes */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>MENTAL</Text>
-          <View style={styles.statsCard}>
-            <StatBar label="Work Rate" value={player.work_rate} />
-            <StatBar label="Concentration" value={player.concentration} />
-            <StatBar label="Decision Making" value={player.decision_making} />
-            <StatBar label="Composure" value={player.composure} />
+          <View style={styles.statsGrid}>
+            <StatItem label="Work Rate" value={player.work_rate} color={getAbilityColor(player.work_rate)} />
+            <StatItem label="Concentration" value={player.concentration} color={getAbilityColor(player.concentration)} />
+            <StatItem label="Decision Making" value={player.decision_making} color={getAbilityColor(player.decision_making)} />
+            <StatItem label="Composure" value={player.composure} color={getAbilityColor(player.composure)} />
           </View>
         </View>
 
