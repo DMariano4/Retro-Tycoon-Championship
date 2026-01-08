@@ -670,17 +670,25 @@ export default function PlayerProfileScreen() {
                 <Text style={styles.wageInputPrefix}>£</Text>
                 <TouchableOpacity
                   style={styles.wageButton}
-                  onPress={() => setProposedWage(Math.max(0, proposedWage - 1000))}
+                  onPress={() => {
+                    const newWage = Math.max(0, proposedWage - 1000);
+                    setProposedWage(newWage);
+                    setWageInputText(newWage.toLocaleString());
+                  }}
                 >
                   <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
                 </TouchableOpacity>
                 <View style={styles.wageValueContainer}>
                   <TextInput
                     style={styles.wageInput}
-                    value={proposedWage.toLocaleString()}
+                    value={wageInputText}
                     onChangeText={(text) => {
+                      setWageInputText(text);
                       const numericValue = parseInt(text.replace(/,/g, '')) || 0;
                       setProposedWage(numericValue);
+                    }}
+                    onBlur={() => {
+                      setWageInputText(proposedWage.toLocaleString());
                     }}
                     keyboardType="numeric"
                     selectTextOnFocus
@@ -690,7 +698,11 @@ export default function PlayerProfileScreen() {
                 </View>
                 <TouchableOpacity
                   style={styles.wageButton}
-                  onPress={() => setProposedWage(proposedWage + 1000)}
+                  onPress={() => {
+                    const newWage = proposedWage + 1000;
+                    setProposedWage(newWage);
+                    setWageInputText(newWage.toLocaleString());
+                  }}
                 >
                   <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
                 </TouchableOpacity>
@@ -699,7 +711,10 @@ export default function PlayerProfileScreen() {
               <View style={styles.wagePresets}>
                 <TouchableOpacity
                   style={styles.wagePresetButton}
-                  onPress={() => setProposedWage(player.wage)}
+                  onPress={() => {
+                    setProposedWage(player.wage);
+                    setWageInputText(player.wage.toLocaleString());
+                  }}
                 >
                   <Text style={styles.wagePresetText}>Current Wage</Text>
                 </TouchableOpacity>
