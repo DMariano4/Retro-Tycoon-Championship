@@ -513,6 +513,8 @@ function TransfersTab() {
   const [selectedListing, setSelectedListing] = useState<any>(null);
   const [proposedFee, setProposedFee] = useState(0);
   const [proposedWage, setProposedWage] = useState(0);
+  const [feeInputText, setFeeInputText] = useState('0');
+  const [wageInputText, setWageInputText] = useState('0');
 
   const formatValue = (value: number) => {
     if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
