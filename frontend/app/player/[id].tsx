@@ -31,6 +31,10 @@ export default function PlayerProfileScreen() {
   const { currentSave, getManagedTeam, listPlayerForSale } = useGame();
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showFormHistory, setShowFormHistory] = useState(false);
+  const [showContractModal, setShowContractModal] = useState(false);
+  const [contractYear, setContractYear] = useState(2026);
+  const [contractMonth, setContractMonth] = useState(6);
+  const [proposedWage, setProposedWage] = useState(0);
 
   const findPlayer = (): { player: Player | null; teamName: string } => {
     if (!currentSave) return { player: null, teamName: '' };
