@@ -824,15 +824,17 @@ function TransfersTab() {
                     </View>
                   </View>
                 </View>
-              </ScrollView>
 
-              <TouchableOpacity
-                style={styles.submitOfferButton}
-                onPress={handleSubmitOffer}
-              >
-                <Ionicons name="paper-plane" size={20} color="#0a1628" />
-                <Text style={styles.submitOfferButtonText}>SUBMIT OFFER</Text>
-              </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.submitOfferButton}
+                  onPress={handleSubmitOffer}
+                >
+                  <Ionicons name="paper-plane" size={20} color="#0a1628" />
+                  <Text style={styles.submitOfferButtonText}>SUBMIT OFFER</Text>
+                </TouchableOpacity>
+
+                <View style={{ height: 20 }} />
+              </ScrollView>
             </View>
           </TouchableOpacity>
         </Modal>
