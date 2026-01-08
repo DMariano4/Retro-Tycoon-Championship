@@ -385,12 +385,6 @@ export default function PlayerProfileScreen() {
               <Text style={styles.infoLabel}>Contract Expires</Text>
               <Text style={styles.infoValue}>{player.contract_end}</Text>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Years Remaining</Text>
-              <Text style={styles.infoValue}>
-                {Math.max(0, player.contract_end - (currentSave?.season || 2024))} years
-              </Text>
-            </View>
           </View>
         </View>
 
@@ -408,7 +402,7 @@ export default function PlayerProfileScreen() {
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Recent Form</Text>
               <Text style={[styles.infoValue, { color: getAbilityColor(player.form) }]}>
-                {getFormText(player.form)} ({player.form}/100)
+                {((player.form / 100) * 9 + 1).toFixed(1)}/10.0
               </Text>
             </View>
             <View style={styles.infoRow}>
