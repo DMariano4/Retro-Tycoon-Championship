@@ -153,7 +153,7 @@ const CLOSING_DOWN_OPTIONS = [
 // Football Pitch Visualization Component
 function FootballPitch({ formation }: { formation: string }) {
   const positions = FORMATION_POSITIONS[formation] || FORMATION_POSITIONS['4-4-2'];
-  const pitchWidth = Math.min(screenWidth - 32, 350);
+  const pitchWidth = Math.min(screenWidth - 32, 260); // Reduced from 350 to 260 (25% smaller)
   const pitchHeight = pitchWidth * 1.4; // Classic pitch ratio
 
   return (
