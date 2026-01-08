@@ -1233,6 +1233,14 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#fff',
   },
+  wageInput: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
+    minWidth: 120,
+    padding: 0,
+  },
   wageValueLabel: {
     fontSize: 10,
     color: '#6a8aaa',
