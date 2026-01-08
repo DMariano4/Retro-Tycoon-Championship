@@ -598,12 +598,13 @@ export default function PlayerProfileScreen() {
               </TouchableOpacity>
             </View>
 
-            <View style={styles.contractPlayerInfo}>
-              <Text style={styles.contractPlayerName}>{player.name}</Text>
-              <Text style={styles.contractCurrentInfo}>
-                Current: {formatWage(player.wage)}/week • Expires {player.contract_end}
-              </Text>
-            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              <View style={styles.contractPlayerInfo}>
+                <Text style={styles.contractPlayerName}>{player.name}</Text>
+                <Text style={styles.contractCurrentInfo}>
+                  Current: {formatWage(player.wage)}/week • Expires {player.contract_end}
+                </Text>
+              </View>
 
             {/* Contract End Date */}
             <View style={styles.contractSection}>
