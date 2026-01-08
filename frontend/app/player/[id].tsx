@@ -1156,7 +1156,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingBottom: 32,
-    maxHeight: '80%',
+    maxHeight: '75%',
   },
   contractModalHeader: {
     flexDirection: 'row',
