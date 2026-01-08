@@ -451,6 +451,48 @@ export default function MatchScreen() {
     );
   };
 
+  const handleLineupPlayerToggle = (playerId: string) => {
+    const isInSquad = currentSquad.some(p => p.id === playerId);
+    
+    if (isInSquad) {
+      // Move to bench
+      if (currentSquad.length <= 11) {
+        Alert.alert('Minimum Players', 'You must have at least 11 players in your starting lineup.');
+        return;
+      }
+      const player = currentSquad.find(p => p.id === playerId);
+      if (player) {
+        setCurrentSquad(prev => prev.filter(p => p.id !== playerId));
+        setBenchPlayers(prev => [...prev, player]);
+      }
+    } else {
+      // Move to squad
+      if (currentSquad.length >= 11) {
+        Alert.alert('Maximum Starters', 'You can only have 11 players in your starting lineup.');
+        return;
+      }
+      const player = benchPlayers.find(p => p.id === playerId);
+      if (player) {
+        setBenchPlayers(prev => prev.filter(p => p.id !== playerId));
+        setCurrentSquad(prev => [...prev, player]);
+      }
+    }
+  };
+
+  const handleConfirmLineup = () => {
+    if (currentSquad.length !== 11) {
+      Alert.alert('Invalid Lineup', `You must select exactly 11 players. Current: ${currentSquad.length}`);
+      return;
+    }
+    if (benchPlayers.length > 9) {
+      Alert.alert('Too Many Subs', 'You can have maximum 9 substitutes on the bench.');
+      return;
+    }
+    setLineupConfirmed(true);
+    setShowLineupModal(false);
+    Alert.alert('Team Selected', 'Your lineup is ready. You can now start the match!');
+  };
+
   const getEventIcon = (type: string) => {
     switch (type) {
       case 'GOAL': return 'football';
