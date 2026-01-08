@@ -1681,7 +1681,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: '#00ff88',
     marginHorizontal: 20,
-    marginTop: 20,
+    marginTop: 16,
     paddingVertical: 16,
     borderRadius: 8,
     gap: 8,
