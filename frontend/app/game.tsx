@@ -792,17 +792,25 @@ function TransfersTab() {
                     <Text style={styles.wageInputPrefix}>£</Text>
                     <TouchableOpacity
                       style={styles.wageButton}
-                      onPress={() => setProposedWage(Math.max(0, proposedWage - 1000))}
+                      onPress={() => {
+                        const newWage = Math.max(0, proposedWage - 1000);
+                        setProposedWage(newWage);
+                        setWageInputText(newWage.toLocaleString());
+                      }}
                     >
                       <Ionicons name="remove-circle-outline" size={28} color="#ff6b6b" />
                     </TouchableOpacity>
                     <View style={styles.wageValueContainer}>
                       <TextInput
                         style={styles.wageInput}
-                        value={proposedWage.toLocaleString()}
+                        value={wageInputText}
                         onChangeText={(text) => {
+                          setWageInputText(text);
                           const numericValue = parseInt(text.replace(/,/g, '')) || 0;
                           setProposedWage(numericValue);
+                        }}
+                        onBlur={() => {
+                          setWageInputText(proposedWage.toLocaleString());
                         }}
                         keyboardType="numeric"
                         selectTextOnFocus
@@ -812,7 +820,11 @@ function TransfersTab() {
                     </View>
                     <TouchableOpacity
                       style={styles.wageButton}
-                      onPress={() => setProposedWage(proposedWage + 1000)}
+                      onPress={() => {
+                        const newWage = proposedWage + 1000;
+                        setProposedWage(newWage);
+                        setWageInputText(newWage.toLocaleString());
+                      }}
                     >
                       <Ionicons name="add-circle-outline" size={28} color="#00ff88" />
                     </TouchableOpacity>
@@ -821,7 +833,10 @@ function TransfersTab() {
                   <View style={styles.wagePresets}>
                     <TouchableOpacity
                       style={styles.wagePresetButton}
-                      onPress={() => setProposedWage(selectedListing.player.wage)}
+                      onPress={() => {
+                        setProposedWage(selectedListing.player.wage);
+                        setWageInputText(selectedListing.player.wage.toLocaleString());
+                      }}
                     >
                       <Text style={styles.wagePresetText}>Current Wage</Text>
                     </TouchableOpacity>
