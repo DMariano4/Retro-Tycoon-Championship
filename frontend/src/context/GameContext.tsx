@@ -413,8 +413,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
     goalMinutes.forEach(minute => {
       const isHome = homeScored < homeGoals && (awayScored >= awayGoals || Math.random() > 0.5);
       const team = isHome ? homeTeam : awayTeam;
-      const attackers = team.squad.filter(p => p.position === 'FWD' || p.position === 'MID');
-      const scorer = attackers[Math.floor(Math.random() * attackers.length)];
+      // Get attackers (forwards and attacking midfielders)
+      const attackers = team.squad.filter(p => 
+        p.position === 'ST' || 
+        p.position === 'LW' || 
+        p.position === 'RW' || 
+        p.position === 'AM' ||
+        p.position === 'CM'
+      );
+      const scorer = attackers.length > 0 
+        ? attackers[Math.floor(Math.random() * attackers.length)]
+        : team.squad[Math.floor(Math.random() * Math.min(11, team.squad.length))]; // Fallback to first 11
 
       events.push({
         type: 'GOAL',
