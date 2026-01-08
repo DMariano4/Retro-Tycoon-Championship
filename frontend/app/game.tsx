@@ -527,6 +527,11 @@ function TransfersTab() {
     return `£${wage}`;
   };
 
+  // Convert attribute value from 0-100 to 1-20 scale for display
+  const convertTo20Scale = (value: number): number => {
+    return Math.max(1, Math.min(20, Math.round(value / 5)));
+  };
+
   const handleMakeOffer = async (listing: any) => {
     // Initialize modal with listing data
     setSelectedListing(listing);
