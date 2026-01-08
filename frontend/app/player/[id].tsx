@@ -198,20 +198,10 @@ export default function PlayerProfileScreen() {
     { season: '2022/23', apps: Math.floor(Math.random() * 28), goals: Math.floor(Math.random() * 10), assists: Math.floor(Math.random() * 6) },
   ];
 
-  const StatBar = ({ label, value }: { label: string; value: number }) => (
-    <View style={styles.statBarContainer}>
-      <View style={styles.statBarLabel}>
-        <Text style={styles.statBarLabelText}>{label}</Text>
-        <Text style={[styles.statBarValue, { color: getAbilityColor(value) }]}>{value}</Text>
-      </View>
-      <View style={styles.statBarTrack}>
-        <View 
-          style={[
-            styles.statBarFill, 
-            { width: `${value}%`, backgroundColor: getAbilityColor(value) }
-          ]} 
-        />
-      </View>
+  const StatItem = ({ label, value, color }: { label: string; value: number; color: string }) => (
+    <View style={styles.statItem}>
+      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={[styles.statValue, { color }]}>{value}</Text>
     </View>
   );
 
