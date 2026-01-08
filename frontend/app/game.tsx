@@ -778,7 +778,10 @@ function TransfersTab() {
                   <View style={styles.transferFeePresets}>
                     <TouchableOpacity
                       style={styles.transferFeePresetButton}
-                      onPress={() => setProposedFee(selectedListing.asking_price)}
+                      onPress={() => {
+                        setProposedFee(selectedListing.asking_price);
+                        setFeeInputText(selectedListing.asking_price.toLocaleString());
+                      }}
                     >
                       <Text style={styles.transferFeePresetText}>Asking Price</Text>
                     </TouchableOpacity>
