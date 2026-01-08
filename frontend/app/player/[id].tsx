@@ -635,24 +635,22 @@ export default function PlayerProfileScreen() {
                 <View style={styles.datePickerGroup}>
                   <Text style={styles.datePickerLabel}>Month</Text>
                   <View style={styles.pickerButtons}>
-                    {[1, 6, 12].map(month => (
-                      <TouchableOpacity
-                        key={month}
-                        style={[
-                          styles.pickerButton,
-                          contractMonth === month && styles.pickerButtonActive
-                        ]}
-                        onPress={() => setContractMonth(month)}
-                      >
-                        <Text style={[
-                          styles.pickerButtonText,
-                          contractMonth === month && styles.pickerButtonTextActive
-                        ]}>
-                          {month === 1 ? 'Jan' : month === 6 ? 'Jun' : 'Dec'}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
+                    <TouchableOpacity
+                      style={[
+                        styles.pickerButton,
+                        styles.pickerButtonActive
+                      ]}
+                      disabled
+                    >
+                      <Text style={[
+                        styles.pickerButtonText,
+                        styles.pickerButtonTextActive
+                      ]}>
+                        June
+                      </Text>
+                    </TouchableOpacity>
                   </View>
+                  <Text style={styles.datePickerNote}>Contracts end at season close</Text>
                 </View>
               </View>
             </View>
