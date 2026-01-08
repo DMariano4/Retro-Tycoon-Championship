@@ -375,6 +375,71 @@ export default function MatchScreen() {
   const handleFormationChange = (formation: string) => {
     setSelectedFormation(formation);
     updateFormation(formation, {});
+    
+    // Add tactical change event to commentary if match is live
+    if (matchState === 'live' || matchState === 'paused') {
+      const newEvent = {
+        type: 'TACTICAL_CHANGE',
+        minute: currentMinute,
+        team: managedTeam?.short_name || '',
+        player: '',
+        description: `Tactical change: Formation changed to ${formation}`
+      };
+      setEvents(prev => [...prev, newEvent].sort((a, b) => a.minute - b.minute));
+      setCurrentEventIndex(prev => prev + 1);
+    }
+    
+    setShowTacticsModal(false);
+    Alert.alert('Formation Changed', `Your team will now play in a ${formation} formation.`);
+  };
+
+  const handleSelectPlayerOut = (playerId: string) => {
+    setSelectedPlayerOut(playerId);
+  };
+
+  const handleMakeSubstitution = (playerInId: string) => {
+    if (!selectedPlayerOut) {
+      Alert.alert('Select Player', 'Please select a player to substitute off first.');
+      return;
+    }
+
+    if (substitutions.length >= 3) {
+      Alert.alert('Limit Reached', 'You have already made 3 substitutions.');
+      return;
+    }
+
+    const playerOut = currentSquad.find(p => p.id === selectedPlayerOut);
+    const playerIn = benchPlayers.find(p => p.id === playerInId);
+
+    if (!playerOut || !playerIn) return;
+
+    // Update squad and bench
+    const newSquad = currentSquad.map(p => p.id === selectedPlayerOut ? playerIn : p);
+    const newBench = benchPlayers.map(p => p.id === playerInId ? playerOut : p);
+    
+    setCurrentSquad(newSquad);
+    setBenchPlayers(newBench);
+    setSubstitutions(prev => [...prev, { out: playerOut.name, in: playerIn.name }]);
+    setSelectedPlayerOut(null);
+
+    // Add substitution event to commentary
+    if (matchState === 'live' || matchState === 'paused') {
+      const newEvent = {
+        type: 'SUBSTITUTION',
+        minute: currentMinute,
+        team: managedTeam?.short_name || '',
+        player: playerIn.name,
+        description: `Substitution: ${playerOut.name} OFF, ${playerIn.name} ON`
+      };
+      setEvents(prev => [...prev, newEvent].sort((a, b) => a.minute - b.minute));
+      setCurrentEventIndex(prev => prev + 1);
+    }
+
+    Alert.alert(
+      'Substitution Made',
+      `${playerOut.name} has been replaced by ${playerIn.name}`,
+      [{ text: 'OK', onPress: () => setShowSubstitutionModal(false) }]
+    );
   };
 
   const getEventIcon = (type: string) => {
