@@ -82,26 +82,29 @@ export default function PlayerProfileScreen() {
   };
 
   const getAbilityColor = (value: number) => {
-    if (value >= 80) return '#00ff88';
-    if (value >= 65) return '#4a9eff';
-    if (value >= 50) return '#ffcc00';
-    if (value >= 35) return '#ff9f43';
-    return '#ff6b6b';
+    // Colors based on 1-20 scale
+    if (value >= 16) return '#00ff88';  // Excellent (16-20)
+    if (value >= 13) return '#4a9eff';  // Good (13-15)
+    if (value >= 10) return '#ffcc00';  // Average (10-12)
+    if (value >= 7) return '#ff9f43';   // Below Average (7-9)
+    return '#ff6b6b';                    // Poor (1-6)
   };
 
   const getMoraleText = (morale: number) => {
-    if (morale >= 80) return 'Excellent';
-    if (morale >= 60) return 'Good';
-    if (morale >= 40) return 'Average';
-    if (morale >= 20) return 'Poor';
+    // Morale is on 1-20 scale
+    if (morale >= 16) return 'Excellent';
+    if (morale >= 12) return 'Good';
+    if (morale >= 8) return 'Average';
+    if (morale >= 4) return 'Poor';
     return 'Very Poor';
   };
 
   const getFormText = (form: number) => {
-    if (form >= 80) return 'Outstanding';
-    if (form >= 60) return 'Good';
-    if (form >= 40) return 'Average';
-    if (form >= 20) return 'Poor';
+    // Form is on 1-20 scale
+    if (form >= 16) return 'Outstanding';
+    if (form >= 12) return 'Good';
+    if (form >= 8) return 'Average';
+    if (form >= 4) return 'Poor';
     return 'Terrible';
   };
 
