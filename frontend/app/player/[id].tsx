@@ -211,15 +211,10 @@ export default function PlayerProfileScreen() {
     { season: '2022/23', apps: Math.floor(Math.random() * 28), goals: Math.floor(Math.random() * 10), assists: Math.floor(Math.random() * 6) },
   ];
 
-  // Convert attribute value from 0-100 to 1-20 scale for display
-  const convertTo20Scale = (value: number): number => {
-    return Math.max(1, Math.min(20, Math.round(value / 5)));
-  };
-
   const StatItem = ({ label, value, color }: { label: string; value: number; color: string }) => (
     <View style={styles.statItem}>
       <Text style={styles.statLabel}>{label}</Text>
-      <Text style={[styles.statValue, { color }]}>{convertTo20Scale(value)}</Text>
+      <Text style={[styles.statValue, { color }]}>{Math.round(value)}</Text>
     </View>
   );
 
@@ -312,7 +307,7 @@ export default function PlayerProfileScreen() {
             <Text style={styles.playerNationality}>{player.nationality} | {player.age} yrs</Text>
           </View>
           <View style={styles.overallRating}>
-            <Text style={styles.overallRatingValue}>{convertTo20Scale(player.current_ability)}</Text>
+            <Text style={styles.overallRatingValue}>{Math.round(player.current_ability)}</Text>
             <Text style={styles.overallRatingLabel}>OVR</Text>
           </View>
         </View>
@@ -320,7 +315,7 @@ export default function PlayerProfileScreen() {
         {/* Quick Info */}
         <View style={styles.quickInfoGrid}>
           <View style={styles.quickInfoItem}>
-            <Text style={styles.quickInfoValue}>{convertTo20Scale(player.potential_ability)}</Text>
+            <Text style={styles.quickInfoValue}>{Math.round(player.potential_ability)}</Text>
             <Text style={styles.quickInfoLabel}>Potential</Text>
           </View>
           <View style={styles.quickInfoItem}>
