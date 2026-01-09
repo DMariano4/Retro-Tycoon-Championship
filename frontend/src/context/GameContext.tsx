@@ -354,17 +354,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     if (!homeTeam || !awayTeam) return null;
 
-    // Simple match simulation
+    // Simple match simulation (ability values are 1-20 scale)
     const homeStrength = homeTeam.squad.reduce((sum, p) => sum + p.current_ability, 0) / homeTeam.squad.length;
     const awayStrength = awayTeam.squad.reduce((sum, p) => sum + p.current_ability, 0) / awayTeam.squad.length;
 
-    // Add home advantage
-    const homeAdvantage = 5;
+    // Add home advantage (adjusted for 1-20 scale)
+    const homeAdvantage = 1;
     const adjustedHome = homeStrength + homeAdvantage;
 
-    // Generate scores based on relative strengths
-    const homeGoals = Math.floor(Math.random() * 4 * (adjustedHome / 70));
-    const awayGoals = Math.floor(Math.random() * 4 * (awayStrength / 70));
+    // Generate scores based on relative strengths (calibrated for 1-20 scale)
+    // Average ability ~14 should give ~1-2 goals, higher ~17 gives 2-3 goals
+    const homeGoals = Math.floor(Math.random() * 4 * (adjustedHome / 14));
+    const awayGoals = Math.floor(Math.random() * 4 * (awayStrength / 14));
 
     // Generate match events
     const events = generateMatchEvents(homeTeam, awayTeam, homeGoals, awayGoals);
