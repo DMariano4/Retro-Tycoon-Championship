@@ -535,7 +535,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const makeTransferOffer = async (listingId: string, offerAmount: number): Promise<boolean> => {
+  const makeTransferOffer = async (listingId: string, offerAmount: number, proposedWage?: number): Promise<boolean> => {
     if (!currentSave) return false;
 
     const listing = currentSave.transfer_market.find(l => l.id === listingId);
@@ -548,15 +548,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const accepted = offerAmount >= listing.asking_price * 0.9;
 
     if (accepted) {
-      // Add player to our team
+      // Add player to our team with new wage if provided
       const managedTeam = getManagedTeam();
       if (!managedTeam) return false;
+
+      // Create player with updated wage if a new wage was negotiated
+      const transferredPlayer = proposedWage 
+        ? { ...listing.player, wage: proposedWage }
+        : listing.player;
 
       const updatedTeams = currentSave.teams.map(team => {
         if (team.id === currentSave.managed_team_id) {
           return {
             ...team,
-            squad: [...team.squad, listing.player]
+            squad: [...team.squad, transferredPlayer]
           };
         }
         // Remove from selling team
