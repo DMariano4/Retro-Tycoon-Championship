@@ -245,3 +245,30 @@ A retro-style football management mobile game inspired by early 2000s classics (
 
 ### Next Steps
 All 4 requested tasks completed successfully! App ready for preview and testing.
+
+### Recent Session Updates (January 2025 - Fork Session)
+
+**✅ Attribute Scale Refactor (P0 - COMPLETED)**
+- Removed all frontend `convertTo20Scale` conversion functions from:
+  - `frontend/app/game.tsx` (Squad list, Transfer Market)
+  - `frontend/app/player/[id].tsx` (Player Profile)
+- Backend already generates all player stats in native 1-20 scale
+- Updated all display color/text threshold functions for 1-20 scale:
+  - `getAbilityColor()` - now uses 16/13/10/7 thresholds
+  - `getMoraleText()` - now uses 16/12/8/4 thresholds
+  - `getFormText()` - now uses 16/12/8/4 thresholds
+- Calibrated match simulation engine for 1-20 scale:
+  - Home advantage reduced from 5 to 1
+  - Goal probability divisor changed from 70 to 14
+- Created shared utilities file: `frontend/src/utils/formatters.ts`
+
+**Verified Working Screens:**
+- Squad list: Shows correct 1-20 player abilities (11-17 range for Premier League)
+- Transfer Market: Shows correct OVR/PAC/STR stats
+- Player Profile: All attributes display correctly
+- Match simulation: Goals generate at realistic rates
+
+**Code Quality Improvements:**
+- Removed duplicate conversion functions across files
+- Created centralized utility functions for future use
+- Better code organization with shared formatters module
