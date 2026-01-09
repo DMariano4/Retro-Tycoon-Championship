@@ -251,11 +251,6 @@ function SquadTab({ team }: any) {
     return `£${value}`;
   };
 
-  // Convert attribute value from 0-100 to 1-20 scale for display
-  const convertTo20Scale = (value: number): number => {
-    return Math.max(1, Math.min(20, Math.round(value / 5)));
-  };
-
   const handlePlayerPress = (playerId: string) => {
     router.push(`/player/${playerId}`);
   };
@@ -289,7 +284,7 @@ function SquadTab({ team }: any) {
               </View>
               <View style={styles.playerStats}>
                 <View style={styles.abilityBadge}>
-                  <Text style={styles.abilityText}>{convertTo20Scale(player.current_ability)}</Text>
+                  <Text style={styles.abilityText}>{Math.round(player.current_ability)}</Text>
                 </View>
                 <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
@@ -527,11 +522,6 @@ function TransfersTab() {
     return `£${wage}`;
   };
 
-  // Convert attribute value from 0-100 to 1-20 scale for display
-  const convertTo20Scale = (value: number): number => {
-    return Math.max(1, Math.min(20, Math.round(value / 5)));
-  };
-
   const handleMakeOffer = async (listing: any) => {
     // Initialize modal with listing data
     setSelectedListing(listing);
@@ -684,9 +674,9 @@ function TransfersTab() {
                   {listing.player.position} | {listing.player.age} yrs | {listing.team_name}
                 </Text>
                 <View style={styles.transferStats}>
-                  <Text style={styles.transferStat}>OVR {convertTo20Scale(listing.player.current_ability)}</Text>
-                  <Text style={styles.transferStat}>PAC {convertTo20Scale(listing.player.pace)}</Text>
-                  <Text style={styles.transferStat}>STR {convertTo20Scale(listing.player.strength)}</Text>
+                  <Text style={styles.transferStat}>OVR {Math.round(listing.player.current_ability)}</Text>
+                  <Text style={styles.transferStat}>PAC {Math.round(listing.player.pace)}</Text>
+                  <Text style={styles.transferStat}>STR {Math.round(listing.player.strength)}</Text>
                 </View>
               </TouchableOpacity>
               <View style={styles.transferAction}>
