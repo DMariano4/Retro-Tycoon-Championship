@@ -7,7 +7,14 @@ import { simulateMatchEngine, MatchResult, MatchStats } from '../utils/matchEngi
 const getBackendUrl = () => {
   const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
                  process.env.EXPO_PUBLIC_BACKEND_URL || '';
-  if (typeof window !== 'undefined' && !envUrl) {
+  // For web, check if we're on localhost (dev) or preview (prod)
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    // If on localhost, call backend directly
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      return 'http://localhost:8001';
+    }
+    // If on preview domain, use relative URLs (ingress handles routing)
     return '';
   }
   return envUrl;
