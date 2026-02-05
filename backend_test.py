@@ -204,30 +204,26 @@ class BackendTester:
             return []
         
         results = []
-        league = self.game_save["leagues"][0]
         
-        # Find friendlies for our team
-        our_fixtures = [f for f in league["fixtures"] 
-                       if f["match_type"] == "friendly" and not f["played"] and
-                       (f["home_team_id"] == self.managed_team_id or f["away_team_id"] == self.managed_team_id)]
+        # Get all teams for simulation
+        teams = self.game_save["teams"]
+        if len(teams) < 4:
+            return []
         
-        # Simulate up to num_matches
-        for i in range(min(num_matches, len(our_fixtures))):
-            fixture = our_fixtures[i]
+        # Create match-ups between different teams
+        import random
+        random.seed(42)  # For reproducible results
+        
+        for i in range(num_matches):
+            # Pick two random teams
+            home_team = teams[i % len(teams)]
+            away_team = teams[(i + 1) % len(teams)]
             
-            # Get teams
-            home_team = next(t for t in self.game_save["teams"] if t["id"] == fixture["home_team_id"])
-            away_team = next(t for t in self.game_save["teams"] if t["id"] == fixture["away_team_id"])
-            
-            # Simulate match using frontend logic (since backend doesn't have match simulation endpoint)
-            # We'll create a mock result based on team strengths
+            # Calculate team strengths
             home_strength = sum(p["current_ability"] for p in home_team["squad"][:11]) / 11
             away_strength = sum(p["current_ability"] for p in away_team["squad"][:11]) / 11
             
-            # Simple Poisson-like distribution simulation
-            import random
-            random.seed(i)  # For reproducible results
-            
+            # Simple Poisson-like distribution simulation (mimicking the match engine)
             # Base expected goals (similar to match engine)
             home_xg = 1.4 + (home_strength - away_strength) / 20 + 0.3  # Home advantage
             away_xg = 1.1 + (away_strength - home_strength) / 20
@@ -236,12 +232,12 @@ class BackendTester:
             home_xg = max(0.3, min(3.5, home_xg))
             away_xg = max(0.3, min(3.5, away_xg))
             
-            # Generate goals (simplified Poisson)
-            home_goals = min(6, int(random.expovariate(1/home_xg)) if home_xg > 0 else 0)
-            away_goals = min(6, int(random.expovariate(1/away_xg)) if away_xg > 0 else 0)
+            # Generate goals using exponential distribution (approximates Poisson)
+            home_goals = min(6, max(0, int(random.expovariate(1/home_xg)) if home_xg > 0 else 0))
+            away_goals = min(6, max(0, int(random.expovariate(1/away_xg)) if away_xg > 0 else 0))
             
             result = {
-                "fixture_id": fixture["id"],
+                "fixture_id": f"test_fixture_{i}",
                 "home_team": home_team["name"],
                 "away_team": away_team["name"],
                 "home_score": home_goals,
