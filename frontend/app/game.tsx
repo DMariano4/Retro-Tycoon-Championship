@@ -65,20 +65,9 @@ export default function GameScreen() {
   };
 
   const handleNextWeek = () => {
-    Alert.alert(
-      'Advance Time',
-      'Play this week\'s matches and advance to the next week?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Continue',
-          onPress: () => {
-            advanceWeek();
-            router.push('/match');
-          }
-        }
-      ]
-    );
+    // Directly advance and navigate to match screen
+    advanceWeek();
+    router.push('/match');
   };
 
   const getUpcomingFixture = () => {
