@@ -356,15 +356,27 @@ export default function MatchScreen() {
       setMatchState('live');
       setActiveTab('pitch'); // Start with pitch view
       
-      // Initialize random stats
-      setMatchStats({
-        possession: { home: 48 + Math.floor(Math.random() * 4), away: 48 + Math.floor(Math.random() * 4) },
-        shots: { home: 0, away: 0 },
-        shotsOnTarget: { home: 0, away: 0 },
-        corners: { home: Math.floor(Math.random() * 6), away: Math.floor(Math.random() * 6) },
-        fouls: { home: 0, away: 0 },
-        yellowCards: { home: 0, away: 0 },
-      });
+      // Use real stats from the match engine
+      if (result.stats) {
+        setMatchStats({
+          possession: result.stats.possession,
+          shots: result.stats.shots,
+          shotsOnTarget: result.stats.shotsOnTarget,
+          corners: result.stats.corners,
+          fouls: result.stats.fouls,
+          yellowCards: result.stats.yellowCards,
+        });
+      } else {
+        // Fallback to calculated stats if not provided
+        setMatchStats({
+          possession: { home: 50, away: 50 },
+          shots: { home: 0, away: 0 },
+          shotsOnTarget: { home: 0, away: 0 },
+          corners: { home: 0, away: 0 },
+          fouls: { home: 0, away: 0 },
+          yellowCards: { home: 0, away: 0 },
+        });
+      }
     }
   };
 
