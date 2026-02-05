@@ -280,18 +280,6 @@ export default function MatchScreen() {
     }
   }, [managedTeam]);
 
-  // Show loading screen while checking
-  if (isChecking || !currentSave || !isReady) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00ff88" />
-          <Text style={styles.loadingText}>Loading match...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
   useEffect(() => {
     if (matchState === 'live' && events.length > 0) {
       const interval = setInterval(() => {
