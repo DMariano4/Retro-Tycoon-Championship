@@ -23,17 +23,33 @@ export default function GameScreen() {
   const { currentSave, getManagedTeam, getLeague, saveGame, advanceWeek } = useGame();
   const { user } = useAuth();
   const [isReady, setIsReady] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
 
-  useEffect(() => {
-    if (!currentSave) {
-      router.replace('/');
-    } else {
-      setIsReady(true);
-    }
-  }, [currentSave]);
+  useFocusEffect(
+    useCallback(() => {
+      // Small delay to ensure layout is mounted
+      const timer = setTimeout(() => {
+        if (!currentSave) {
+          router.replace('/');
+        } else {
+          setIsReady(true);
+        }
+        setIsChecking(false);
+      }, 100);
 
-  if (!currentSave || !isReady) {
-    return null;
+      return () => clearTimeout(timer);
+    }, [currentSave])
+  );
+
+  if (isChecking || !currentSave || !isReady) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00ff88" />
+          <Text style={styles.loadingText}>Loading game...</Text>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   const managedTeam = getManagedTeam();
