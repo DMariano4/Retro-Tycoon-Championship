@@ -366,6 +366,18 @@ export default function MatchScreen() {
     }
   }, [currentMinute, events, currentEventIndex]);
 
+  // Show loading screen while checking (after all hooks)
+  if (isChecking || !currentSave || !isReady) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00ff88" />
+          <Text style={styles.loadingText}>Loading match...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const handleStartMatch = async () => {
     if (!fixture) return;
     const result = await simulateMatch(fixture.id, speed);
