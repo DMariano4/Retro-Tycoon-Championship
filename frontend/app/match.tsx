@@ -235,6 +235,24 @@ export default function MatchScreen() {
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [lineupConfirmed, setLineupConfirmed] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const [isReady, setIsReady] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
+
+  // Guard: redirect if no game context
+  useFocusEffect(
+    useCallback(() => {
+      const timer = setTimeout(() => {
+        if (!currentSave) {
+          router.replace('/');
+        } else {
+          setIsReady(true);
+        }
+        setIsChecking(false);
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }, [currentSave])
+  );
 
   // Match statistics
   const [matchStats, setMatchStats] = useState({
@@ -261,6 +279,18 @@ export default function MatchScreen() {
       setBenchPlayers(managedTeam.squad.slice(11));
     }
   }, [managedTeam]);
+
+  // Show loading screen while checking
+  if (isChecking || !currentSave || !isReady) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#00ff88" />
+          <Text style={styles.loadingText}>Loading match...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   useEffect(() => {
     if (matchState === 'live' && events.length > 0) {
