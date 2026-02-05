@@ -274,9 +274,12 @@ export default function MatchScreen() {
   useEffect(() => {
     if (managedTeam) {
       setSelectedFormation(managedTeam.formation);
-      // Initialize current squad (first 11) and bench (rest)
-      setCurrentSquad(managedTeam.squad.slice(0, 11));
-      setBenchPlayers(managedTeam.squad.slice(11));
+      // Initialize current squad with proper starting XI based on formation
+      const startingXI = selectStartingXI(managedTeam.squad, managedTeam.formation || '4-4-2');
+      const startingIds = new Set(startingXI.map(p => p.id));
+      const bench = managedTeam.squad.filter(p => !startingIds.has(p.id));
+      setCurrentSquad(startingXI);
+      setBenchPlayers(bench);
     }
   }, [managedTeam]);
 
