@@ -355,23 +355,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     if (!homeTeam || !awayTeam) return null;
 
-    // Simple match simulation (ability values are 1-20 scale)
-    const homeStrength = homeTeam.squad.reduce((sum, p) => sum + p.current_ability, 0) / homeTeam.squad.length;
-    const awayStrength = awayTeam.squad.reduce((sum, p) => sum + p.current_ability, 0) / awayTeam.squad.length;
+    // Use the new CM01/02-inspired match engine
+    const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
 
-    // Add home advantage (adjusted for 1-20 scale)
-    const homeAdvantage = 1;
-    const adjustedHome = homeStrength + homeAdvantage;
-
-    // Generate scores based on relative strengths (calibrated for 1-20 scale)
-    // Average ability ~14 should give ~1-2 goals, higher ~17 gives 2-3 goals
-    const homeGoals = Math.floor(Math.random() * 4 * (adjustedHome / 14));
-    const awayGoals = Math.floor(Math.random() * 4 * (awayStrength / 14));
-
-    // Generate match events
-    const events = generateMatchEvents(homeTeam, awayTeam, homeGoals, awayGoals);
-
-    // Update fixture
+    // Update fixture with match result
     const updatedLeagues = currentSave.leagues.map(l => {
       if (l.id !== league.id) return l;
 
@@ -379,25 +366,59 @@ export function GameProvider({ children }: { children: ReactNode }) {
         if (f.id !== fixtureId) return f;
         return {
           ...f,
-          home_score: homeGoals,
-          away_score: awayGoals,
+          home_score: matchResult.homeScore,
+          away_score: matchResult.awayScore,
           played: true,
-          events
+          events: matchResult.events
         };
       });
 
       // Update table
-      const updatedTable = updateLeagueTable(l.table, fixture.home_team_id, fixture.away_team_id, homeGoals, awayGoals);
+      const updatedTable = updateLeagueTable(
+        l.table, 
+        fixture.home_team_id, 
+        fixture.away_team_id, 
+        matchResult.homeScore, 
+        matchResult.awayScore
+      );
 
       return { ...l, fixtures: updatedFixtures, table: updatedTable };
     });
 
-    setCurrentSave({ ...currentSave, leagues: updatedLeagues });
+    // Update player form based on match performance
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
+      
+      const updatedSquad = team.squad.map(player => {
+        const rating = matchResult.playerRatings[player.id];
+        if (rating === undefined) return player;
+        
+        // Adjust form based on match rating (rating 7+ improves form, <6 decreases)
+        const formChange = (rating - 6.5) * 0.5;
+        const newForm = Math.max(1, Math.min(20, player.form + formChange));
+        
+        // Slight fitness decrease after match (0.5-1.5)
+        const fitnessLoss = 0.5 + Math.random();
+        const newFitness = Math.max(1, player.fitness - fitnessLoss);
+        
+        return {
+          ...player,
+          form: Math.round(newForm * 10) / 10,
+          fitness: Math.round(newFitness * 10) / 10,
+        };
+      });
+      
+      return { ...team, squad: updatedSquad };
+    });
+
+    setCurrentSave({ ...currentSave, leagues: updatedLeagues, teams: updatedTeams });
 
     return {
-      homeScore: homeGoals,
-      awayScore: awayGoals,
-      events
+      homeScore: matchResult.homeScore,
+      awayScore: matchResult.awayScore,
+      events: matchResult.events,
+      stats: matchResult.stats,
+      playerRatings: matchResult.playerRatings,
     };
   };
 
