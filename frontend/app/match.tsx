@@ -1990,4 +1990,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#00ff88',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 16,
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#6a8aaa',
+    fontWeight: '600',
+  },
 });
