@@ -22,9 +22,17 @@ export default function GameScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const { currentSave, getManagedTeam, getLeague, saveGame, advanceWeek } = useGame();
   const { user } = useAuth();
+  const [isReady, setIsReady] = useState(false);
 
-  if (!currentSave) {
-    router.replace('/');
+  useEffect(() => {
+    if (!currentSave) {
+      router.replace('/');
+    } else {
+      setIsReady(true);
+    }
+  }, [currentSave]);
+
+  if (!currentSave || !isReady) {
     return null;
   }
 
