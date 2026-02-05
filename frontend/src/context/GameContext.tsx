@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, ReactNode, Platform } from 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
+import { simulateMatchEngine, MatchResult, MatchStats } from '../utils/matchEngine';
 
 const getBackendUrl = () => {
   const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
