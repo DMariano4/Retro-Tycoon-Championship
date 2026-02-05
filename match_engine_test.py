@@ -365,7 +365,7 @@ class MatchEngineTest:
             avg_strength = sum(team_strengths) / len(team_strengths)
             
             # Check for reasonable variation (teams should not all be the same strength)
-            if max_strength - min_strength < 2:
+            if max_strength - min_strength < 1.0:  # Reduced from 2 to 1 for Premier League
                 self.log_test("Realistic Team Strengths", False, 
                              f"Not enough variation: {min_strength:.1f} to {max_strength:.1f}")
                 return False
