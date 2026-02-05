@@ -1,15 +1,15 @@
-import React, { createContext, useContext, useState, ReactNode, Platform } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
-import { Platform as RNPlatform } from 'react-native';
 import { simulateMatchEngine, MatchResult, MatchStats } from '../utils/matchEngine';
 
 const getBackendUrl = () => {
   const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
                  process.env.EXPO_PUBLIC_BACKEND_URL || '';
   // For web, check if we're on localhost (dev) or preview (prod)
-  if (RNPlatform?.OS === 'web' && typeof window !== 'undefined') {
+  if (Platform?.OS === 'web' && typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     // If on localhost, call backend directly
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
