@@ -10,6 +10,75 @@ const { width } = Dimensions.get('window');
 type MatchState = 'pre' | 'live' | 'paused' | 'post';
 type MatchTab = 'pitch' | 'commentary' | 'stats';
 
+// Formation requirements - what positions each formation needs
+const FORMATION_REQUIREMENTS: Record<string, Record<string, number>> = {
+  '4-4-2': { GK: 1, CB: 2, LB: 1, RB: 1, LM: 1, CM: 2, RM: 1, ST: 2 },
+  '4-3-3': { GK: 1, CB: 2, LB: 1, RB: 1, CM: 3, LW: 1, ST: 1, RW: 1 },
+  '3-5-2': { GK: 1, CB: 3, LM: 1, CM: 3, RM: 1, ST: 2 },
+  '4-5-1': { GK: 1, CB: 2, LB: 1, RB: 1, LM: 1, CM: 2, RM: 1, AM: 1, ST: 1 },
+  '5-3-2': { GK: 1, CB: 3, LB: 1, RB: 1, CM: 3, ST: 2 },
+  '4-2-3-1': { GK: 1, CB: 2, LB: 1, RB: 1, DM: 2, LW: 1, AM: 1, RW: 1, ST: 1 },
+  '3-4-3': { GK: 1, CB: 3, LM: 1, CM: 2, RM: 1, LW: 1, ST: 1, RW: 1 },
+  '5-4-1': { GK: 1, CB: 3, LB: 1, RB: 1, LM: 1, CM: 2, RM: 1, ST: 1 },
+};
+
+// Position compatibility - which positions can fill which slots
+const POSITION_COMPATIBILITY: Record<string, string[]> = {
+  GK: ['GK'],
+  CB: ['CB'],
+  LB: ['LB', 'LWB', 'CB'],
+  RB: ['RB', 'RWB', 'CB'],
+  LWB: ['LWB', 'LB', 'LM'],
+  RWB: ['RWB', 'RB', 'RM'],
+  DM: ['DM', 'CM'],
+  CM: ['CM', 'DM', 'AM'],
+  LM: ['LM', 'LW', 'LB'],
+  RM: ['RM', 'RW', 'RB'],
+  AM: ['AM', 'CM', 'LW', 'RW'],
+  LW: ['LW', 'LM', 'AM', 'ST'],
+  RW: ['RW', 'RM', 'AM', 'ST'],
+  ST: ['ST', 'AM', 'LW', 'RW'],
+};
+
+/**
+ * Select best starting XI based on formation requirements
+ */
+function selectStartingXI(squad: Player[], formation: string): Player[] {
+  const requirements = FORMATION_REQUIREMENTS[formation] || FORMATION_REQUIREMENTS['4-4-2'];
+  const selected: Player[] = [];
+  const usedPlayerIds = new Set<string>();
+  
+  // Sort squad by ability (best players first for each selection)
+  const sortedSquad = [...squad].sort((a, b) => b.current_ability - a.current_ability);
+  
+  // Fill each required position
+  for (const [requiredPosition, count] of Object.entries(requirements)) {
+    const compatiblePositions = POSITION_COMPATIBILITY[requiredPosition] || [requiredPosition];
+    
+    for (let i = 0; i < count; i++) {
+      // Find best available player for this position
+      const bestPlayer = sortedSquad.find(player => 
+        !usedPlayerIds.has(player.id) && 
+        compatiblePositions.includes(player.position)
+      );
+      
+      if (bestPlayer) {
+        selected.push(bestPlayer);
+        usedPlayerIds.add(bestPlayer.id);
+      } else {
+        // Fallback: pick any available player (shouldn't happen with proper squad)
+        const anyPlayer = sortedSquad.find(player => !usedPlayerIds.has(player.id));
+        if (anyPlayer) {
+          selected.push(anyPlayer);
+          usedPlayerIds.add(anyPlayer.id);
+        }
+      }
+    }
+  }
+  
+  return selected;
+}
+
 // Formation positions mapping (reusing from tactics-advanced)
 const FORMATION_POSITIONS: Record<string, { position: string; x: number; y: number }[]> = {
   '4-4-2': [
