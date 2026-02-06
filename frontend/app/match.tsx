@@ -42,6 +42,7 @@ const POSITION_COMPATIBILITY: Record<string, string[]> = {
 
 /**
  * Select best starting XI based on formation requirements
+ * Prioritizes natural positions before using backup options
  */
 function selectStartingXI(squad: Player[], formation: string): Player[] {
   const requirements = FORMATION_REQUIREMENTS[formation] || FORMATION_REQUIREMENTS['4-4-2'];
@@ -51,30 +52,91 @@ function selectStartingXI(squad: Player[], formation: string): Player[] {
   // Sort squad by ability (best players first for each selection)
   const sortedSquad = [...squad].sort((a, b) => b.current_ability - a.current_ability);
   
-  // Fill each required position
-  for (const [requiredPosition, count] of Object.entries(requirements)) {
-    const compatiblePositions = POSITION_COMPATIBILITY[requiredPosition] || [requiredPosition];
+  // Two-pass approach: First fill with natural positions, then with backups
+  const positionsToFill: { position: string; count: number }[] = [];
+  for (const [pos, count] of Object.entries(requirements)) {
+    positionsToFill.push({ position: pos, count });
+  }
+  
+  // Pass 1: Try to fill each position with natural fit only
+  for (const { position: requiredPosition, count } of positionsToFill) {
+    const naturalPositions = [requiredPosition]; // Only the exact position
     
     for (let i = 0; i < count; i++) {
-      // Find best available player for this position
       const bestPlayer = sortedSquad.find(player => 
         !usedPlayerIds.has(player.id) && 
-        compatiblePositions.includes(player.position)
+        naturalPositions.includes(player.position)
       );
       
       if (bestPlayer) {
         selected.push(bestPlayer);
         usedPlayerIds.add(bestPlayer.id);
-      } else {
-        // Fallback: pick any available player (shouldn't happen with proper squad)
-        const anyPlayer = sortedSquad.find(player => !usedPlayerIds.has(player.id));
-        if (anyPlayer) {
-          selected.push(anyPlayer);
-          usedPlayerIds.add(anyPlayer.id);
+      }
+    }
+  }
+  
+  // Pass 2: Fill remaining slots with compatible positions
+  const remainingSlots = 11 - selected.length;
+  if (remainingSlots > 0) {
+    // Calculate which positions still need filling
+    const filledCounts: Record<string, number> = {};
+    selected.forEach(p => {
+      // Map player position to formation slot
+      for (const { position } of positionsToFill) {
+        const compat = POSITION_COMPATIBILITY[position] || [position];
+        if (compat.includes(p.position) && (filledCounts[position] || 0) < (requirements[position] || 0)) {
+          filledCounts[position] = (filledCounts[position] || 0) + 1;
+          break;
+        }
+      }
+    });
+    
+    // Fill missing positions with compatible players
+    for (const { position: requiredPosition, count } of positionsToFill) {
+      const currentCount = filledCounts[requiredPosition] || 0;
+      const needed = count - currentCount;
+      
+      if (needed > 0) {
+        const compatiblePositions = POSITION_COMPATIBILITY[requiredPosition] || [requiredPosition];
+        
+        for (let i = 0; i < needed && selected.length < 11; i++) {
+          const bestPlayer = sortedSquad.find(player => 
+            !usedPlayerIds.has(player.id) && 
+            compatiblePositions.includes(player.position)
+          );
+          
+          if (bestPlayer) {
+            selected.push(bestPlayer);
+            usedPlayerIds.add(bestPlayer.id);
+          }
         }
       }
     }
   }
+  
+  // Pass 3: If still under 11, fill with any remaining players
+  while (selected.length < 11) {
+    const anyPlayer = sortedSquad.find(player => !usedPlayerIds.has(player.id));
+    if (anyPlayer) {
+      selected.push(anyPlayer);
+      usedPlayerIds.add(anyPlayer.id);
+    } else {
+      break;
+    }
+  }
+  
+  // Sort final selection by position for display (GK -> DEF -> MID -> FWD)
+  const positionOrder: Record<string, number> = {
+    'GK': 0, 'CB': 1, 'LB': 2, 'RB': 3, 'LWB': 2, 'RWB': 3,
+    'DM': 4, 'CM': 5, 'LM': 6, 'RM': 7, 'AM': 8,
+    'LW': 9, 'RW': 10, 'ST': 11
+  };
+  
+  selected.sort((a, b) => {
+    const orderA = positionOrder[a.position] ?? 6;
+    const orderB = positionOrder[b.position] ?? 6;
+    return orderA - orderB;
+  });
   
   return selected;
 }
