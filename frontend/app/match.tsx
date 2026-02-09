@@ -629,32 +629,68 @@ export default function MatchScreen() {
     );
   };
 
+  // Handle player selection for swap
+  const handlePlayerSelect = (playerId: string, isFromStarting: boolean) => {
+    if (selectedForSwap === null) {
+      // First selection - mark this player
+      setSelectedForSwap(playerId);
+      setSwapMode(isFromStarting ? 'starting' : 'bench');
+    } else if (selectedForSwap === playerId) {
+      // Deselect if tapping same player
+      setSelectedForSwap(null);
+      setSwapMode(null);
+    } else {
+      // Second selection - perform swap
+      const fromStarting = swapMode === 'starting';
+      const toStarting = isFromStarting;
+      
+      if (fromStarting && toStarting) {
+        // Swap positions within starting XI
+        const idx1 = currentSquad.findIndex(p => p.id === selectedForSwap);
+        const idx2 = currentSquad.findIndex(p => p.id === playerId);
+        if (idx1 !== -1 && idx2 !== -1) {
+          const newSquad = [...currentSquad];
+          [newSquad[idx1], newSquad[idx2]] = [newSquad[idx2], newSquad[idx1]];
+          setCurrentSquad(newSquad);
+        }
+      } else if (!fromStarting && !toStarting) {
+        // Swap within bench
+        const idx1 = benchPlayers.findIndex(p => p.id === selectedForSwap);
+        const idx2 = benchPlayers.findIndex(p => p.id === playerId);
+        if (idx1 !== -1 && idx2 !== -1) {
+          const newBench = [...benchPlayers];
+          [newBench[idx1], newBench[idx2]] = [newBench[idx2], newBench[idx1]];
+          setBenchPlayers(newBench);
+        }
+      } else {
+        // Swap between starting and bench
+        const startingPlayer = fromStarting 
+          ? currentSquad.find(p => p.id === selectedForSwap)
+          : currentSquad.find(p => p.id === playerId);
+        const benchPlayer = fromStarting 
+          ? benchPlayers.find(p => p.id === playerId)
+          : benchPlayers.find(p => p.id === selectedForSwap);
+          
+        if (startingPlayer && benchPlayer) {
+          setCurrentSquad(prev => prev.map(p => 
+            p.id === startingPlayer.id ? benchPlayer : p
+          ));
+          setBenchPlayers(prev => prev.map(p => 
+            p.id === benchPlayer.id ? startingPlayer : p
+          ));
+        }
+      }
+      
+      // Reset selection
+      setSelectedForSwap(null);
+      setSwapMode(null);
+    }
+  };
+
+  // Legacy function for backwards compatibility
   const handleLineupPlayerToggle = (playerId: string) => {
     const isInSquad = currentSquad.some(p => p.id === playerId);
-    
-    if (isInSquad) {
-      // Move to bench
-      if (currentSquad.length <= 11) {
-        Alert.alert('Minimum Players', 'You must have at least 11 players in your starting lineup.');
-        return;
-      }
-      const player = currentSquad.find(p => p.id === playerId);
-      if (player) {
-        setCurrentSquad(prev => prev.filter(p => p.id !== playerId));
-        setBenchPlayers(prev => [...prev, player]);
-      }
-    } else {
-      // Move to squad
-      if (currentSquad.length >= 11) {
-        Alert.alert('Maximum Starters', 'You can only have 11 players in your starting lineup.');
-        return;
-      }
-      const player = benchPlayers.find(p => p.id === playerId);
-      if (player) {
-        setBenchPlayers(prev => prev.filter(p => p.id !== playerId));
-        setCurrentSquad(prev => [...prev, player]);
-      }
-    }
+    handlePlayerSelect(playerId, isInSquad);
   };
 
   const handleConfirmLineup = () => {
