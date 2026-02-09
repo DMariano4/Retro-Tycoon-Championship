@@ -365,6 +365,8 @@ export default function MatchScreen() {
   const [selectedPlayerOut, setSelectedPlayerOut] = useState<string | null>(null);
   const [showLineupModal, setShowLineupModal] = useState(false);
   const [lineupConfirmed, setLineupConfirmed] = useState(false);
+  const [selectedForSwap, setSelectedForSwap] = useState<string | null>(null);
+  const [swapMode, setSwapMode] = useState<'starting' | 'bench' | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
