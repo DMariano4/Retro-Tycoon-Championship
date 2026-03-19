@@ -704,6 +704,7 @@ export default function MatchScreen() {
   };
 
   const handleConfirmLineup = () => {
+    console.log('handleConfirmLineup called', { squadLength: currentSquad.length, benchLength: benchPlayers.length });
     if (currentSquad.length !== 11) {
       Alert.alert('Invalid Lineup', `You must select exactly 11 players. Current: ${currentSquad.length}`);
       return;
@@ -712,9 +713,9 @@ export default function MatchScreen() {
       Alert.alert('Too Many Subs', 'You can have maximum 9 substitutes on the bench.');
       return;
     }
+    console.log('Setting lineup confirmed and closing modal');
     setLineupConfirmed(true);
     setShowLineupModal(false);
-    Alert.alert('Team Selected', 'Your lineup is ready. You can now start the match!');
   };
 
   const getEventIcon = (type: string) => {
