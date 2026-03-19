@@ -7,6 +7,13 @@
  * - Position-Based Strength (Attack/Midfield/Defense ratings)
  * - Home Advantage
  * - Starting XI consideration
+ * 
+ * Phase 2 Features:
+ * - Enhanced Player Match Ratings (position-based, event-driven)
+ * - Match Momentum System (goals shift momentum)
+ * - Tactical Matchups (formation counters)
+ * - Key Player Moments (star player clutch bonus)
+ * - Substitution Impact (fresh legs boost)
  */
 
 import { Player, Team } from '../context/GameContext';
@@ -49,6 +56,7 @@ export interface MatchResult {
   events: MatchEvent[];
   stats: MatchStats;
   playerRatings: { [playerId: string]: number };
+  momentum: MomentumHistory;
 }
 
 export interface MatchStats {
@@ -59,6 +67,28 @@ export interface MatchStats {
   fouls: { home: number; away: number };
   yellowCards: { home: number; away: number };
   offsides: { home: number; away: number };
+}
+
+// Phase 2: New interfaces
+export interface MomentumHistory {
+  timeline: { minute: number; homeValue: number; awayValue: number }[];
+  finalHome: number;
+  finalAway: number;
+}
+
+export interface PlayerMatchPerformance {
+  playerId: string;
+  playerName: string;
+  position: string;
+  goals: number;
+  assists: number;
+  shotsOnTarget: number;
+  shotsMissed: number;
+  tackles: number;
+  fouls: number;
+  yellowCards: number;
+  saves: number;
+  rating: number;
 }
 
 // ============================================
