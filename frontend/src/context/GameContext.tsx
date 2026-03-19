@@ -69,6 +69,7 @@ export interface Player {
   morale: number;
   fitness: number;
   form: number;
+  last_contract_renewal?: number;
 }
 
 export interface Team {
@@ -175,10 +176,10 @@ interface GameContextType {
   getCloudSaves: () => Promise<any[]>;
   getManagedTeam: () => Team | null;
   getLeague: () => League | null;
-  updateFormation: (formation: string, positions: Record<string, string>) => void;
+  updateFormation: (formation: string, positions: Record<string, any>) => void;
   advanceWeek: () => void;
   simulateMatch: (fixtureId: string, speed: number) => Promise<any>;
-  makeTransferOffer: (listingId: string, offerAmount: number) => Promise<boolean>;
+  makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
 }
 
@@ -427,6 +428,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       events: matchResult.events,
       stats: matchResult.stats,
       playerRatings: matchResult.playerRatings,
+      momentum: matchResult.momentum,
     };
   };
 

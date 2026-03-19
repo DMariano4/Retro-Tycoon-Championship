@@ -367,6 +367,8 @@ export default function MatchScreen() {
   const [lineupConfirmed, setLineupConfirmed] = useState(false);
   const [selectedForSwap, setSelectedForSwap] = useState<string | null>(null);
   const [swapMode, setSwapMode] = useState<'starting' | 'bench' | null>(null);
+  const [playerRatings, setPlayerRatings] = useState<{ [playerId: string]: number }>({});
+  const [momentumData, setMomentumData] = useState<{ timeline: { minute: number; homeValue: number; awayValue: number }[]; finalHome: number; finalAway: number } | null>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -521,6 +523,14 @@ export default function MatchScreen() {
       setEvents(result.events);
       setMatchState('live');
       setActiveTab('pitch'); // Start with pitch view
+      
+      // Phase 2: Store player ratings and momentum data
+      if (result.playerRatings) {
+        setPlayerRatings(result.playerRatings);
+      }
+      if (result.momentum) {
+        setMomentumData(result.momentum);
+      }
       
       // Use real stats from the match engine
       if (result.stats) {
@@ -1109,6 +1119,92 @@ export default function MatchScreen() {
                       }]} />
                     </View>
                   </View>
+
+                  {/* Phase 2: Momentum Display */}
+                  {momentumData && matchState === 'post' && (
+                    <View style={styles.momentumSection}>
+                      <Text style={styles.sectionTitle}>MATCH MOMENTUM</Text>
+                      <View style={styles.momentumBar}>
+                        <View style={styles.momentumLabels}>
+                          <Text style={styles.momentumLabelHome}>{homeTeam?.short_name}</Text>
+                          <Text style={styles.momentumLabelAway}>{awayTeam?.short_name}</Text>
+                        </View>
+                        <View style={styles.momentumBarTrack}>
+                          <View style={[styles.momentumBarFill, { 
+                            width: `${momentumData.finalHome}%`,
+                            backgroundColor: '#4a9eff' 
+                          }]} />
+                        </View>
+                        <View style={styles.momentumBarTrack}>
+                          <View style={[styles.momentumBarFill, { 
+                            width: `${momentumData.finalAway}%`,
+                            backgroundColor: '#ff6b6b' 
+                          }]} />
+                        </View>
+                      </View>
+                      {/* Mini momentum timeline */}
+                      <View style={styles.momentumTimeline}>
+                        {momentumData.timeline.filter((_, i) => i % 2 === 0).map((point, idx) => (
+                          <View key={idx} style={styles.momentumPoint}>
+                            <View style={[styles.momentumDotHome, { 
+                              height: Math.max(2, (point.homeValue / 85) * 20),
+                            }]} />
+                            <Text style={styles.momentumMinute}>{point.minute}'</Text>
+                            <View style={[styles.momentumDotAway, { 
+                              height: Math.max(2, (point.awayValue / 85) * 20),
+                            }]} />
+                          </View>
+                        ))}
+                      </View>
+                    </View>
+                  )}
+
+                  {/* Phase 2: Player Ratings */}
+                  {matchState === 'post' && Object.keys(playerRatings).length > 0 && (
+                    <View style={styles.ratingsSection}>
+                      <Text style={styles.sectionTitle}>PLAYER RATINGS</Text>
+                      
+                      {/* Home Team Ratings */}
+                      <Text style={styles.ratingsTeamName}>{homeTeam?.name}</Text>
+                      {homeTeam?.squad.slice(0, 11).map(player => {
+                        const rating = playerRatings[player.id];
+                        if (rating === undefined) return null;
+                        return (
+                          <View key={player.id} style={styles.ratingRow}>
+                            <Text style={styles.ratingPosition}>{player.position}</Text>
+                            <Text style={styles.ratingPlayerName} numberOfLines={1}>{player.name}</Text>
+                            <View style={[styles.ratingBadge, { 
+                              backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
+                            }]}>
+                              <Text style={[styles.ratingValue, {
+                                color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
+                              }]}>{rating.toFixed(1)}</Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                      
+                      {/* Away Team Ratings */}
+                      <Text style={[styles.ratingsTeamName, { marginTop: 16 }]}>{awayTeam?.name}</Text>
+                      {awayTeam?.squad.slice(0, 11).map(player => {
+                        const rating = playerRatings[player.id];
+                        if (rating === undefined) return null;
+                        return (
+                          <View key={player.id} style={styles.ratingRow}>
+                            <Text style={styles.ratingPosition}>{player.position}</Text>
+                            <Text style={styles.ratingPlayerName} numberOfLines={1}>{player.name}</Text>
+                            <View style={[styles.ratingBadge, { 
+                              backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
+                            }]}>
+                              <Text style={[styles.ratingValue, {
+                                color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
+                              }]}>{rating.toFixed(1)}</Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               </ScrollView>
             )}
@@ -2189,5 +2285,119 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#6a8aaa',
+  },
+  // Phase 2 Styles
+  momentumSection: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#1a3a5c',
+  },
+  sectionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#00ff88',
+    letterSpacing: 1,
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  momentumBar: {
+    marginBottom: 12,
+  },
+  momentumLabels: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 6,
+  },
+  momentumLabelHome: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4a9eff',
+  },
+  momentumLabelAway: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#ff6b6b',
+  },
+  momentumBarTrack: {
+    height: 6,
+    backgroundColor: '#0d2137',
+    borderRadius: 3,
+    marginBottom: 4,
+    overflow: 'hidden',
+  },
+  momentumBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  momentumTimeline: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    marginTop: 8,
+  },
+  momentumPoint: {
+    alignItems: 'center',
+    gap: 2,
+  },
+  momentumDotHome: {
+    width: 4,
+    backgroundColor: '#4a9eff',
+    borderRadius: 2,
+  },
+  momentumMinute: {
+    fontSize: 8,
+    color: '#4a6a8a',
+  },
+  momentumDotAway: {
+    width: 4,
+    backgroundColor: '#ff6b6b',
+    borderRadius: 2,
+  },
+  ratingsSection: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#1a3a5c',
+  },
+  ratingsTeamName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8ab4d8',
+    marginBottom: 8,
+    marginTop: 4,
+  },
+  ratingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#0d213720',
+  },
+  ratingPosition: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    width: 28,
+    textAlign: 'center',
+  },
+  ratingPlayerName: {
+    flex: 1,
+    fontSize: 12,
+    color: '#d0e8ff',
+    marginLeft: 8,
+  },
+  ratingBadge: {
+    width: 36,
+    height: 24,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingValue: {
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

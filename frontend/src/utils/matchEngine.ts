@@ -1165,5 +1165,4 @@ export function simulateMatchEngine(
   };
 }
 
-// Export types for use in components
-export type { TeamTactics, TeamRatings, MatchEvent, MatchResult, MatchStats, MomentumHistory, PlayerMatchPerformance };
+// Types are already exported at their definitions above
