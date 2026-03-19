@@ -1175,3 +1175,154 @@ export function simulateMatchEngine(
 }
 
 // Types are already exported at their definitions above
+
+// ============================================
+// LIGHTWEIGHT ENGINE (AI vs AI)
+// ============================================
+
+/**
+ * Lightweight result for AI vs AI matches.
+ * No events, no commentary, no momentum — just the numbers.
+ */
+export interface LiteMatchResult {
+  homeScore: number;
+  awayScore: number;
+  stats: MatchStats;
+  playerRatings: { [playerId: string]: number };
+  scorers: { playerId: string; playerName: string; team: 'home' | 'away'; minute: number }[];
+}
+
+/**
+ * Fast AI vs AI match simulation.
+ * Uses the same core model (xG, Poisson, tactical matchups, form/fitness)
+ * but skips event generation, descriptions, momentum tracking.
+ * ~5x faster than the full engine.
+ */
+export function simulateMatchLite(homeTeam: Team, awayTeam: Team): LiteMatchResult {
+  // --- Same core calculations as full engine ---
+  const homeTactics = getTeamTactics(homeTeam);
+  const awayTactics = getTeamTactics(awayTeam);
+
+  let homeRatings = applyFormAndFitness(calculateTeamRatings(homeTeam), homeTeam);
+  let awayRatings = applyFormAndFitness(calculateTeamRatings(awayTeam), awayTeam);
+
+  // Tactical matchup bonuses
+  const homeTacticalBonus = calculateTacticalMatchup(homeTactics.formation, awayTactics.formation);
+  const awayTacticalBonus = calculateTacticalMatchup(awayTactics.formation, homeTactics.formation);
+  homeRatings.attack *= (1 + homeTacticalBonus);
+  homeRatings.midfield *= (1 + homeTacticalBonus * 0.5);
+  awayRatings.attack *= (1 + awayTacticalBonus);
+  awayRatings.midfield *= (1 + awayTacticalBonus * 0.5);
+
+  // Mentality matchup bonuses
+  const homeMentalityBonus = calculateMentalityMatchup(homeTactics.mentality, awayTactics.mentality, homeTactics.counterAttack);
+  const awayMentalityBonus = calculateMentalityMatchup(awayTactics.mentality, homeTactics.mentality, awayTactics.counterAttack);
+  homeRatings.attack *= (1 + homeMentalityBonus);
+  awayRatings.attack *= (1 + awayMentalityBonus);
+
+  // AI subs happen around minute 65
+  homeRatings = applySubstitutionImpact(homeRatings, 65);
+  awayRatings = applySubstitutionImpact(awayRatings, 65);
+
+  // xG & score generation (identical to full engine)
+  const homeXG = calculateExpectedGoals(homeTeam, awayTeam, homeRatings, awayRatings, true);
+  const awayXG = calculateExpectedGoals(awayTeam, homeTeam, awayRatings, homeRatings, false);
+
+  const homeGoals = poissonRandom(homeXG);
+  const awayGoals = poissonRandom(awayXG);
+
+  // --- Lightweight stats (no event loop) ---
+  const homeShots = Math.max(homeGoals + 1, Math.floor(homeXG * 4 + Math.random() * 4));
+  const awayShots = Math.max(awayGoals + 1, Math.floor(awayXG * 4 + Math.random() * 4));
+  const homeShotsOnTarget = Math.max(homeGoals, homeGoals + Math.floor((homeShots - homeGoals) * 0.35));
+  const awayShotsOnTarget = Math.max(awayGoals, awayGoals + Math.floor((awayShots - awayGoals) * 0.35));
+
+  const homePoss = Math.round(45 + (homeRatings.midfield - awayRatings.midfield) * 2 + (Math.random() * 10 - 5));
+  const awayPoss = 100 - homePoss;
+
+  const homeTacklingMod = TACKLING_MODIFIERS[homeTactics.tackling] || TACKLING_MODIFIERS['normal'];
+  const awayTacklingMod = TACKLING_MODIFIERS[awayTactics.tackling] || TACKLING_MODIFIERS['normal'];
+  const homeFouls = Math.round((8 + Math.random() * 8) * homeTacklingMod.fouls);
+  const awayFouls = Math.round((8 + Math.random() * 8) * awayTacklingMod.fouls);
+  const homeYellows = Math.floor(homeFouls * 0.15 + Math.random());
+  const awayYellows = Math.floor(awayFouls * 0.15 + Math.random());
+  const homeCorners = Math.floor(homeShots * 0.4 + Math.random() * 3);
+  const awayCorners = Math.floor(awayShots * 0.4 + Math.random() * 3);
+  const homeOffsides = homeTactics.offsideTrap ? Math.floor(2 + Math.random() * 4) : Math.floor(Math.random() * 3);
+  const awayOffsides = awayTactics.offsideTrap ? Math.floor(2 + Math.random() * 4) : Math.floor(Math.random() * 3);
+
+  const stats: MatchStats = {
+    possession: { home: Math.max(25, Math.min(75, homePoss)), away: Math.max(25, Math.min(75, awayPoss)) },
+    shots: { home: homeShots, away: awayShots },
+    shotsOnTarget: { home: homeShotsOnTarget, away: awayShotsOnTarget },
+    corners: { home: homeCorners, away: awayCorners },
+    fouls: { home: homeFouls, away: awayFouls },
+    yellowCards: { home: homeYellows, away: awayYellows },
+    offsides: { home: homeOffsides, away: awayOffsides },
+  };
+
+  // --- Lightweight scorers (just names + minutes, no descriptions) ---
+  const scorers: LiteMatchResult['scorers'] = [];
+  const usedMinutes = new Set<number>();
+  const getMinute = (): number => {
+    let m: number;
+    do { m = 1 + Math.floor(Math.random() * 90); } while (usedMinutes.has(m));
+    usedMinutes.add(m);
+    return m;
+  };
+
+  for (let i = 0; i < homeGoals; i++) {
+    const scorer = selectScorer(homeTeam);
+    scorers.push({ playerId: scorer.id, playerName: scorer.name, team: 'home', minute: getMinute() });
+  }
+  for (let i = 0; i < awayGoals; i++) {
+    const scorer = selectScorer(awayTeam);
+    scorers.push({ playerId: scorer.id, playerName: scorer.name, team: 'away', minute: getMinute() });
+  }
+  scorers.sort((a, b) => a.minute - b.minute);
+
+  // --- Lightweight player ratings (simplified, no event tracking) ---
+  const playerRatings: { [playerId: string]: number } = {};
+  const isDraw = homeGoals === awayGoals;
+  const homeWon = homeGoals > awayGoals;
+
+  const rateTeamPlayers = (team: Team, teamWon: boolean, goalsScored: number, goalsConceded: number) => {
+    const startingXI = getStartingXI(team);
+    const teamScorers = scorers.filter(s => startingXI.some(p => p.id === s.playerId));
+
+    for (const player of startingXI) {
+      // Base rating from ability relative to 10 (average)
+      let rating = 5.5 + (player.current_ability - 10) * 0.15;
+
+      // Form bonus
+      rating += (player.form - 10) * 0.05;
+
+      // Position-based adjustment
+      if (player.position === 'GK') {
+        rating += goalsConceded === 0 ? 1.0 : goalsConceded <= 1 ? 0.3 : -0.3 * Math.min(goalsConceded, 3);
+      } else if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(player.position)) {
+        rating += goalsConceded === 0 ? 0.6 : goalsConceded >= 3 ? -0.5 : 0;
+      }
+
+      // Goal/assist bonus
+      const playerGoals = teamScorers.filter(s => s.playerId === player.id).length;
+      rating += playerGoals * 1.0;
+
+      // Result bonus
+      if (teamWon) rating += 0.4;
+      else if (isDraw) rating += 0.1;
+      else rating -= 0.3;
+
+      // Small random variance
+      rating += (Math.random() - 0.5) * 0.6;
+
+      playerRatings[player.id] = Math.max(1, Math.min(10, Math.round(rating * 10) / 10));
+    }
+  };
+
+  rateTeamPlayers(homeTeam, homeWon, homeGoals, awayGoals);
+  rateTeamPlayers(awayTeam, !homeWon && !isDraw ? false : !isDraw, awayGoals, homeGoals);
+
+  return { homeScore: homeGoals, awayScore: awayGoals, stats, playerRatings, scorers };
+}
+

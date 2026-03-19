@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
-import { simulateMatchEngine, MatchResult, MatchStats } from '../utils/matchEngine';
+import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite } from '../utils/matchEngine';
 
 const getBackendUrl = () => {
   const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
@@ -465,7 +465,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
         if (!homeTeam || !awayTeam) continue;
 
-        const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
+        // Use lightweight engine for AI vs AI (no commentary, no momentum, no events)
+        const liteResult = simulateMatchLite(homeTeam, awayTeam);
 
         // Update fixture and table within this league
         updatedLeagues = updatedLeagues.map(l => {
@@ -475,10 +476,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
             if (f.id !== fixture.id) return f;
             return {
               ...f,
-              home_score: matchResult.homeScore,
-              away_score: matchResult.awayScore,
+              home_score: liteResult.homeScore,
+              away_score: liteResult.awayScore,
               played: true,
-              events: matchResult.events
+              // Store minimal scorer data instead of full event array
+              scorers: liteResult.scorers,
             };
           });
 
@@ -486,8 +488,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
             l.table,
             fixture.home_team_id,
             fixture.away_team_id,
-            matchResult.homeScore,
-            matchResult.awayScore
+            liteResult.homeScore,
+            liteResult.awayScore
           );
 
           return { ...l, fixtures: updatedFixtures, table: updatedTable };
@@ -498,7 +500,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
 
           const updatedSquad = team.squad.map(player => {
-            const rating = matchResult.playerRatings[player.id];
+            const rating = liteResult.playerRatings[player.id];
             if (rating === undefined) return player;
 
             const formChange = (rating - 6.5) * 0.5;
