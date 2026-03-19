@@ -316,7 +316,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const getLeague = (): League | null => {
     if (!currentSave || currentSave.leagues.length === 0) return null;
-    return currentSave.leagues[0];
+    // Find the league that contains the managed team (future-proof for multi-division)
+    const managedTeamId = currentSave.managed_team_id;
+    const teamLeague = currentSave.leagues.find(l => 
+      l.table.some((entry: any) => entry.team_id === managedTeamId)
+    );
+    return teamLeague || currentSave.leagues[0];
   };
 
   const updateFormation = (formation: string, positions: Record<string, string>) => {
@@ -434,82 +439,86 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   // Simulate all other matches for the current week (AI vs AI) and advance the week
+  // Handles ALL leagues, not just the managed team's league
   const simulateOtherWeekMatches = () => {
     if (!currentSave) return;
-
-    const league = getLeague();
-    if (!league) return;
+    if (currentSave.leagues.length === 0) return;
 
     const managedTeamId = currentSave.managed_team_id;
-    
-    // Find all unplayed fixtures for the current week that don't involve the managed team
-    const otherFixtures = league.fixtures.filter(
-      f => f.week === league.current_week && !f.played && 
-           f.home_team_id !== managedTeamId && f.away_team_id !== managedTeamId
-    );
 
     let updatedLeagues = [...currentSave.leagues];
     let updatedTeams = [...currentSave.teams];
 
-    for (const fixture of otherFixtures) {
-      const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
-      const awayTeam = updatedTeams.find(t => t.id === fixture.away_team_id);
+    // Process every league in the game
+    for (const league of currentSave.leagues) {
+      // Find all unplayed fixtures for the current week
+      // For the managed team's league: skip the managed team's fixture (already played)
+      // For other leagues: simulate ALL fixtures
+      const otherFixtures = league.fixtures.filter(
+        f => f.week === league.current_week && !f.played && 
+             f.home_team_id !== managedTeamId && f.away_team_id !== managedTeamId
+      );
 
-      if (!homeTeam || !awayTeam) continue;
+      for (const fixture of otherFixtures) {
+        const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
+        const awayTeam = updatedTeams.find(t => t.id === fixture.away_team_id);
 
-      const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
+        if (!homeTeam || !awayTeam) continue;
 
-      // Update fixture
-      updatedLeagues = updatedLeagues.map(l => {
-        if (l.id !== league.id) return l;
+        const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
 
-        const updatedFixtures = l.fixtures.map(f => {
-          if (f.id !== fixture.id) return f;
-          return {
-            ...f,
-            home_score: matchResult.homeScore,
-            away_score: matchResult.awayScore,
-            played: true,
-            events: matchResult.events
-          };
+        // Update fixture and table within this league
+        updatedLeagues = updatedLeagues.map(l => {
+          if (l.id !== league.id) return l;
+
+          const updatedFixtures = l.fixtures.map(f => {
+            if (f.id !== fixture.id) return f;
+            return {
+              ...f,
+              home_score: matchResult.homeScore,
+              away_score: matchResult.awayScore,
+              played: true,
+              events: matchResult.events
+            };
+          });
+
+          const updatedTable = updateLeagueTable(
+            l.table,
+            fixture.home_team_id,
+            fixture.away_team_id,
+            matchResult.homeScore,
+            matchResult.awayScore
+          );
+
+          return { ...l, fixtures: updatedFixtures, table: updatedTable };
         });
 
-        const updatedTable = updateLeagueTable(
-          l.table,
-          fixture.home_team_id,
-          fixture.away_team_id,
-          matchResult.homeScore,
-          matchResult.awayScore
-        );
+        // Update AI team form/fitness
+        updatedTeams = updatedTeams.map(team => {
+          if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
 
-        return { ...l, fixtures: updatedFixtures, table: updatedTable };
-      });
+          const updatedSquad = team.squad.map(player => {
+            const rating = matchResult.playerRatings[player.id];
+            if (rating === undefined) return player;
 
-      // Update AI team form/fitness
-      updatedTeams = updatedTeams.map(team => {
-        if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
+            const formChange = (rating - 6.5) * 0.5;
+            const newForm = Math.max(1, Math.min(20, player.form + formChange));
+            const fitnessLoss = 0.5 + Math.random();
+            const newFitness = Math.max(1, player.fitness - fitnessLoss);
 
-        const updatedSquad = team.squad.map(player => {
-          const rating = matchResult.playerRatings[player.id];
-          if (rating === undefined) return player;
+            return {
+              ...player,
+              form: Math.round(newForm * 10) / 10,
+              fitness: Math.round(newFitness * 10) / 10,
+            };
+          });
 
-          const formChange = (rating - 6.5) * 0.5;
-          const newForm = Math.max(1, Math.min(20, player.form + formChange));
-          const fitnessLoss = 0.5 + Math.random();
-          const newFitness = Math.max(1, player.fitness - fitnessLoss);
-
-          return {
-            ...player,
-            form: Math.round(newForm * 10) / 10,
-            fitness: Math.round(newFitness * 10) / 10,
-          };
+          return { ...team, squad: updatedSquad };
         });
-
-        return { ...team, squad: updatedSquad };
-      });
+      }
     }
 
-    // Advance week counter in same state update to avoid race condition
+    // Advance week counter for ALL leagues in same state update
     updatedLeagues = updatedLeagues.map(l => ({
       ...l,
       current_week: l.current_week + 1
