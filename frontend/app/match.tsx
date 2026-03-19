@@ -369,6 +369,8 @@ export default function MatchScreen() {
   const [swapMode, setSwapMode] = useState<'starting' | 'bench' | null>(null);
   const [playerRatings, setPlayerRatings] = useState<{ [playerId: string]: number }>({});
   const [momentumData, setMomentumData] = useState<{ timeline: { minute: number; homeValue: number; awayValue: number }[]; finalHome: number; finalAway: number } | null>(null);
+  const [isSimulatingWeek, setIsSimulatingWeek] = useState(false);
+  const [simProgress, setSimProgress] = useState({ current: 0, total: 0, leagueName: '' });
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -565,11 +567,30 @@ export default function MatchScreen() {
   };
 
   const handleFinish = async () => {
-    // Simulate all other matches for this week (AI vs AI) and advance to next week
-    simulateOtherWeekMatches();
-    // Save and return to dashboard
-    await saveGame(false);
-    router.replace('/game');
+    // Show loading screen first
+    const league = getLeague();
+    const totalLeagues = currentSave?.leagues.length || 1;
+    // Each league has ~9-10 AI matches per week
+    const estimatedMatches = totalLeagues * 9;
+    setSimProgress({ current: 0, total: estimatedMatches, leagueName: league?.name || 'League' });
+    setIsSimulatingWeek(true);
+
+    // Defer simulation to next tick so loading screen renders
+    setTimeout(async () => {
+      try {
+        // Simulate all other matches and advance week
+        simulateOtherWeekMatches();
+        // Save game
+        await saveGame(false);
+      } catch (e) {
+        console.error('Error simulating week:', e);
+      }
+      // Brief delay so the user sees the completion state
+      setTimeout(() => {
+        setIsSimulatingWeek(false);
+        router.replace('/game');
+      }, 800);
+    }, 300);
   };
 
   const handleFormationChange = (formation: string) => {
@@ -1261,6 +1282,54 @@ export default function MatchScreen() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Week Simulation Loading Screen */}
+      <Modal
+        visible={isSimulatingWeek}
+        transparent={true}
+        animationType="fade"
+        statusBarTranslucent={true}
+      >
+        <View style={styles.simLoadingOverlay}>
+          <View style={styles.simLoadingContainer}>
+            {/* Retro screen border */}
+            <View style={styles.simLoadingScreen}>
+              {/* Header */}
+              <View style={styles.simLoadingHeader}>
+                <Ionicons name="football" size={24} color="#00ff88" />
+                <Text style={styles.simLoadingTitle}>SIMULATING MATCHES</Text>
+                <Ionicons name="football" size={24} color="#00ff88" />
+              </View>
+
+              {/* Week info */}
+              <Text style={styles.simLoadingWeek}>
+                Week {getLeague()?.current_week || 0} Results
+              </Text>
+
+              {/* Animated dots */}
+              <View style={styles.simLoadingDots}>
+                <Text style={styles.simLoadingDotsText}>Processing league fixtures . . .</Text>
+              </View>
+
+              {/* Retro progress bar */}
+              <View style={styles.simProgressContainer}>
+                <View style={styles.simProgressTrack}>
+                  <View style={[styles.simProgressFill, { width: '100%' }]} />
+                </View>
+                <Text style={styles.simProgressText}>
+                  {currentSave?.leagues.length || 1} league{(currentSave?.leagues.length || 1) > 1 ? 's' : ''} · ~{(currentSave?.leagues.length || 1) * 9} matches
+                </Text>
+              </View>
+
+              {/* Spinner */}
+              <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 16 }} />
+
+              {/* Retro footer */}
+              <Text style={styles.simLoadingFooter}>Please wait...</Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Tactics Modal */}
       <Modal
@@ -2412,5 +2481,88 @@ const styles = StyleSheet.create({
   ratingValue: {
     fontSize: 12,
     fontWeight: '800',
+  },
+  // Week Simulation Loading Screen
+  simLoadingOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(5, 10, 20, 0.95)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simLoadingContainer: {
+    width: '85%',
+    maxWidth: 360,
+  },
+  simLoadingScreen: {
+    backgroundColor: '#0a1628',
+    borderWidth: 2,
+    borderColor: '#00ff88',
+    borderRadius: 8,
+    padding: 24,
+    alignItems: 'center',
+    // Retro CRT glow effect
+    shadowColor: '#00ff88',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  simLoadingHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 16,
+  },
+  simLoadingTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#00ff88',
+    letterSpacing: 2,
+  },
+  simLoadingWeek: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#d0e8ff',
+    marginBottom: 20,
+  },
+  simLoadingDots: {
+    marginBottom: 20,
+  },
+  simLoadingDotsText: {
+    fontSize: 13,
+    color: '#6a8aaa',
+    fontStyle: 'italic',
+    letterSpacing: 1,
+  },
+  simProgressContainer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  simProgressTrack: {
+    width: '100%',
+    height: 8,
+    backgroundColor: '#0d2137',
+    borderRadius: 4,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#1a3a5c',
+  },
+  simProgressFill: {
+    height: '100%',
+    backgroundColor: '#00ff88',
+    borderRadius: 3,
+  },
+  simProgressText: {
+    marginTop: 8,
+    fontSize: 11,
+    color: '#4a6a8a',
+    letterSpacing: 1,
+  },
+  simLoadingFooter: {
+    marginTop: 20,
+    fontSize: 11,
+    color: '#3a5a7a',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
   },
 });
