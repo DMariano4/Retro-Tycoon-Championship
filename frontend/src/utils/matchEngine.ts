@@ -936,10 +936,13 @@ function applySubstitutionImpact(
 
 /**
  * Simulate a full match with CM01/02-inspired logic
+ * Phase 2: Enhanced with momentum, tactical matchups, key moments, and detailed ratings
  */
 export function simulateMatchEngine(
   homeTeam: Team,
-  awayTeam: Team
+  awayTeam: Team,
+  homeSubstitutionMinute?: number,
+  awaySubstitutionMinute?: number
 ): MatchResult {
   // Get tactics
   const homeTactics = getTeamTactics(homeTeam);
@@ -953,17 +956,46 @@ export function simulateMatchEngine(
   homeRatings = applyFormAndFitness(homeRatings, homeTeam);
   awayRatings = applyFormAndFitness(awayRatings, awayTeam);
   
-  // Calculate expected goals
-  const homeXG = calculateExpectedGoals(homeTeam, awayTeam, homeRatings, awayRatings, true);
-  const awayXG = calculateExpectedGoals(awayTeam, homeTeam, awayRatings, homeRatings, false);
+  // Phase 2: Apply tactical matchup bonuses
+  const homeTacticalBonus = calculateTacticalMatchup(homeTactics.formation, awayTactics.formation);
+  const awayTacticalBonus = calculateTacticalMatchup(awayTactics.formation, homeTactics.formation);
   
-  // Generate actual goals using Poisson distribution
-  const homeGoals = poissonRandom(homeXG);
-  const awayGoals = poissonRandom(awayXG);
+  homeRatings.attack *= (1 + homeTacticalBonus);
+  homeRatings.midfield *= (1 + homeTacticalBonus * 0.5);
+  awayRatings.attack *= (1 + awayTacticalBonus);
+  awayRatings.midfield *= (1 + awayTacticalBonus * 0.5);
   
-  // Generate goal events
+  // Phase 2: Apply mentality matchup bonuses
+  const homeMentalityBonus = calculateMentalityMatchup(
+    homeTactics.mentality, 
+    awayTactics.mentality, 
+    homeTactics.counterAttack
+  );
+  const awayMentalityBonus = calculateMentalityMatchup(
+    awayTactics.mentality, 
+    homeTactics.mentality, 
+    awayTactics.counterAttack
+  );
+  
+  homeRatings.attack *= (1 + homeMentalityBonus);
+  awayRatings.attack *= (1 + awayMentalityBonus);
+  
+  // Phase 2: Apply substitution impact (simulated as if made around minute 60-75)
+  if (homeSubstitutionMinute) {
+    homeRatings = applySubstitutionImpact(homeRatings, homeSubstitutionMinute);
+  }
+  if (awaySubstitutionMinute) {
+    awayRatings = applySubstitutionImpact(awayRatings, awaySubstitutionMinute);
+  }
+  
+  // Calculate base expected goals
+  let homeXG = calculateExpectedGoals(homeTeam, awayTeam, homeRatings, awayRatings, true);
+  let awayXG = calculateExpectedGoals(awayTeam, homeTeam, awayRatings, homeRatings, false);
+  
+  // Generate goal events with Phase 2 enhancements
   const events: MatchEvent[] = [];
   const usedMinutes = new Set<number>();
+  const momentumTimeline: { minute: number; homeValue: number; awayValue: number }[] = [];
   
   // Helper to get unique minute
   const getUniqueMinute = (): number => {
@@ -977,41 +1009,71 @@ export function simulateMatchEngine(
     return minute;
   };
   
-  // Home goals
-  for (let i = 0; i < homeGoals; i++) {
-    const scorer = selectScorer(homeTeam);
-    const assister = selectAssister(homeTeam, scorer);
+  // Phase 2: Get star players for key moments
+  const homeStarPlayer = getStarPlayer(homeTeam);
+  const awayStarPlayer = getStarPlayer(awayTeam);
+  
+  // Generate actual goals using Poisson distribution
+  // Phase 2: Adjust for momentum throughout match
+  const homeGoals = poissonRandom(homeXG);
+  const awayGoals = poissonRandom(awayXG);
+  
+  // Generate goal minutes first, then assign to teams
+  const allGoalMinutes: { minute: number; isHome: boolean }[] = [];
+  let homeGoalsAssigned = 0;
+  let awayGoalsAssigned = 0;
+  
+  for (let i = 0; i < homeGoals + awayGoals; i++) {
     const minute = getUniqueMinute();
+    // Distribute goals based on total counts
+    const isHome = homeGoalsAssigned < homeGoals && 
+      (awayGoalsAssigned >= awayGoals || Math.random() < 0.5);
     
-    events.push({
-      type: 'GOAL',
-      minute,
-      team: homeTeam.short_name,
-      player: scorer.name,
-      assistPlayer: assister?.name,
-      description: generateGoalDescription(scorer, assister, minute),
-    });
+    allGoalMinutes.push({ minute, isHome });
+    if (isHome) homeGoalsAssigned++;
+    else awayGoalsAssigned++;
   }
   
-  // Away goals
-  for (let i = 0; i < awayGoals; i++) {
-    const scorer = selectScorer(awayTeam);
-    const assister = selectAssister(awayTeam, scorer);
-    const minute = getUniqueMinute();
+  // Sort by minute
+  allGoalMinutes.sort((a, b) => a.minute - b.minute);
+  
+  // Generate goal events with key moment bonuses
+  for (const goalInfo of allGoalMinutes) {
+    const team = goalInfo.isHome ? homeTeam : awayTeam;
+    const starPlayer = goalInfo.isHome ? homeStarPlayer : awayStarPlayer;
+    
+    // Phase 2: Key moment check - star player more likely to score
+    const keyMoment = isKeyMoment(goalInfo.minute);
+    let scorer: Player;
+    
+    if (keyMoment.isKey && Math.random() < 0.3 + keyMoment.bonus) {
+      // Star player scores in key moment
+      scorer = starPlayer;
+    } else {
+      scorer = selectScorer(team);
+    }
+    
+    const assister = selectAssister(team, scorer);
+    
+    // Enhanced goal description for key moments
+    let description = generateGoalDescription(scorer, assister, goalInfo.minute);
+    if (keyMoment.isKey && scorer.id === starPlayer.id) {
+      description = `⭐ KEY MOMENT! ${description}`;
+    }
     
     events.push({
       type: 'GOAL',
-      minute,
-      team: awayTeam.short_name,
+      minute: goalInfo.minute,
+      team: team.short_name,
       player: scorer.name,
       assistPlayer: assister?.name,
-      description: generateGoalDescription(scorer, assister, minute),
+      description,
     });
   }
   
   // Calculate match stats
-  const homeClosingMod = CLOSING_DOWN_MODIFIERS[homeTactics.closingDown] || CLOSING_DOWN_MODIFIERS['sometimes'];
-  const awayClosingMod = CLOSING_DOWN_MODIFIERS[awayTactics.closingDown] || CLOSING_DOWN_MODIFIERS['sometimes'];
+  const homeTacklingMod = TACKLING_MODIFIERS[homeTactics.tackling] || TACKLING_MODIFIERS['normal'];
+  const awayTacklingMod = TACKLING_MODIFIERS[awayTactics.tackling] || TACKLING_MODIFIERS['normal'];
   
   // Possession based on midfield battle and tactics
   const midfieldDiff = homeRatings.midfield - awayRatings.midfield;
@@ -1030,12 +1092,22 @@ export function simulateMatchEngine(
   const awayCorners = Math.floor(2 + Math.random() * 4 + (awayTactics.mentality - 3));
   
   // Fouls
-  const homeTacklingMod = TACKLING_MODIFIERS[homeTactics.tackling] || TACKLING_MODIFIERS['normal'];
-  const awayTacklingMod = TACKLING_MODIFIERS[awayTactics.tackling] || TACKLING_MODIFIERS['normal'];
   const homeFouls = Math.floor((6 + Math.random() * 6) * homeTacklingMod.fouls);
   const awayFouls = Math.floor((6 + Math.random() * 6) * awayTacklingMod.fouls);
   
-  // Yellow cards
+  // Generate other events (chances, saves, fouls, cards)
+  const otherEvents = generateOtherEvents(
+    homeTeam, awayTeam, 
+    homeTactics, awayTactics,
+    homeShots, awayShots
+  );
+  
+  events.push(...otherEvents);
+  
+  // Sort all events by minute
+  events.sort((a, b) => a.minute - b.minute);
+  
+  // Yellow cards count
   const homeYellows = events.filter(e => e.type === 'YELLOW_CARD' && e.team === homeTeam.short_name).length;
   const awayYellows = events.filter(e => e.type === 'YELLOW_CARD' && e.team === awayTeam.short_name).length;
   
@@ -1052,41 +1124,32 @@ export function simulateMatchEngine(
     },
   };
   
-  // Generate other events
-  const otherEvents = generateOtherEvents(
-    homeTeam, awayTeam, 
-    homeTactics, awayTactics,
-    homeShots, awayShots
+  // Phase 2: Generate momentum timeline
+  for (let minute = 0; minute <= 90; minute += 5) {
+    const momentum = calculateMomentum(events, minute, homeTeam.short_name);
+    momentumTimeline.push({
+      minute,
+      homeValue: momentum.home,
+      awayValue: momentum.away,
+    });
+  }
+  
+  const finalMomentum = calculateMomentum(events, 90, homeTeam.short_name);
+  
+  // Phase 2: Generate detailed player ratings
+  const homeWon = homeGoals > awayGoals;
+  const awayWon = awayGoals > homeGoals;
+  const isDraw = homeGoals === awayGoals;
+  
+  const playerRatings = generateDetailedPlayerRatings(
+    homeTeam,
+    awayTeam,
+    events,
+    stats,
+    homeWon,
+    awayWon,
+    isDraw
   );
-  
-  events.push(...otherEvents);
-  
-  // Sort all events by minute
-  events.sort((a, b) => a.minute - b.minute);
-  
-  // Generate player ratings (simplified for Phase 1)
-  const playerRatings: { [playerId: string]: number } = {};
-  
-  // Players who scored/assisted get bonus
-  const startingXIHome = getStartingXI(homeTeam);
-  const startingXIAway = getStartingXI(awayTeam);
-  
-  [...startingXIHome, ...startingXIAway].forEach(p => {
-    let baseRating = 6 + Math.random() * 2; // 6-8 base
-    
-    // Form influences rating
-    baseRating += (p.form - 10) / 10;
-    
-    // Goals and assists
-    const goals = events.filter(e => e.type === 'GOAL' && e.player === p.name).length;
-    const assists = events.filter(e => e.type === 'GOAL' && e.assistPlayer === p.name).length;
-    
-    baseRating += goals * 1.0;
-    baseRating += assists * 0.5;
-    
-    // Clamp to 1-10
-    playerRatings[p.id] = Math.max(1, Math.min(10, Math.round(baseRating * 10) / 10));
-  });
   
   return {
     homeScore: homeGoals,
@@ -1094,8 +1157,13 @@ export function simulateMatchEngine(
     events,
     stats,
     playerRatings,
+    momentum: {
+      timeline: momentumTimeline,
+      finalHome: finalMomentum.home,
+      finalAway: finalMomentum.away,
+    },
   };
 }
 
 // Export types for use in components
-export type { TeamTactics, TeamRatings, MatchEvent, MatchResult, MatchStats };
+export type { TeamTactics, TeamRatings, MatchEvent, MatchResult, MatchStats, MomentumHistory, PlayerMatchPerformance };
