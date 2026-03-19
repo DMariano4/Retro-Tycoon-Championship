@@ -179,6 +179,7 @@ interface GameContextType {
   updateFormation: (formation: string, positions: Record<string, any>) => void;
   advanceWeek: () => void;
   simulateMatch: (fixtureId: string, speed: number) => Promise<any>;
+  simulateOtherWeekMatches: () => void;
   makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
 }
@@ -432,6 +433,100 @@ export function GameProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  // Simulate all other matches for the current week (AI vs AI) and advance the week
+  const simulateOtherWeekMatches = () => {
+    if (!currentSave) return;
+
+    const league = getLeague();
+    if (!league) return;
+
+    const managedTeamId = currentSave.managed_team_id;
+    
+    // Find all unplayed fixtures for the current week that don't involve the managed team
+    const otherFixtures = league.fixtures.filter(
+      f => f.week === league.current_week && !f.played && 
+           f.home_team_id !== managedTeamId && f.away_team_id !== managedTeamId
+    );
+
+    let updatedLeagues = [...currentSave.leagues];
+    let updatedTeams = [...currentSave.teams];
+
+    for (const fixture of otherFixtures) {
+      const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
+      const awayTeam = updatedTeams.find(t => t.id === fixture.away_team_id);
+
+      if (!homeTeam || !awayTeam) continue;
+
+      const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
+
+      // Update fixture
+      updatedLeagues = updatedLeagues.map(l => {
+        if (l.id !== league.id) return l;
+
+        const updatedFixtures = l.fixtures.map(f => {
+          if (f.id !== fixture.id) return f;
+          return {
+            ...f,
+            home_score: matchResult.homeScore,
+            away_score: matchResult.awayScore,
+            played: true,
+            events: matchResult.events
+          };
+        });
+
+        const updatedTable = updateLeagueTable(
+          l.table,
+          fixture.home_team_id,
+          fixture.away_team_id,
+          matchResult.homeScore,
+          matchResult.awayScore
+        );
+
+        return { ...l, fixtures: updatedFixtures, table: updatedTable };
+      });
+
+      // Update AI team form/fitness
+      updatedTeams = updatedTeams.map(team => {
+        if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
+
+        const updatedSquad = team.squad.map(player => {
+          const rating = matchResult.playerRatings[player.id];
+          if (rating === undefined) return player;
+
+          const formChange = (rating - 6.5) * 0.5;
+          const newForm = Math.max(1, Math.min(20, player.form + formChange));
+          const fitnessLoss = 0.5 + Math.random();
+          const newFitness = Math.max(1, player.fitness - fitnessLoss);
+
+          return {
+            ...player,
+            form: Math.round(newForm * 10) / 10,
+            fitness: Math.round(newFitness * 10) / 10,
+          };
+        });
+
+        return { ...team, squad: updatedSquad };
+      });
+    }
+
+    // Advance week counter in same state update to avoid race condition
+    updatedLeagues = updatedLeagues.map(l => ({
+      ...l,
+      current_week: l.current_week + 1
+    }));
+
+    // Advance game date by 7 days
+    const currentDate = new Date(currentSave.game_date);
+    currentDate.setDate(currentDate.getDate() + 7);
+
+    setCurrentSave({ 
+      ...currentSave, 
+      leagues: updatedLeagues, 
+      teams: updatedTeams,
+      game_date: currentDate.toISOString().split('T')[0]
+    });
+  };
+
   // Old helper functions removed - now handled by matchEngine.ts
 
   const updateLeagueTable = (
@@ -575,6 +670,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         updateFormation,
         advanceWeek,
         simulateMatch,
+        simulateOtherWeekMatches,
         makeTransferOffer,
         listPlayerForSale
       }}

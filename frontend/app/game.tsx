@@ -65,8 +65,7 @@ export default function GameScreen() {
   };
 
   const handleNextWeek = () => {
-    // Directly advance and navigate to match screen
-    advanceWeek();
+    // Navigate to match screen - week advancement happens after match completes
     router.push('/match');
   };
 

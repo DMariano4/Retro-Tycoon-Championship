@@ -347,7 +347,7 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
 }
 
 export default function MatchScreen() {
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, saveGame, updateFormation } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -565,6 +565,9 @@ export default function MatchScreen() {
   };
 
   const handleFinish = async () => {
+    // Simulate all other matches for this week (AI vs AI) and advance to next week
+    simulateOtherWeekMatches();
+    // Save and return to dashboard
     await saveGame(false);
     router.replace('/game');
   };
@@ -1160,16 +1163,20 @@ export default function MatchScreen() {
                     </View>
                   )}
 
-                  {/* Phase 2: Player Ratings */}
                   {matchState === 'post' && Object.keys(playerRatings).length > 0 && (
                     <View style={styles.ratingsSection}>
                       <Text style={styles.sectionTitle}>PLAYER RATINGS</Text>
                       
                       {/* Home Team Ratings */}
                       <Text style={styles.ratingsTeamName}>{homeTeam?.name}</Text>
-                      {homeTeam?.squad.slice(0, 11).map(player => {
+                      {homeTeam?.squad
+                        .filter(player => playerRatings[player.id] !== undefined)
+                        .sort((a, b) => {
+                          const posOrder: Record<string, number> = { 'GK': 0, 'CB': 1, 'LB': 2, 'RB': 3, 'LWB': 2, 'RWB': 3, 'DM': 4, 'CM': 5, 'LM': 6, 'RM': 7, 'AM': 8, 'LW': 9, 'RW': 10, 'ST': 11 };
+                          return (posOrder[a.position] ?? 6) - (posOrder[b.position] ?? 6);
+                        })
+                        .map(player => {
                         const rating = playerRatings[player.id];
-                        if (rating === undefined) return null;
                         return (
                           <View key={player.id} style={styles.ratingRow}>
                             <Text style={styles.ratingPosition}>{player.position}</Text>
@@ -1187,9 +1194,14 @@ export default function MatchScreen() {
                       
                       {/* Away Team Ratings */}
                       <Text style={[styles.ratingsTeamName, { marginTop: 16 }]}>{awayTeam?.name}</Text>
-                      {awayTeam?.squad.slice(0, 11).map(player => {
+                      {awayTeam?.squad
+                        .filter(player => playerRatings[player.id] !== undefined)
+                        .sort((a, b) => {
+                          const posOrder: Record<string, number> = { 'GK': 0, 'CB': 1, 'LB': 2, 'RB': 3, 'LWB': 2, 'RWB': 3, 'DM': 4, 'CM': 5, 'LM': 6, 'RM': 7, 'AM': 8, 'LW': 9, 'RW': 10, 'ST': 11 };
+                          return (posOrder[a.position] ?? 6) - (posOrder[b.position] ?? 6);
+                        })
+                        .map(player => {
                         const rating = playerRatings[player.id];
-                        if (rating === undefined) return null;
                         return (
                           <View key={player.id} style={styles.ratingRow}>
                             <Text style={styles.ratingPosition}>{player.position}</Text>

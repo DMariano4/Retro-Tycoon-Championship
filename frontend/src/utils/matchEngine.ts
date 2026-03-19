@@ -523,7 +523,15 @@ function generateGoalDescription(scorer: Player, assister: Player | null, minute
     `${scorer.name} with a crucial late goal!`,
   ];
   
+  const lateAssistedDescriptions = [
+    `LATE DRAMA! ${assister?.name} sets up ${scorer.name} in the ${minute}th minute!`,
+    `${scorer.name} with a crucial late goal! Assist by ${assister?.name}!`,
+  ];
+  
   if (minute >= 85) {
+    if (assister) {
+      return lateAssistedDescriptions[Math.floor(Math.random() * lateAssistedDescriptions.length)];
+    }
     return lateDescriptions[Math.floor(Math.random() * lateDescriptions.length)];
   }
   
@@ -612,10 +620,11 @@ function generateOtherEvents(
     (name: string) => `${name} commits a tactical foul.`,
   ];
   
-  // Add fouls (shown as events)
+  // Add fouls (shown as events) - weighted by tackling intensity
   const totalFouls = Math.floor((homeFouls + awayFouls) * 0.4); // Show ~40% as events
+  const homeFoulWeight = homeFouls / (homeFouls + awayFouls || 1);
   for (let i = 0; i < totalFouls; i++) {
-    const isHome = Math.random() > 0.5;
+    const isHome = Math.random() < homeFoulWeight;
     const team = isHome ? homeTeam : awayTeam;
     const startingXI = getStartingXI(team);
     const player = startingXI[Math.floor(Math.random() * startingXI.length)];
@@ -1080,12 +1089,12 @@ export function simulateMatchEngine(
   const basePossession = 50 + (midfieldDiff * 2);
   const homePossession = Math.max(30, Math.min(70, basePossession));
   
-  // Shots based on xG and possession
-  const homeShots = Math.floor(homeXG * 4 + Math.random() * 4);
-  const awayShots = Math.floor(awayXG * 4 + Math.random() * 4);
+  // Shots based on xG and possession (ensure shots >= goals)
+  const homeShots = Math.max(homeGoals + 1, Math.floor(homeXG * 4 + Math.random() * 4));
+  const awayShots = Math.max(awayGoals + 1, Math.floor(awayXG * 4 + Math.random() * 4));
   
-  const homeShotsOnTarget = homeGoals + Math.floor((homeShots - homeGoals) * 0.35);
-  const awayShotsOnTarget = awayGoals + Math.floor((awayShots - awayGoals) * 0.35);
+  const homeShotsOnTarget = Math.max(homeGoals, homeGoals + Math.floor((homeShots - homeGoals) * 0.35));
+  const awayShotsOnTarget = Math.max(awayGoals, awayGoals + Math.floor((awayShots - awayGoals) * 0.35));
   
   // Corners based on attacking play
   const homeCorners = Math.floor(2 + Math.random() * 4 + (homeTactics.mentality - 3));
