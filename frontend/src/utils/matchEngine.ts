@@ -126,6 +126,57 @@ const CLOSING_DOWN_MODIFIERS: Record<string, { pressing: number; spaceAllowed: n
   'always': { pressing: 1.35, spaceAllowed: 0.80 },
 };
 
+// ============================================
+// PHASE 2: NEW CONSTANTS
+// ============================================
+
+// Tactical matchup bonuses - formation counters
+const FORMATION_MATCHUPS: Record<string, { counters: string[]; bonus: number }> = {
+  '4-4-2': { counters: ['4-3-3', '3-4-3'], bonus: 0.10 },      // Solid vs wide formations
+  '4-3-3': { counters: ['4-5-1', '5-4-1'], bonus: 0.12 },      // Width beats defensive
+  '3-5-2': { counters: ['4-4-2', '4-2-3-1'], bonus: 0.10 },    // Midfield overload
+  '4-5-1': { counters: ['3-5-2', '3-4-3'], bonus: 0.08 },      // Compact vs risky
+  '5-3-2': { counters: ['4-3-3', '4-2-3-1'], bonus: 0.08 },    // Defensive solidity
+  '4-2-3-1': { counters: ['4-4-2', '5-3-2'], bonus: 0.12 },    // Creativity vs rigid
+  '3-4-3': { counters: ['5-3-2', '5-4-1'], bonus: 0.15 },      // All-out attack
+  '5-4-1': { counters: ['3-4-3', '4-3-3'], bonus: 0.10 },      // Ultra defensive counter
+};
+
+// Mentality matchup bonuses
+const MENTALITY_MATCHUPS = {
+  // Counter-attacking (defensive) vs Very Attacking gets bonus
+  counterBonus: 0.15,
+  // Pressing (attacking) vs Very Defensive gets bonus  
+  pressingBonus: 0.10,
+};
+
+// Key moment minutes (when star players shine)
+const KEY_MOMENTS = {
+  firstHalfEnd: { start: 40, end: 45, bonus: 0.15 },
+  secondHalfStart: { start: 46, end: 55, bonus: 0.10 },
+  finalPush: { start: 80, end: 90, bonus: 0.20 },
+};
+
+// Substitution impact by minute
+const SUBSTITUTION_IMPACT = {
+  early: { maxMinute: 60, fitnessBoost: 0.05, performanceBoost: 0.08 },
+  normal: { maxMinute: 75, fitnessBoost: 0.08, performanceBoost: 0.12 },
+  late: { maxMinute: 90, fitnessBoost: 0.10, performanceBoost: 0.15 },
+};
+
+// Momentum constants
+const MOMENTUM = {
+  baseValue: 50,              // Starting momentum (neutral)
+  goalSwing: 15,              // Momentum shift on goal
+  chanceSwing: 3,             // Small shift on chance
+  saveSwing: 5,               // Shift on good save
+  cardSwing: -5,              // Negative shift on card received
+  maxValue: 85,               // Maximum momentum
+  minValue: 15,               // Minimum momentum
+  decayRate: 0.02,            // Momentum decay per minute toward neutral
+  effectOnXG: 0.15,           // How much momentum affects expected goals
+};
+
 // Position weights for different ratings
 const POSITION_WEIGHTS = {
   attack: {
