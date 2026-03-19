@@ -71,6 +71,7 @@ export default function GameScreen() {
 
   const getUpcomingFixture = () => {
     if (!league || !managedTeam) return null;
+    // In pre-season (week 0), show friendlies first
     return league.fixtures.find(
       f => !f.played && (f.home_team_id === managedTeam.id || f.away_team_id === managedTeam.id)
     );
@@ -207,7 +208,9 @@ function DashboardTab({ team, league, save, fixture, position, onNextWeek }: any
                 {fixture.away_team_name}
               </Text>
             </View>
-            <Text style={styles.matchWeek}>Week {fixture.week}</Text>
+            <Text style={styles.matchWeek}>
+              {fixture.match_type === 'friendly' ? 'PRE-SEASON FRIENDLY' : `Week ${fixture.week}`}
+            </Text>
             <TouchableOpacity style={styles.playButton} onPress={onNextWeek}>
               <Ionicons name="play" size={16} color="#0a1628" />
               <Text style={styles.playButtonText}>PLAY MATCH</Text>

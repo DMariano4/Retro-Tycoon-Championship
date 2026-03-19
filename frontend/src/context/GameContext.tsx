@@ -163,6 +163,10 @@ export interface GameSave {
   transfer_market: TransferListing[];
   budget: number;
   is_cloud: boolean;
+  // Season management fields
+  calendar?: SeasonCalendar;
+  transfer_window_open?: boolean;
+  is_pre_season?: boolean;
 }
 
 interface GameContextType {
@@ -182,6 +186,15 @@ interface GameContextType {
   simulateOtherWeekMatches: () => void;
   makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
+  // Season progression
+  isSeasonComplete: () => boolean;
+  startNewSeason: () => void;
+  applyAgeProgression: () => void;
+  renewContract: (playerId: string, newWage: number, years: number) => void;
+  releasePlayer: (playerId: string) => void;
+  retirePlayer: (playerId: string) => void;
+  getExpiringContracts: () => Player[];
+  getRetirementCandidates: () => { mustRetire: Player[]; userChoice: Player[] };
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -388,8 +401,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         };
       });
 
-      // Update table
-      const updatedTable = updateLeagueTable(
+      // Update table only for league matches (not friendlies)
+      const isFriendly = fixture.match_type === 'friendly';
+      const updatedTable = isFriendly ? l.table : updateLeagueTable(
         l.table, 
         fixture.home_team_id, 
         fixture.away_team_id, 
@@ -484,7 +498,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
             };
           });
 
-          const updatedTable = updateLeagueTable(
+          // Only update league table for league matches, not friendlies
+          const isFriendly = fixture.match_type === 'friendly';
+          const updatedTable = isFriendly ? l.table : updateLeagueTable(
             l.table,
             fixture.home_team_id,
             fixture.away_team_id,
@@ -666,6 +682,381 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // ============================================
+  // SEASON PROGRESSION FUNCTIONS
+  // ============================================
+
+  /** Check if the managed team's league season is complete */
+  const isSeasonComplete = (): boolean => {
+    if (!currentSave) return false;
+    const league = getLeague();
+    if (!league) return false;
+    // Season is complete when all league fixtures are played
+    // Handle old fixtures without match_type (default to 'league')
+    const leagueFixtures = league.fixtures.filter(f => !f.match_type || f.match_type === 'league');
+    return leagueFixtures.length > 0 && leagueFixtures.every(f => f.played);
+  };
+
+  /** Get players with expiring contracts (end date <= current season end) */
+  const getExpiringContracts = (): Player[] => {
+    if (!currentSave) return [];
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return [];
+    const seasonEnd = `${currentSave.season + 1}-06-30`;
+    return managedTeam.squad.filter(p => p.contract_end <= seasonEnd);
+  };
+
+  /** Get retirement candidates: AI auto-retire at 40, user choice at 35+ */
+  const getRetirementCandidates = (): { mustRetire: Player[]; userChoice: Player[] } => {
+    if (!currentSave) return { mustRetire: [], userChoice: [] };
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return { mustRetire: [], userChoice: [] };
+    
+    // For managed team: 35+ is user choice, none auto-retire from user team
+    const userChoice = managedTeam.squad.filter(p => p.age >= 35);
+    return { mustRetire: [], userChoice };
+  };
+
+  /** Renew a player's contract */
+  const renewContract = (playerId: string, newWage: number, years: number) => {
+    if (!currentSave) return;
+    const newEndYear = currentSave.season + 1 + years;
+    const newContractEnd = `${newEndYear}-06-30`;
+
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      return {
+        ...team,
+        squad: team.squad.map(p => {
+          if (p.id !== playerId) return p;
+          return { ...p, wage: newWage, contract_end: newContractEnd, morale: Math.min(20, p.morale + 2), last_contract_renewal: currentSave.season };
+        })
+      };
+    });
+
+    setCurrentSave({ ...currentSave, teams: updatedTeams });
+  };
+
+  /** Release a player (becomes free agent) */
+  const releasePlayer = (playerId: string) => {
+    if (!currentSave) return;
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return;
+    const player = managedTeam.squad.find(p => p.id === playerId);
+    if (!player) return;
+
+    // Remove from squad
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      return { ...team, squad: team.squad.filter(p => p.id !== playerId) };
+    });
+
+    // Add to transfer market as free agent
+    const freeAgentListing: TransferListing = {
+      id: `free_${playerId}_${Date.now()}`,
+      player: { ...player, contract_end: currentSave.game_date },
+      team_id: 'free_agent',
+      team_name: 'Free Agent',
+      asking_price: 0,
+      listed_date: currentSave.game_date
+    };
+
+    setCurrentSave({
+      ...currentSave,
+      teams: updatedTeams,
+      transfer_market: [...currentSave.transfer_market, freeAgentListing]
+    });
+  };
+
+  /** Retire a player (removed, replaced by generated regen) */
+  const retirePlayer = (playerId: string) => {
+    if (!currentSave) return;
+
+    const updatedTeams = currentSave.teams.map(team => {
+      const playerIdx = team.squad.findIndex(p => p.id === playerId);
+      if (playerIdx === -1) return team;
+
+      const retiringPlayer = team.squad[playerIdx];
+      // Generate a young regen for the same position
+      const regen = generateRegenPlayer(retiringPlayer.position, team.id);
+      const newSquad = [...team.squad];
+      newSquad[playerIdx] = regen;
+
+      return { ...team, squad: newSquad };
+    });
+
+    setCurrentSave({ ...currentSave, teams: updatedTeams });
+  };
+
+  /** Generate a young replacement player */
+  const generateRegenPlayer = (position: string, teamId: string): Player => {
+    const firstNames = ['James', 'Oliver', 'Harry', 'George', 'Noah', 'Leo', 'Arthur', 'Oscar', 'Charlie', 'Jack', 'Lucas', 'Freddie', 'Alfie', 'Henry', 'Theo', 'Archie', 'Ethan', 'Isaac', 'Jacob', 'Max'];
+    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Anderson', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Harris', 'Clark', 'Lewis', 'Robinson'];
+    
+    const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
+    const age = 17 + Math.floor(Math.random() * 3); // 17-19 years old
+    const baseAbility = 6 + Math.floor(Math.random() * 5); // 6-10 (young, low ability)
+    const potential = 12 + Math.floor(Math.random() * 8); // 12-19 (high potential)
+    
+    const randAttr = () => Math.max(1, baseAbility + Math.floor(Math.random() * 4) - 2);
+    
+    return {
+      id: `regen_${teamId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      name, age, nationality: 'England', position,
+      preferred_positions: [position],
+      pace: randAttr(), strength: randAttr(), stamina: randAttr(), agility: randAttr(),
+      work_rate: randAttr(), concentration: randAttr(), decision_making: randAttr(), composure: randAttr(),
+      reflexes: randAttr(), handling: randAttr(), communication: randAttr(),
+      tackling: randAttr(), marking: randAttr(), positioning: randAttr(), crossing: randAttr(),
+      passing: randAttr(), vision: randAttr(), dribbling: randAttr(), control: randAttr(),
+      finishing: randAttr(), off_the_ball: randAttr(), flair: randAttr(), heading: randAttr(),
+      current_ability: baseAbility, potential_ability: potential,
+      value: 100000 + Math.floor(Math.random() * 400000),
+      wage: 1000 + Math.floor(Math.random() * 3000),
+      contract_end: `${(currentSave?.season || 2025) + 4}-06-30`,
+      morale: 14, fitness: 18, form: 12,
+    };
+  };
+
+  /** Apply age-based attribute progression/regression to ALL players */
+  const applyAgeProgression = () => {
+    if (!currentSave) return;
+
+    const physicalAttrs: (keyof Player)[] = ['pace', 'strength', 'stamina', 'agility'];
+    const mentalAttrs: (keyof Player)[] = ['work_rate', 'concentration', 'decision_making', 'composure', 'vision'];
+    const technicalAttrs: (keyof Player)[] = ['passing', 'dribbling', 'control', 'finishing', 'off_the_ball', 'flair', 'crossing', 'tackling', 'marking', 'positioning', 'heading', 'reflexes', 'handling', 'communication'];
+
+    const getProgressionRange = (age: number, isPhysical: boolean, isMental: boolean): [number, number] => {
+      if (age < 20) return [1, 3];           // High improvement
+      if (age <= 24) return [0.5, 2];         // Moderate improvement
+      if (age <= 28) return [-0.5, 0.5];      // Peak stability
+      if (age <= 31) {
+        if (isPhysical) return [-1.5, -0.5];  // Physical starts declining
+        if (isMental) return [-0.5, 0.5];     // Mental holds steady
+        return [-1, 0];                        // Technical slight decline
+      }
+      if (age <= 35) {
+        if (isPhysical) return [-2.5, -1];    // Noticeable physical decline
+        if (isMental) return [-1, 0];          // Mental starts declining
+        return [-2, -0.5];                     // Technical decline
+      }
+      // 36+
+      if (isPhysical) return [-3, -1.5];       // Significant physical decline
+      if (isMental) return [-1.5, -0.5];       // Mental decline
+      return [-2.5, -1];                        // Significant technical decline
+    };
+
+    const applyChange = (value: number, range: [number, number]): number => {
+      const change = range[0] + Math.random() * (range[1] - range[0]);
+      return Math.max(1, Math.min(20, Math.round((value + change) * 10) / 10));
+    };
+
+    const updatedTeams = currentSave.teams.map(team => ({
+      ...team,
+      squad: team.squad.map(player => {
+        const newAge = player.age + 1;
+        const updated = { ...player, age: newAge };
+
+        // Apply progression based on new age
+        for (const attr of physicalAttrs) {
+          const range = getProgressionRange(newAge, true, false);
+          (updated as any)[attr] = applyChange(player[attr] as number, range);
+        }
+        for (const attr of mentalAttrs) {
+          const range = getProgressionRange(newAge, false, true);
+          (updated as any)[attr] = applyChange(player[attr] as number, range);
+        }
+        for (const attr of technicalAttrs) {
+          const range = getProgressionRange(newAge, false, false);
+          (updated as any)[attr] = applyChange(player[attr] as number, range);
+        }
+
+        // Recalculate current_ability as weighted average
+        const allAttrs = [...physicalAttrs, ...mentalAttrs, ...technicalAttrs];
+        const avgAttr = allAttrs.reduce((sum, a) => sum + ((updated as any)[a] as number), 0) / allAttrs.length;
+        updated.current_ability = Math.round(avgAttr * 10) / 10;
+
+        // Cap by potential (young players can grow to potential, older players are capped)
+        if (newAge < 28) {
+          updated.current_ability = Math.min(updated.current_ability, updated.potential_ability);
+        }
+
+        // Update value based on age and ability
+        const ageMultiplier = newAge < 24 ? 1.3 : newAge < 28 ? 1.0 : newAge < 32 ? 0.7 : 0.3;
+        updated.value = Math.max(50000, Math.round(updated.current_ability * 500000 * ageMultiplier));
+
+        return updated;
+      })
+    }));
+
+    setCurrentSave({ ...currentSave, teams: updatedTeams });
+  };
+
+  /** Start a new season: generate fixtures, reset table, handle AI retirements/contracts */
+  const startNewSeason = () => {
+    if (!currentSave) return;
+
+    const newSeason = currentSave.season + 1;
+    const managedTeamId = currentSave.managed_team_id;
+    let updatedTeams = [...currentSave.teams];
+
+    // 1. AI team retirements (age 40+) and contract expiry
+    const seasonEnd = `${newSeason}-06-30`;
+    updatedTeams = updatedTeams.map(team => {
+      if (team.id === managedTeamId) return team; // User handles their own
+
+      let newSquad = team.squad.map(player => {
+        // Auto-retire at 40
+        if (player.age >= 40) {
+          return generateRegenPlayer(player.position, team.id);
+        }
+        // Auto-renew if contract expiring and ability > 8
+        if (player.contract_end <= seasonEnd) {
+          if (player.current_ability >= 8) {
+            return { ...player, contract_end: `${newSeason + 2}-06-30`, wage: Math.round(player.wage * 1.1) };
+          } else {
+            // Release low-ability players, replace with regen
+            return generateRegenPlayer(player.position, team.id);
+          }
+        }
+        return player;
+      });
+
+      return { ...team, squad: newSquad };
+    });
+
+    // 2. Generate new fixtures for each league
+    const updatedLeagues = currentSave.leagues.map(league => {
+      const leagueTeamIds = league.teams;
+      const teamNames: Record<string, string> = {};
+      updatedTeams.forEach(t => { teamNames[t.id] = t.name; });
+
+      // Generate new round-robin fixtures
+      const n = leagueTeamIds.length;
+      const teamsList = [...leagueTeamIds];
+      if (n % 2 !== 0) teamsList.push('BYE');
+      const totalTeams = teamsList.length;
+
+      const newFixtures: Fixture[] = [];
+      let week = 1;
+      const workingList = [...teamsList];
+
+      for (let round = 0; round < (totalTeams - 1) * 2; round++) {
+        const isReturn = round >= (totalTeams - 1);
+        const matchDate = new Date(newSeason, 7, 10 + (week - 1) * 7); // Aug 10 + weeks
+        const dateStr = matchDate.toISOString().split('T')[0];
+
+        for (let i = 0; i < totalTeams / 2; i++) {
+          let home = workingList[i];
+          let away = workingList[totalTeams - 1 - i];
+          if (home === 'BYE' || away === 'BYE') continue;
+          if (isReturn) { [home, away] = [away, home]; }
+
+          newFixtures.push({
+            id: `fix_s${newSeason}_${week}_${i}`,
+            week,
+            match_date: dateStr,
+            match_type: 'league',
+            home_team_id: home,
+            away_team_id: away,
+            home_team_name: teamNames[home] || home,
+            away_team_name: teamNames[away] || away,
+            home_score: null,
+            away_score: null,
+            played: false,
+            events: []
+          });
+        }
+        // Rotate (keep first fixed)
+        const last = workingList.pop()!;
+        workingList.splice(1, 0, last);
+        week++;
+      }
+
+      // Generate pre-season friendlies for managed team
+      const managedTeam = updatedTeams.find(t => t.id === managedTeamId);
+      const friendlies: Fixture[] = [];
+      if (managedTeam && league.teams.includes(managedTeamId)) {
+        const opponents = updatedTeams.filter(t => t.id !== managedTeamId && league.teams.includes(t.id));
+        const shuffled = [...opponents].sort(() => Math.random() - 0.5);
+        const dates = [`${newSeason}-07-12`, `${newSeason}-07-19`, `${newSeason}-07-26`, `${newSeason}-08-02`];
+        
+        for (let i = 0; i < Math.min(4, shuffled.length); i++) {
+          const isHome = Math.random() > 0.5;
+          friendlies.push({
+            id: `friendly_s${newSeason}_${managedTeamId}_${i}`,
+            week: 0,
+            match_date: dates[i],
+            match_type: 'friendly',
+            home_team_id: isHome ? managedTeamId : shuffled[i].id,
+            away_team_id: isHome ? shuffled[i].id : managedTeamId,
+            home_team_name: isHome ? managedTeam.name : shuffled[i].name,
+            away_team_name: isHome ? shuffled[i].name : managedTeam.name,
+            home_score: null,
+            away_score: null,
+            played: false,
+            events: []
+          });
+        }
+      }
+
+      // Reset table
+      const newTable: TeamStanding[] = league.teams.map(teamId => ({
+        team_id: teamId,
+        team_name: teamNames[teamId] || teamId,
+        played: 0, won: 0, drawn: 0, lost: 0,
+        goals_for: 0, goals_against: 0, goal_difference: 0, points: 0
+      }));
+
+      return {
+        ...league,
+        season: newSeason,
+        current_week: 0, // 0 = pre-season (friendlies)
+        table: newTable,
+        fixtures: [...friendlies, ...newFixtures]
+      };
+    });
+
+    // 3. Reset all players' fitness and normalize form
+    updatedTeams = updatedTeams.map(team => ({
+      ...team,
+      squad: team.squad.map(player => ({
+        ...player,
+        fitness: 16 + Math.random() * 4,  // 16-20 (pre-season fresh)
+        form: 10 + Math.random() * 4,     // 10-14 (neutral start)
+        morale: Math.max(10, player.morale), // Minimum 10 morale
+      }))
+    }));
+
+    // 4. Refresh transfer market
+    const newTransferMarket: TransferListing[] = [];
+    updatedTeams.forEach(team => {
+      const listableCount = Math.floor(Math.random() * 3);
+      const candidates = team.squad.filter(p => p.current_ability < 12).sort(() => Math.random() - 0.5);
+      for (let i = 0; i < Math.min(listableCount, candidates.length); i++) {
+        newTransferMarket.push({
+          id: `listing_s${newSeason}_${candidates[i].id}`,
+          player: candidates[i],
+          team_id: team.id,
+          team_name: team.name,
+          asking_price: Math.round(candidates[i].value * (1.1 + Math.random() * 0.4)),
+          listed_date: `${newSeason}-07-01`
+        });
+      }
+    });
+
+    setCurrentSave({
+      ...currentSave,
+      season: newSeason,
+      game_date: `${newSeason}-07-01`,
+      leagues: updatedLeagues,
+      teams: updatedTeams,
+      transfer_market: newTransferMarket,
+      is_pre_season: true,
+      transfer_window_open: true,
+    });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -684,7 +1075,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
         simulateMatch,
         simulateOtherWeekMatches,
         makeTransferOffer,
-        listPlayerForSale
+        listPlayerForSale,
+        isSeasonComplete,
+        startNewSeason,
+        applyAgeProgression,
+        renewContract,
+        releasePlayer,
+        retirePlayer,
+        getExpiringContracts,
+        getRetirementCandidates,
       }}
     >
       {children}

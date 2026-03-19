@@ -347,7 +347,7 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
 }
 
 export default function MatchScreen() {
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -588,7 +588,12 @@ export default function MatchScreen() {
       // Brief delay so the user sees the completion state
       setTimeout(() => {
         setIsSimulatingWeek(false);
-        router.replace('/game');
+        // Check if season is complete after simulating this week
+        if (isSeasonComplete()) {
+          router.replace('/season-end');
+        } else {
+          router.replace('/game');
+        }
       }, 800);
     }, 300);
   };
