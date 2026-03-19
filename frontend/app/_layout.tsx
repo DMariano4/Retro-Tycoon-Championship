@@ -6,9 +6,9 @@ import { GameProvider } from '../src/context/GameContext';
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <GameProvider>
+    <AuthProvider>
+      <GameProvider>
+        <SafeAreaProvider>
           <StatusBar style="light" />
           <Stack
             screenOptions={{
@@ -17,8 +17,8 @@ export default function RootLayout() {
               animation: 'fade',
             }}
           />
-        </GameProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+        </SafeAreaProvider>
+      </GameProvider>
+    </AuthProvider>
   );
 }
