@@ -2159,4 +2159,35 @@ const styles = StyleSheet.create({
     color: '#6a8aaa',
     fontWeight: '600',
   },
+  // Swap indicator styles
+  swapIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a4a3c',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
+    marginBottom: 12,
+    gap: 8,
+  },
+  swapIndicatorText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#00ff88',
+  },
+  lineupNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#1a3a5c',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 10,
+  },
+  lineupNumberText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6a8aaa',
+  },
 });
