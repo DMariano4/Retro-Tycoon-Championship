@@ -38,7 +38,6 @@ db = client[os.environ.get('DB_NAME', 'football_manager')]
 # Create the main app
 app = FastAPI(title="Retro Football Championship API")
 api_router = APIRouter(prefix="/api")
-logger = logging.getLogger(__name__)
 
 # ==================== MODELS ====================
 
