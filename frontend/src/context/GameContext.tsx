@@ -518,11 +518,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Advance week counter for ALL leagues in same state update
-    updatedLeagues = updatedLeagues.map(l => ({
-      ...l,
-      current_week: l.current_week + 1
-    }));
+    // Advance week counter only for leagues that still have remaining fixtures
+    updatedLeagues = updatedLeagues.map(l => {
+      const hasRemainingFixtures = l.fixtures.some(f => !f.played);
+      if (!hasRemainingFixtures) return l; // Season complete, don't advance
+      return { ...l, current_week: l.current_week + 1 };
+    });
 
     // Advance game date by 7 days
     const currentDate = new Date(currentSave.game_date);
