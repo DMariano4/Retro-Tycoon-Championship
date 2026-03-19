@@ -1280,42 +1280,80 @@ export default function MatchScreen() {
         </View>
       </Modal>
 
-      {/* Lineup Selection Modal */}
+      {/* Lineup Selection Modal - Enhanced with swap functionality */}
       <Modal
         visible={showLineupModal}
         transparent={true}
         animationType="slide"
-        onRequestClose={() => setShowLineupModal(false)}
+        onRequestClose={() => {
+          setShowLineupModal(false);
+          setSelectedForSwap(null);
+          setSwapMode(null);
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>SELECT LINEUP</Text>
-              <TouchableOpacity onPress={() => setShowLineupModal(false)}>
+              <TouchableOpacity onPress={() => {
+                setShowLineupModal(false);
+                setSelectedForSwap(null);
+                setSwapMode(null);
+              }}>
                 <Ionicons name="close" size={24} color="#6a8aaa" />
               </TouchableOpacity>
             </View>
             
             <Text style={styles.modalSectionTitle}>
-              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}/9
+              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}
             </Text>
+            
+            {selectedForSwap && (
+              <View style={styles.swapIndicator}>
+                <Ionicons name="swap-horizontal" size={16} color="#00ff88" />
+                <Text style={styles.swapIndicatorText}>
+                  Tap another player to swap
+                </Text>
+              </View>
+            )}
             
             <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
               <Text style={styles.subsListTitle}>STARTING XI</Text>
-              {currentSquad.map(player => (
+              {currentSquad.map((player, index) => (
                 <TouchableOpacity 
                   key={player.id} 
-                  style={styles.subPlayerRow}
-                  onPress={() => handleLineupPlayerToggle(player.id)}
+                  style={[
+                    styles.subPlayerRow,
+                    selectedForSwap === player.id && styles.subPlayerRowSelected
+                  ]}
+                  onPress={() => handlePlayerSelect(player.id, true)}
                 >
+                  <View style={styles.lineupNumber}>
+                    <Text style={styles.lineupNumberText}>{index + 1}</Text>
+                  </View>
                   <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <View style={styles.subAbility}>
+                    <Text style={[
+                      styles.subPlayerPosition,
+                      selectedForSwap === player.id && { color: '#00ff88' }
+                    ]}>{player.position}</Text>
+                    <Text style={[
+                      styles.subPlayerName,
+                      selectedForSwap === player.id && { color: '#00ff88' }
+                    ]}>{player.name}</Text>
+                    <View style={[
+                      styles.subAbility,
+                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' }
+                    ]}>
                       <Text style={styles.subAbilityText}>{player.current_ability}</Text>
                     </View>
                   </View>
-                  <Ionicons name="arrow-down-circle" size={20} color="#ff6b6b" />
+                  {selectedForSwap === player.id ? (
+                    <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
+                  ) : selectedForSwap ? (
+                    <Ionicons name="swap-horizontal" size={20} color="#4a9eff" />
+                  ) : (
+                    <Ionicons name="ellipsis-horizontal" size={20} color="#6a8aaa" />
+                  )}
                 </TouchableOpacity>
               ))}
               
@@ -1323,95 +1361,43 @@ export default function MatchScreen() {
               {benchPlayers.map(player => (
                 <TouchableOpacity 
                   key={player.id} 
-                  style={styles.subPlayerRow}
-                  onPress={() => handleLineupPlayerToggle(player.id)}
+                  style={[
+                    styles.subPlayerRow,
+                    selectedForSwap === player.id && styles.subPlayerRowSelected
+                  ]}
+                  onPress={() => handlePlayerSelect(player.id, false)}
                 >
                   <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <View style={styles.subAbility}>
+                    <Text style={[
+                      styles.subPlayerPosition,
+                      selectedForSwap === player.id && { color: '#00ff88' }
+                    ]}>{player.position}</Text>
+                    <Text style={[
+                      styles.subPlayerName,
+                      selectedForSwap === player.id && { color: '#00ff88' }
+                    ]}>{player.name}</Text>
+                    <View style={[
+                      styles.subAbility,
+                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' }
+                    ]}>
                       <Text style={styles.subAbilityText}>{player.current_ability}</Text>
                     </View>
                   </View>
-                  <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
+                  {selectedForSwap === player.id ? (
+                    <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
+                  ) : selectedForSwap && swapMode === 'starting' ? (
+                    <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
+                  ) : (
+                    <Ionicons name="ellipsis-horizontal" size={20} color="#6a8aaa" />
+                  )}
                 </TouchableOpacity>
               ))}
             </ScrollView>
 
             <Text style={styles.subsNote}>
-              Tap players to move them between starting XI and bench
-            </Text>
-
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={handleConfirmLineup}
-            >
-              <Text style={styles.modalCloseButtonText}>CONFIRM LINEUP</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Lineup Selection Modal */}
-      <Modal
-        visible={showLineupModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowLineupModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>SELECT LINEUP</Text>
-              <TouchableOpacity onPress={() => setShowLineupModal(false)}>
-                <Ionicons name="close" size={24} color="#6a8aaa" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalSectionTitle}>
-              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}/9
-            </Text>
-            
-            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.subsListTitle}>STARTING XI</Text>
-              {currentSquad.map(player => (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={styles.subPlayerRow}
-                  onPress={() => handleLineupPlayerToggle(player.id)}
-                >
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <View style={styles.subAbility}>
-                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-                    </View>
-                  </View>
-                  <Ionicons name="arrow-down-circle" size={20} color="#ff6b6b" />
-                </TouchableOpacity>
-              ))}
-              
-              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-              {benchPlayers.map(player => (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={styles.subPlayerRow}
-                  onPress={() => handleLineupPlayerToggle(player.id)}
-                >
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <View style={styles.subAbility}>
-                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-                    </View>
-                  </View>
-                  <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-
-            <Text style={styles.subsNote}>
-              Tap players to move them between starting XI and bench
+              {selectedForSwap 
+                ? 'Tap another player to swap (any player can play any position)'
+                : 'Tap a player to select, then tap another to swap'}
             </Text>
 
             <TouchableOpacity 
