@@ -668,6 +668,269 @@ function generateOtherEvents(
 }
 
 // ============================================
+// PHASE 2: NEW HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Calculate tactical matchup bonus based on formations
+ */
+function calculateTacticalMatchup(
+  attackingFormation: string,
+  defendingFormation: string
+): number {
+  const matchup = FORMATION_MATCHUPS[attackingFormation];
+  if (matchup && matchup.counters.includes(defendingFormation)) {
+    return matchup.bonus;
+  }
+  return 0;
+}
+
+/**
+ * Calculate mentality matchup bonus
+ */
+function calculateMentalityMatchup(
+  attackingMentality: number,
+  defendingMentality: number,
+  isCounterAttack: boolean
+): number {
+  // Counter-attacking team vs very attacking opponent
+  if (isCounterAttack && defendingMentality >= 4) {
+    return MENTALITY_MATCHUPS.counterBonus;
+  }
+  // High pressing team vs very defensive opponent
+  if (attackingMentality >= 4 && defendingMentality <= 2) {
+    return MENTALITY_MATCHUPS.pressingBonus;
+  }
+  return 0;
+}
+
+/**
+ * Check if current minute is a key moment
+ */
+function isKeyMoment(minute: number): { isKey: boolean; bonus: number } {
+  for (const [, period] of Object.entries(KEY_MOMENTS)) {
+    if (minute >= period.start && minute <= period.end) {
+      return { isKey: true, bonus: period.bonus };
+    }
+  }
+  return { isKey: false, bonus: 0 };
+}
+
+/**
+ * Get star player (highest ability in starting XI)
+ */
+function getStarPlayer(team: Team): Player {
+  const startingXI = getStartingXI(team);
+  return startingXI.reduce((best, player) => 
+    player.current_ability > best.current_ability ? player : best
+  , startingXI[0]);
+}
+
+/**
+ * Calculate momentum at a given minute
+ */
+function calculateMomentum(
+  events: MatchEvent[],
+  minute: number,
+  homeTeamName: string
+): { home: number; away: number } {
+  let homeMomentum = MOMENTUM.baseValue;
+  let awayMomentum = MOMENTUM.baseValue;
+  
+  // Process events up to current minute
+  const relevantEvents = events.filter(e => e.minute <= minute);
+  
+  for (const event of relevantEvents) {
+    const isHome = event.team === homeTeamName;
+    
+    switch (event.type) {
+      case 'GOAL':
+        if (isHome) {
+          homeMomentum += MOMENTUM.goalSwing;
+          awayMomentum -= MOMENTUM.goalSwing * 0.5;
+        } else {
+          awayMomentum += MOMENTUM.goalSwing;
+          homeMomentum -= MOMENTUM.goalSwing * 0.5;
+        }
+        break;
+      case 'CHANCE':
+        if (isHome) {
+          homeMomentum += MOMENTUM.chanceSwing;
+        } else {
+          awayMomentum += MOMENTUM.chanceSwing;
+        }
+        break;
+      case 'SAVE':
+        // Save gives momentum to the team that made the save (opposite of shooter)
+        if (isHome) {
+          awayMomentum += MOMENTUM.saveSwing;
+        } else {
+          homeMomentum += MOMENTUM.saveSwing;
+        }
+        break;
+      case 'YELLOW_CARD':
+        if (isHome) {
+          homeMomentum += MOMENTUM.cardSwing;
+        } else {
+          awayMomentum += MOMENTUM.cardSwing;
+        }
+        break;
+    }
+  }
+  
+  // Apply decay toward neutral for time passed
+  const decayFactor = 1 - (minute * MOMENTUM.decayRate * 0.1);
+  homeMomentum = MOMENTUM.baseValue + (homeMomentum - MOMENTUM.baseValue) * decayFactor;
+  awayMomentum = MOMENTUM.baseValue + (awayMomentum - MOMENTUM.baseValue) * decayFactor;
+  
+  // Clamp values
+  homeMomentum = Math.max(MOMENTUM.minValue, Math.min(MOMENTUM.maxValue, homeMomentum));
+  awayMomentum = Math.max(MOMENTUM.minValue, Math.min(MOMENTUM.maxValue, awayMomentum));
+  
+  return { home: homeMomentum, away: awayMomentum };
+}
+
+/**
+ * Generate comprehensive player ratings based on match events and position
+ */
+function generateDetailedPlayerRatings(
+  homeTeam: Team,
+  awayTeam: Team,
+  events: MatchEvent[],
+  stats: MatchStats,
+  homeWon: boolean,
+  awayWon: boolean,
+  isDraw: boolean
+): { [playerId: string]: number } {
+  const ratings: { [playerId: string]: number } = {};
+  const startingXIHome = getStartingXI(homeTeam);
+  const startingXIAway = getStartingXI(awayTeam);
+  
+  const allPlayers = [
+    ...startingXIHome.map(p => ({ ...p, isHome: true })),
+    ...startingXIAway.map(p => ({ ...p, isHome: false })),
+  ];
+  
+  for (const player of allPlayers) {
+    // Base rating by position and team result
+    let baseRating = 6.0;
+    
+    // Team result bonus
+    const teamWon = player.isHome ? homeWon : awayWon;
+    const teamLost = player.isHome ? awayWon : homeWon;
+    if (teamWon) baseRating += 0.5;
+    if (teamLost) baseRating -= 0.3;
+    if (isDraw) baseRating += 0.1;
+    
+    // Form influence (subtle)
+    baseRating += (player.form - 10) / 20;
+    
+    // Fitness influence
+    baseRating += (player.fitness - 15) / 30;
+    
+    // Event-based bonuses
+    const playerEvents = events.filter(e => e.player === player.name || e.assistPlayer === player.name);
+    
+    for (const event of playerEvents) {
+      if (event.type === 'GOAL' && event.player === player.name) {
+        baseRating += 1.0; // Goal scored
+      }
+      if (event.type === 'GOAL' && event.assistPlayer === player.name) {
+        baseRating += 0.5; // Assist
+      }
+      if (event.type === 'SAVE' && event.player === player.name) {
+        baseRating += 0.3; // Save (for GK)
+      }
+      if (event.type === 'YELLOW_CARD' && event.player === player.name) {
+        baseRating -= 0.5; // Booked
+      }
+      if (event.type === 'FOUL' && event.player === player.name) {
+        baseRating -= 0.1; // Foul committed
+      }
+    }
+    
+    // Position-specific bonuses based on team stats
+    const teamStats = player.isHome ? 
+      { shots: stats.shots.home, possession: stats.possession.home } :
+      { shots: stats.shots.away, possession: stats.possession.away };
+    
+    switch (player.position) {
+      case 'GK':
+        // GK rating based on goals conceded vs expected
+        const goalsConceded = player.isHome ? 
+          events.filter(e => e.type === 'GOAL' && e.team !== homeTeam.short_name).length :
+          events.filter(e => e.type === 'GOAL' && e.team !== awayTeam.short_name).length;
+        if (goalsConceded === 0) baseRating += 1.0;
+        else if (goalsConceded === 1) baseRating += 0.3;
+        else if (goalsConceded >= 3) baseRating -= 0.5;
+        break;
+      case 'CB':
+      case 'LB':
+      case 'RB':
+      case 'LWB':
+      case 'RWB':
+        // Defenders bonus for clean sheet
+        const cleanSheet = player.isHome ? 
+          events.filter(e => e.type === 'GOAL' && e.team !== homeTeam.short_name).length === 0 :
+          events.filter(e => e.type === 'GOAL' && e.team !== awayTeam.short_name).length === 0;
+        if (cleanSheet) baseRating += 0.8;
+        break;
+      case 'CM':
+      case 'DM':
+      case 'AM':
+      case 'LM':
+      case 'RM':
+        // Midfielders bonus for possession
+        if (teamStats.possession > 55) baseRating += 0.3;
+        if (teamStats.possession > 60) baseRating += 0.2;
+        break;
+      case 'ST':
+      case 'LW':
+      case 'RW':
+        // Attackers bonus for shots
+        if (teamStats.shots >= 10) baseRating += 0.2;
+        if (teamStats.shots >= 15) baseRating += 0.2;
+        break;
+    }
+    
+    // Random variance (small)
+    baseRating += (Math.random() - 0.5) * 0.4;
+    
+    // Clamp to 1-10 scale with one decimal
+    ratings[player.id] = Math.max(1, Math.min(10, Math.round(baseRating * 10) / 10));
+  }
+  
+  return ratings;
+}
+
+/**
+ * Calculate substitution impact for second half
+ */
+function applySubstitutionImpact(
+  ratings: TeamRatings,
+  substitutionMinute: number | null
+): TeamRatings {
+  if (!substitutionMinute || substitutionMinute > 90) return ratings;
+  
+  let boost = 0;
+  if (substitutionMinute <= SUBSTITUTION_IMPACT.early.maxMinute) {
+    boost = SUBSTITUTION_IMPACT.early.performanceBoost;
+  } else if (substitutionMinute <= SUBSTITUTION_IMPACT.normal.maxMinute) {
+    boost = SUBSTITUTION_IMPACT.normal.performanceBoost;
+  } else {
+    boost = SUBSTITUTION_IMPACT.late.performanceBoost;
+  }
+  
+  return {
+    attack: ratings.attack * (1 + boost),
+    midfield: ratings.midfield * (1 + boost * 0.8),
+    defense: ratings.defense * (1 + boost * 0.6),
+    goalkeeper: ratings.goalkeeper,
+    overall: ratings.overall * (1 + boost * 0.8),
+  };
+}
+
+// ============================================
 // MAIN SIMULATION FUNCTION
 // ============================================
 
