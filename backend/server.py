@@ -594,7 +594,6 @@ def generate_teams(division: int = 1) -> List[Team]:
     
     if division != 1:
         # Generate fictional teams for other divisions
-        division_names = {2: "Championship", 3: "League One", 4: "League Two"}
         prefixes = ["United", "City", "Town", "FC", "Rovers", "Athletic", "Wanderers", "Rangers"]
         cities = ["Bristol", "Leeds", "Sheffield", "Birmingham", "Coventry", "Derby", "Stoke", 
                   "Swansea", "Cardiff", "Reading", "Watford", "Luton", "Preston", "Blackburn",
