@@ -1596,7 +1596,7 @@ export default function MatchScreen() {
                   ]}
                   onPress={() => {
                     if (isInjured) {
-                      Alert.alert('Player Injured', `${player.name} is injured (${player.injury.type}) and unavailable for ${player.injury.recoveryWeeks} week(s).`);
+                      Alert.alert('Player Injured', `${player.name} is injured (${player.injury?.type}) and unavailable for ${player.injury?.recoveryWeeks} week(s).`);
                       return;
                     }
                     handlePlayerSelect(player.id, false);
@@ -1627,7 +1627,7 @@ export default function MatchScreen() {
                     </View>
                   </View>
                   {isInjured ? (
-                    <Text style={{ color: '#ff6b6b', fontSize: 10 }}>{player.injury.recoveryWeeks}w</Text>
+                    <Text style={{ color: '#ff6b6b', fontSize: 10 }}>{player.injury?.recoveryWeeks}w</Text>
                   ) : selectedForSwap === player.id ? (
                     <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
                   ) : selectedForSwap && swapMode === 'starting' ? (
