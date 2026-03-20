@@ -11,8 +11,8 @@ import sys
 from typing import Dict, Any, List
 
 # Configuration
-FRONTEND_URL = "https://match-sim-debug.preview.emergentagent.com"
-BACKEND_URL = "https://match-sim-debug.preview.emergentagent.com/api"
+FRONTEND_URL = "https://code-ingest.preview.emergentagent.com"
+BACKEND_URL = "https://code-ingest.preview.emergentagent.com/api"
 TEST_TIMEOUT = 30
 
 class MatchEngineTest:

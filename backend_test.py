@@ -12,7 +12,7 @@ from typing import Dict, Any, List
 import statistics
 
 # Configuration
-BACKEND_URL = "https://match-sim-debug.preview.emergentagent.com/api"
+BACKEND_URL = "https://code-ingest.preview.emergentagent.com/api"
 TEST_TIMEOUT = 30
 
 class BackendTester:
