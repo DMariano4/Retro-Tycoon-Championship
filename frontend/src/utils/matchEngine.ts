@@ -50,6 +50,16 @@ export interface MatchEvent {
   description: string;
 }
 
+export interface MatchInjury {
+  playerId: string;
+  playerName: string;
+  teamId: string;
+  type: string;        // 'Knock' | 'Muscle Strain' | 'Sprain' | 'Torn Ligament' | 'Broken Bone'
+  severity: string;    // 'Minor' | 'Moderate' | 'Serious' | 'Severe' | 'Critical'
+  recoveryWeeks: number;
+  minute: number;
+}
+
 export interface MatchResult {
   homeScore: number;
   awayScore: number;
@@ -57,6 +67,7 @@ export interface MatchResult {
   stats: MatchStats;
   playerRatings: { [playerId: string]: number };
   momentum: MomentumHistory;
+  injuries: MatchInjury[];
 }
 
 export interface MatchStats {
@@ -176,6 +187,29 @@ const MOMENTUM = {
   decayRate: 0.02,            // Momentum decay per minute toward neutral
   effectOnXG: 0.15,           // How much momentum affects expected goals
 };
+
+// ============================================
+// PHASE 3: INJURY CONSTANTS
+// ============================================
+
+const INJURY_TYPES = [
+  { type: 'Knock', severity: 'Minor', minWeeks: 0, maxWeeks: 1, weight: 40 },
+  { type: 'Muscle Strain', severity: 'Moderate', minWeeks: 1, maxWeeks: 3, weight: 30 },
+  { type: 'Sprain', severity: 'Serious', minWeeks: 2, maxWeeks: 4, weight: 15 },
+  { type: 'Torn Ligament', severity: 'Severe', minWeeks: 4, maxWeeks: 10, weight: 10 },
+  { type: 'Broken Bone', severity: 'Critical', minWeeks: 8, maxWeeks: 16, weight: 5 },
+];
+
+// Base injury probability per player per match (~3% default)
+const INJURY_BASE_PROBABILITY = 0.03;
+
+const INJURY_DESCRIPTIONS = [
+  (name: string, type: string) => `${name} goes down holding his leg! ${type} suspected.`,
+  (name: string, type: string) => `${name} is stretchered off with a ${type.toLowerCase()}.`,
+  (name: string, type: string) => `Bad news — ${name} limps off with a ${type.toLowerCase()}.`,
+  (name: string, type: string) => `${name} pulls up injured. Looks like a ${type.toLowerCase()}.`,
+  (name: string, type: string) => `Concern for ${name} who can't continue. ${type} confirmed.`,
+];
 
 // Position weights for different ratings
 const POSITION_WEIGHTS = {
@@ -940,6 +974,96 @@ function applySubstitutionImpact(
 }
 
 // ============================================
+// PHASE 3: INJURY GENERATION
+// ============================================
+
+/**
+ * Generate match injuries based on tackles, fitness, age, and tackling intensity.
+ * Called during match simulation for both full and lite engines.
+ */
+function generateMatchInjuries(
+  homeTeam: Team,
+  awayTeam: Team,
+  homeTactics: TeamTactics,
+  awayTactics: TeamTactics,
+  homeFouls: number,
+  awayFouls: number
+): { injuries: MatchInjury[]; injuryEvents: MatchEvent[] } {
+  const injuries: MatchInjury[] = [];
+  const injuryEvents: MatchEvent[] = [];
+
+  const processTeam = (team: Team, opponentTactics: TeamTactics, opponentFouls: number) => {
+    const startingXI = getStartingXI(team);
+    const tacklingMod = opponentTactics.tackling === 'hard' ? 1.5 : opponentTactics.tackling === 'easy' ? 0.6 : 1.0;
+    // More fouls from the opponent = higher chance of injury for our players
+    const foulMod = Math.min(2.0, opponentFouls / 10);
+
+    for (const player of startingXI) {
+      let injuryProb = INJURY_BASE_PROBABILITY;
+
+      // Fitness modifier: low fitness = more injury prone
+      // fitness 20 = 0.6x, fitness 10 = 1.0x, fitness 1 = 1.8x
+      injuryProb *= 0.6 + (20 - player.fitness) * 0.06;
+
+      // Age modifier: 30+ = slightly more injury prone
+      if (player.age >= 30) injuryProb *= 1.0 + (player.age - 30) * 0.08;
+      if (player.age >= 35) injuryProb *= 1.3;
+
+      // Opponent tackling intensity
+      injuryProb *= tacklingMod;
+
+      // Foul frequency modifier
+      injuryProb *= foulMod;
+
+      // Stamina provides some protection
+      injuryProb *= Math.max(0.5, 1.2 - player.stamina / 20);
+
+      // GK less likely to get injured from tackles
+      if (player.position === 'GK') injuryProb *= 0.4;
+
+      // Roll the dice
+      if (Math.random() < injuryProb) {
+        // Select injury type using weighted random
+        const totalWeight = INJURY_TYPES.reduce((sum, t) => sum + t.weight, 0);
+        let roll = Math.random() * totalWeight;
+        let selectedInjury = INJURY_TYPES[0];
+        for (const injType of INJURY_TYPES) {
+          roll -= injType.weight;
+          if (roll <= 0) { selectedInjury = injType; break; }
+        }
+
+        const recoveryWeeks = selectedInjury.minWeeks + Math.floor(Math.random() * (selectedInjury.maxWeeks - selectedInjury.minWeeks + 1));
+        const minute = Math.floor(Math.random() * 90) + 1;
+        const description = INJURY_DESCRIPTIONS[Math.floor(Math.random() * INJURY_DESCRIPTIONS.length)](player.name, selectedInjury.type);
+
+        injuries.push({
+          playerId: player.id,
+          playerName: player.name,
+          teamId: team.id,
+          type: selectedInjury.type,
+          severity: selectedInjury.severity,
+          recoveryWeeks,
+          minute,
+        });
+
+        injuryEvents.push({
+          type: 'INJURY',
+          minute,
+          team: team.short_name,
+          player: player.name,
+          description,
+        });
+      }
+    }
+  };
+
+  processTeam(homeTeam, awayTactics, awayFouls);
+  processTeam(awayTeam, homeTactics, homeFouls);
+
+  return { injuries, injuryEvents };
+}
+
+// ============================================
 // MAIN SIMULATION FUNCTION
 // ============================================
 
@@ -1112,6 +1236,14 @@ export function simulateMatchEngine(
   );
   
   events.push(...otherEvents);
+
+  // Phase 3: Generate injuries
+  const { injuries: matchInjuries, injuryEvents } = generateMatchInjuries(
+    homeTeam, awayTeam,
+    homeTactics, awayTactics,
+    homeFouls, awayFouls
+  );
+  events.push(...injuryEvents);
   
   // Sort all events by minute
   events.sort((a, b) => a.minute - b.minute);
@@ -1171,6 +1303,7 @@ export function simulateMatchEngine(
       finalHome: finalMomentum.home,
       finalAway: finalMomentum.away,
     },
+    injuries: matchInjuries,
   };
 }
 
@@ -1190,6 +1323,7 @@ export interface LiteMatchResult {
   stats: MatchStats;
   playerRatings: { [playerId: string]: number };
   scorers: { playerId: string; playerName: string; team: 'home' | 'away'; minute: number }[];
+  injuries: MatchInjury[];
 }
 
 /**
@@ -1321,8 +1455,15 @@ export function simulateMatchLite(homeTeam: Team, awayTeam: Team): LiteMatchResu
   };
 
   rateTeamPlayers(homeTeam, homeWon, homeGoals, awayGoals);
-  rateTeamPlayers(awayTeam, !homeWon && !isDraw ? false : !isDraw, awayGoals, homeGoals);
+  rateTeamPlayers(awayTeam, awayGoals > homeGoals, awayGoals, homeGoals);
 
-  return { homeScore: homeGoals, awayScore: awayGoals, stats, playerRatings, scorers };
+  // Phase 3: Generate injuries for AI matches too
+  const { injuries: liteInjuries } = generateMatchInjuries(
+    homeTeam, awayTeam,
+    homeTactics, awayTactics,
+    homeFouls, awayFouls
+  );
+
+  return { homeScore: homeGoals, awayScore: awayGoals, stats, playerRatings, scorers, injuries: liteInjuries };
 }
 

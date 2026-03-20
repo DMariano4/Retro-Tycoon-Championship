@@ -3,7 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
-import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite } from '../utils/matchEngine';
+import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite, MatchInjury } from '../utils/matchEngine';
 
 const getBackendUrl = () => {
   const envUrl = Constants.expoConfig?.extra?.EXPO_PUBLIC_BACKEND_URL || 
@@ -70,6 +70,13 @@ export interface Player {
   fitness: number;
   form: number;
   last_contract_renewal?: number;
+  // Phase 3: Injury data
+  injury?: {
+    type: string;       // 'Knock' | 'Muscle Strain' | 'Sprain' | 'Torn Ligament' | 'Broken Bone'
+    severity: string;   // 'Minor' | 'Moderate' | 'Serious' | 'Severe' | 'Critical'
+    recoveryWeeks: number;
+    injuredDate: string; // YYYY-MM-DD
+  };
 }
 
 export interface Team {
@@ -195,6 +202,8 @@ interface GameContextType {
   retirePlayer: (playerId: string) => void;
   getExpiringContracts: () => Player[];
   getRetirementCandidates: () => { mustRetire: Player[]; userChoice: Player[] };
+  // Phase 3: Injuries
+  getInjuredPlayers: () => Player[];
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -429,11 +438,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         // Slight fitness decrease after match (0.5-1.5)
         const fitnessLoss = 0.5 + Math.random();
         const newFitness = Math.max(1, player.fitness - fitnessLoss);
+
+        // Phase 3: Check if player was injured in this match
+        const playerInjury = matchResult.injuries?.find(
+          (inj: MatchInjury) => inj.playerId === player.id
+        );
         
         return {
           ...player,
           form: Math.round(newForm * 10) / 10,
           fitness: Math.round(newFitness * 10) / 10,
+          // Apply injury if one occurred
+          ...(playerInjury ? {
+            injury: {
+              type: playerInjury.type,
+              severity: playerInjury.severity,
+              recoveryWeeks: playerInjury.recoveryWeeks,
+              injuredDate: currentSave.game_date,
+            }
+          } : {}),
         };
       });
       
@@ -449,6 +472,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       stats: matchResult.stats,
       playerRatings: matchResult.playerRatings,
       momentum: matchResult.momentum,
+      injuries: matchResult.injuries || [],
     };
   };
 
@@ -511,7 +535,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           return { ...l, fixtures: updatedFixtures, table: updatedTable };
         });
 
-        // Update AI team form/fitness
+        // Update AI team form/fitness + apply injuries
         updatedTeams = updatedTeams.map(team => {
           if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
 
@@ -524,10 +548,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
             const fitnessLoss = 0.5 + Math.random();
             const newFitness = Math.max(1, player.fitness - fitnessLoss);
 
+            // Phase 3: Check for injuries from lite match
+            const playerInjury = liteResult.injuries?.find(
+              (inj: MatchInjury) => inj.playerId === player.id
+            );
+
             return {
               ...player,
               form: Math.round(newForm * 10) / 10,
               fitness: Math.round(newFitness * 10) / 10,
+              ...(playerInjury ? {
+                injury: {
+                  type: playerInjury.type,
+                  severity: playerInjury.severity,
+                  recoveryWeeks: playerInjury.recoveryWeeks,
+                  injuredDate: currentSave.game_date,
+                }
+              } : {}),
             };
           });
 
@@ -535,6 +572,38 @@ export function GameProvider({ children }: { children: ReactNode }) {
         });
       }
     }
+
+    // Phase 3: Weekly fitness recovery + injury recovery for ALL teams
+    updatedTeams = updatedTeams.map(team => ({
+      ...team,
+      squad: team.squad.map(player => {
+        let updatedPlayer = { ...player };
+
+        // Fitness recovery (non-injured recover 2-4 per week, injured recover 0.5-1)
+        if (updatedPlayer.injury) {
+          // Injured: minimal fitness recovery
+          updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + 0.5 + Math.random() * 0.5);
+
+          // Decrease recovery weeks
+          const newRecoveryWeeks = updatedPlayer.injury.recoveryWeeks - 1;
+          if (newRecoveryWeeks <= 0) {
+            // Fully recovered
+            updatedPlayer.injury = undefined;
+            // Boost fitness slightly on recovery
+            updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + 2);
+          } else {
+            updatedPlayer.injury = { ...updatedPlayer.injury, recoveryWeeks: newRecoveryWeeks };
+          }
+        } else {
+          // Healthy: good fitness recovery
+          const recovery = 2 + Math.random() * 2; // 2-4 points per week
+          updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + recovery);
+        }
+
+        updatedPlayer.fitness = Math.round(updatedPlayer.fitness * 10) / 10;
+        return updatedPlayer;
+      })
+    }));
 
     // Advance week counter only for leagues that still have remaining fixtures
     updatedLeagues = updatedLeagues.map(l => {
@@ -680,6 +749,18 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ...currentSave,
       transfer_market: [...currentSave.transfer_market, newListing]
     });
+  };
+
+  // ============================================
+  // PHASE 3: INJURY FUNCTIONS
+  // ============================================
+
+  /** Get all injured players from managed team */
+  const getInjuredPlayers = (): Player[] => {
+    if (!currentSave) return [];
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return [];
+    return managedTeam.squad.filter(p => p.injury && p.injury.recoveryWeeks > 0);
   };
 
   // ============================================
@@ -1017,7 +1098,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       };
     });
 
-    // 3. Reset all players' fitness and normalize form
+    // 3. Reset all players' fitness, form, and clear injuries
     updatedTeams = updatedTeams.map(team => ({
       ...team,
       squad: team.squad.map(player => ({
@@ -1025,6 +1106,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         fitness: 16 + Math.random() * 4,  // 16-20 (pre-season fresh)
         form: 10 + Math.random() * 4,     // 10-14 (neutral start)
         morale: Math.max(10, player.morale), // Minimum 10 morale
+        injury: undefined, // Clear all injuries at new season
       }))
     }));
 
@@ -1084,6 +1166,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         retirePlayer,
         getExpiringContracts,
         getRetirementCandidates,
+        getInjuredPlayers,
       }}
     >
       {children}

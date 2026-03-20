@@ -259,6 +259,7 @@ function SquadTab({ team }: any) {
   };
 
   const positionGroups = groupByPosition();
+  const injuredPlayers = team.squad.filter((p: any) => p.injury && p.injury.recoveryWeeks > 0);
 
   const formatValue = (value: number) => {
     if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
@@ -270,18 +271,33 @@ function SquadTab({ team }: any) {
     router.push(`/player/${playerId}`);
   };
 
+  const getSeverityColor = (severity: string) => {
+    switch (severity) {
+      case 'Minor': return '#ffd700';
+      case 'Moderate': return '#ff9500';
+      case 'Serious': return '#ff6b35';
+      case 'Severe': return '#ff3b30';
+      case 'Critical': return '#cc0000';
+      default: return '#ff9500';
+    }
+  };
+
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-      {Object.entries(positionGroups).map(([groupName, players]: [string, any[]]) => (
-        <View key={groupName} style={styles.positionGroup}>
-          <View style={styles.positionHeader}>
-            <Text style={styles.positionTitle}>{groupName}</Text>
-            <Text style={styles.positionCount}>{players.length}</Text>
+      {/* Medical Bay - Injury Report */}
+      {injuredPlayers.length > 0 && (
+        <View style={styles.positionGroup}>
+          <View style={[styles.positionHeader, { borderBottomColor: '#ff3b30' }]}>
+            <Text style={[styles.positionTitle, { color: '#ff3b30' }]}>MEDICAL BAY</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="medkit" size={14} color="#ff3b30" style={{ marginRight: 4 }} />
+              <Text style={[styles.positionCount, { color: '#ff3b30', backgroundColor: 'rgba(255, 59, 48, 0.2)' }]}>{injuredPlayers.length}</Text>
+            </View>
           </View>
-          {players.map((player: any) => (
+          {injuredPlayers.map((player: any) => (
             <TouchableOpacity 
-              key={player.id} 
-              style={styles.playerCard}
+              key={`inj_${player.id}`} 
+              style={[styles.playerCard, { borderLeftWidth: 3, borderLeftColor: getSeverityColor(player.injury.severity) }]}
               onPress={() => handlePlayerPress(player.id)}
               activeOpacity={0.7}
             >
@@ -291,21 +307,72 @@ function SquadTab({ team }: any) {
                     <Text style={styles.positionBadgeText}>{player.position}</Text>
                   </View>
                   <Text style={styles.playerName}>{player.name}</Text>
+                  <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 6 }} />
                 </View>
                 <View style={styles.playerMeta}>
-                  <Text style={styles.playerAge}>{player.age} yrs</Text>
-                  <Text style={styles.playerNat}>{player.nationality}</Text>
+                  <Text style={[styles.playerAge, { color: getSeverityColor(player.injury.severity) }]}>
+                    {player.injury.type}
+                  </Text>
+                  <Text style={[styles.playerNat, { color: '#ff6b6b' }]}>
+                    {player.injury.recoveryWeeks === 1 ? '1 week' : `${player.injury.recoveryWeeks} weeks`}
+                  </Text>
                 </View>
               </View>
               <View style={styles.playerStats}>
-                <View style={styles.abilityBadge}>
-                  <Text style={styles.abilityText}>{Math.round(player.current_ability)}</Text>
+                <View style={[styles.abilityBadge, { backgroundColor: 'rgba(255, 59, 48, 0.2)' }]}>
+                  <Text style={[styles.abilityText, { color: '#ff6b6b' }]}>INJ</Text>
                 </View>
-                <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
                 <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
               </View>
             </TouchableOpacity>
           ))}
+        </View>
+      )}
+
+      {Object.entries(positionGroups).map(([groupName, players]: [string, any[]]) => (
+        <View key={groupName} style={styles.positionGroup}>
+          <View style={styles.positionHeader}>
+            <Text style={styles.positionTitle}>{groupName}</Text>
+            <Text style={styles.positionCount}>{players.length}</Text>
+          </View>
+          {players.map((player: any) => {
+            const isInjured = player.injury && player.injury.recoveryWeeks > 0;
+            return (
+              <TouchableOpacity 
+                key={player.id} 
+                style={[styles.playerCard, isInjured && { opacity: 0.6, borderLeftWidth: 3, borderLeftColor: getSeverityColor(player.injury?.severity || '') }]}
+                onPress={() => handlePlayerPress(player.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.playerInfo}>
+                  <View style={styles.playerNameRow}>
+                    <View style={styles.positionBadge}>
+                      <Text style={styles.positionBadgeText}>{player.position}</Text>
+                    </View>
+                    <Text style={styles.playerName}>{player.name}</Text>
+                    {isInjured && <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 6 }} />}
+                  </View>
+                  <View style={styles.playerMeta}>
+                    <Text style={styles.playerAge}>{player.age} yrs</Text>
+                    {isInjured ? (
+                      <Text style={[styles.playerNat, { color: '#ff6b6b' }]}>
+                        {player.injury.type} ({player.injury.recoveryWeeks}w)
+                      </Text>
+                    ) : (
+                      <Text style={styles.playerNat}>{player.nationality}</Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.playerStats}>
+                  <View style={styles.abilityBadge}>
+                    <Text style={styles.abilityText}>{Math.round(player.current_ability)}</Text>
+                  </View>
+                  <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </View>
       ))}
     </ScrollView>

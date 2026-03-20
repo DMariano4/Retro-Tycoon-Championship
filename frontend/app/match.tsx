@@ -43,14 +43,18 @@ const POSITION_COMPATIBILITY: Record<string, string[]> = {
 /**
  * Select best starting XI based on formation requirements
  * Prioritizes natural positions before using backup options
+ * Phase 3: Excludes injured players from selection
  */
 function selectStartingXI(squad: Player[], formation: string): Player[] {
   const requirements = FORMATION_REQUIREMENTS[formation] || FORMATION_REQUIREMENTS['4-4-2'];
   const selected: Player[] = [];
   const usedPlayerIds = new Set<string>();
   
+  // Phase 3: Filter out injured players
+  const availableSquad = squad.filter(p => !p.injury || p.injury.recoveryWeeks <= 0);
+  
   // Sort squad by ability (best players first for each selection)
-  const sortedSquad = [...squad].sort((a, b) => b.current_ability - a.current_ability);
+  const sortedSquad = [...availableSquad].sort((a, b) => b.current_ability - a.current_ability);
   
   // Two-pass approach: First fill with natural positions, then with backups
   const positionsToFill: { position: string; count: number }[] = [];
@@ -371,6 +375,7 @@ export default function MatchScreen() {
   const [momentumData, setMomentumData] = useState<{ timeline: { minute: number; homeValue: number; awayValue: number }[]; finalHome: number; finalAway: number } | null>(null);
   const [isSimulatingWeek, setIsSimulatingWeek] = useState(false);
   const [simProgress, setSimProgress] = useState({ current: 0, total: 0, leagueName: '' });
+  const [matchInjuries, setMatchInjuries] = useState<any[]>([]);
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -532,6 +537,11 @@ export default function MatchScreen() {
       }
       if (result.momentum) {
         setMomentumData(result.momentum);
+      }
+
+      // Phase 3: Store injuries from match result
+      if (result.injuries && result.injuries.length > 0) {
+        setMatchInjuries(result.injuries);
       }
       
       // Use real stats from the match engine
@@ -754,6 +764,7 @@ export default function MatchScreen() {
       case 'SAVE': return 'hand-left';
       case 'CHANCE': return 'flash';
       case 'FOUL': return 'warning';
+      case 'INJURY': return 'medkit';
       case 'SUBSTITUTION': return 'swap-horizontal';
       case 'TACTICAL_CHANGE': return 'grid-outline';
       default: return 'ellipse';
@@ -767,6 +778,7 @@ export default function MatchScreen() {
       case 'SAVE': return '#4a9eff';
       case 'CHANCE': return '#ff9f43';
       case 'FOUL': return '#ff6b6b';
+      case 'INJURY': return '#ff3b30';
       case 'SUBSTITUTION': return '#9b59b6';
       case 'TACTICAL_CHANGE': return '#3498db';
       default: return '#6a8aaa';
@@ -1244,6 +1256,37 @@ export default function MatchScreen() {
                       })}
                     </View>
                   )}
+
+                  {/* Phase 3: Injury Report */}
+                  {matchState === 'post' && matchInjuries.length > 0 && (
+                    <View style={styles.ratingsSection}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
+                        <Ionicons name="medkit" size={18} color="#ff3b30" style={{ marginRight: 8 }} />
+                        <Text style={[styles.sectionTitle, { color: '#ff3b30', marginBottom: 0 }]}>INJURY REPORT</Text>
+                      </View>
+                      {matchInjuries.map((injury: any, index: number) => {
+                        const isUserTeam = injury.teamId === managedTeam?.id;
+                        const severityColor = injury.severity === 'Minor' ? '#ffd700' :
+                          injury.severity === 'Moderate' ? '#ff9500' :
+                          injury.severity === 'Serious' ? '#ff6b35' :
+                          injury.severity === 'Severe' ? '#ff3b30' : '#cc0000';
+                        return (
+                          <View key={`injury_${index}`} style={[styles.ratingRow, { borderLeftWidth: 3, borderLeftColor: severityColor }]}>
+                            <Ionicons name="medkit" size={14} color={severityColor} style={{ marginRight: 6 }} />
+                            <Text style={[styles.ratingPlayerName, { color: isUserTeam ? '#ff6b6b' : '#6a8aaa' }]} numberOfLines={1}>
+                              {injury.playerName}
+                            </Text>
+                            <View style={{ flex: 1, alignItems: 'flex-end' }}>
+                              <Text style={{ color: severityColor, fontSize: 11, fontWeight: '700' }}>{injury.type}</Text>
+                              <Text style={{ color: '#6a8aaa', fontSize: 10 }}>
+                                {injury.recoveryWeeks === 0 ? 'Day-to-day' : injury.recoveryWeeks === 1 ? '1 week out' : `${injury.recoveryWeeks} weeks out`}
+                              </Text>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               </ScrollView>
             )}
@@ -1541,32 +1584,51 @@ export default function MatchScreen() {
               ))}
               
               <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-              {benchPlayers.map(player => (
+              {benchPlayers.map(player => {
+                const isInjured = player.injury && player.injury.recoveryWeeks > 0;
+                return (
                 <TouchableOpacity 
                   key={player.id} 
                   style={[
                     styles.subPlayerRow,
-                    selectedForSwap === player.id && styles.subPlayerRowSelected
+                    selectedForSwap === player.id && styles.subPlayerRowSelected,
+                    isInjured && { opacity: 0.5, borderLeftWidth: 3, borderLeftColor: '#ff3b30' }
                   ]}
-                  onPress={() => handlePlayerSelect(player.id, false)}
+                  onPress={() => {
+                    if (isInjured) {
+                      Alert.alert('Player Injured', `${player.name} is injured (${player.injury.type}) and unavailable for ${player.injury.recoveryWeeks} week(s).`);
+                      return;
+                    }
+                    handlePlayerSelect(player.id, false);
+                  }}
                 >
                   <View style={styles.subPlayerInfo}>
                     <Text style={[
                       styles.subPlayerPosition,
-                      selectedForSwap === player.id && { color: '#00ff88' }
+                      selectedForSwap === player.id && { color: '#00ff88' },
+                      isInjured && { color: '#ff6b6b' }
                     ]}>{player.position}</Text>
                     <Text style={[
                       styles.subPlayerName,
-                      selectedForSwap === player.id && { color: '#00ff88' }
+                      selectedForSwap === player.id && { color: '#00ff88' },
+                      isInjured && { color: '#ff6b6b' }
                     ]}>{player.name}</Text>
+                    {isInjured && (
+                      <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 4, marginRight: 2 }} />
+                    )}
                     <View style={[
                       styles.subAbility,
-                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' }
+                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' },
+                      isInjured && { backgroundColor: 'rgba(255, 59, 48, 0.2)' }
                     ]}>
-                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
+                      <Text style={[styles.subAbilityText, isInjured && { color: '#ff6b6b' }]}>
+                        {isInjured ? 'INJ' : player.current_ability}
+                      </Text>
                     </View>
                   </View>
-                  {selectedForSwap === player.id ? (
+                  {isInjured ? (
+                    <Text style={{ color: '#ff6b6b', fontSize: 10 }}>{player.injury.recoveryWeeks}w</Text>
+                  ) : selectedForSwap === player.id ? (
                     <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
                   ) : selectedForSwap && swapMode === 'starting' ? (
                     <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
@@ -1574,7 +1636,8 @@ export default function MatchScreen() {
                     <Ionicons name="ellipsis-horizontal" size={20} color="#6a8aaa" />
                   )}
                 </TouchableOpacity>
-              ))}
+                );
+              })}
             </ScrollView>
 
             <Text style={styles.subsNote}>
