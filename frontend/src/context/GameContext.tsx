@@ -82,6 +82,7 @@ export interface Team {
   // ============================================
   // Dynamic (auto-evolve based on performance)
   reputation: number;               // 1-20
+  fan_base: number;                 // Total active supporter pool, grows with success
   fan_loyalty: number;              // 1-20
   sponsorship_monthly: number;      // Monthly sponsor income
   // User-defined

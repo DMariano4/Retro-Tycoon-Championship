@@ -119,6 +119,7 @@ class Team(BaseModel):
     # ============================================
     # Dynamic (auto-evolve based on performance)
     reputation: int = 16             # 1-20, affects sponsorship/player attraction
+    fan_base: int = 50000            # Total active supporter pool, grows with success
     fan_loyalty: int = 16            # 1-20, affects base attendance %
     sponsorship_monthly: int = 2000000  # Monthly sponsor income, recalculated from reputation + position
     # User-defined
@@ -650,6 +651,7 @@ def generate_teams(division: int = 1) -> List[Team]:
     
     # Base values (Division 1 = 80% of theoretical max)
     base_reputation = round(16 * scale)
+    base_fan_base = round(50000 * scale)
     base_fan_loyalty = round(16 * scale)
     base_youth_facilities = round(16 * scale)
     base_training_facilities = round(16 * scale)
@@ -686,6 +688,7 @@ def generate_teams(division: int = 1) -> List[Team]:
             squad=squad,
             # Club profile (scaled by division)
             reputation=base_reputation,
+            fan_base=base_fan_base,
             fan_loyalty=base_fan_loyalty,
             stadium_capacity=base_stadium_capacity,
             ticket_price=base_ticket_price,
