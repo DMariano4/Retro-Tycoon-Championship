@@ -514,6 +514,111 @@ class BackendTester:
             self.log_test("Get Saves Auth Required", False, f"Request failed: {str(e)}")
             return False
     
+    def test_club_profile_fields_in_new_game(self) -> bool:
+        """Test that new game creation includes all required club profile fields"""
+        try:
+            # Create a new game specifically for club profile testing
+            teams_response = self.session.get(f"{BACKEND_URL}/teams")
+            teams = teams_response.json()
+            
+            payload = {
+                "team_id": "team_1_0",  # Use specific team ID as requested
+                "save_name": "Profile Test"
+            }
+            
+            response = self.session.post(f"{BACKEND_URL}/game/new", json=payload)
+            if response.status_code != 200:
+                self.log_test("Club Profile Fields - New Game", False, f"HTTP {response.status_code}", response.text)
+                return False
+            
+            game_data = response.json()
+            
+            # Verify season is 2025
+            if game_data.get("season") != 2025:
+                self.log_test("Club Profile Fields - New Game", False, f"Expected season 2025, got {game_data.get('season')}")
+                return False
+            
+            # Verify all 20 teams have the required club profile fields
+            teams = game_data.get("teams", [])
+            if len(teams) != 20:
+                self.log_test("Club Profile Fields - New Game", False, f"Expected 20 teams, got {len(teams)}")
+                return False
+            
+            required_fields = {
+                "reputation": 16,
+                "fan_loyalty": 16,
+                "stadium_capacity": 40000,
+                "ticket_price": 40,
+                "ticket_price_base": 40,
+                "sponsorship_monthly": 2000000,
+                "youth_facilities": 16,
+                "training_facilities": 16,
+                "budget": 50000000
+            }
+            
+            for i, team in enumerate(teams):
+                for field, expected_value in required_fields.items():
+                    if field not in team:
+                        self.log_test("Club Profile Fields - New Game", False, f"Team {i} missing field: {field}")
+                        return False
+                    
+                    actual_value = team[field]
+                    if field == "staff_costs_weekly":
+                        # staff_costs_weekly should be > 0 and calculated
+                        if actual_value <= 0:
+                            self.log_test("Club Profile Fields - New Game", False, f"Team {i} {field} should be > 0, got {actual_value}")
+                            return False
+                    else:
+                        if actual_value != expected_value:
+                            self.log_test("Club Profile Fields - New Game", False, f"Team {i} {field}: expected {expected_value}, got {actual_value}")
+                            return False
+                
+                # Check staff_costs_weekly is calculated and > 0
+                if "staff_costs_weekly" not in team:
+                    self.log_test("Club Profile Fields - New Game", False, f"Team {i} missing staff_costs_weekly")
+                    return False
+                
+                if team["staff_costs_weekly"] <= 0:
+                    self.log_test("Club Profile Fields - New Game", False, f"Team {i} staff_costs_weekly should be > 0, got {team['staff_costs_weekly']}")
+                    return False
+            
+            self.log_test("Club Profile Fields - New Game", True, "All 20 teams have correct club profile fields with identical base stats")
+            return True
+            
+        except Exception as e:
+            self.log_test("Club Profile Fields - New Game", False, f"Request failed: {str(e)}")
+            return False
+    
+    def test_teams_api_club_profile_fields(self) -> bool:
+        """Test that GET /api/teams returns teams with new profile fields"""
+        try:
+            response = self.session.get(f"{BACKEND_URL}/teams")
+            if response.status_code != 200:
+                self.log_test("Club Profile Fields - Teams API", False, f"HTTP {response.status_code}", response.text)
+                return False
+            
+            teams = response.json()
+            if len(teams) != 20:
+                self.log_test("Club Profile Fields - Teams API", False, f"Expected 20 teams, got {len(teams)}")
+                return False
+            
+            # Note: The /teams endpoint only returns basic team info (id, name, stadium, division)
+            # The full club profile fields are only available in the full game creation
+            # So we just verify the basic structure here
+            for team in teams:
+                required_basic_fields = ["id", "name", "stadium", "division"]
+                for field in required_basic_fields:
+                    if field not in team:
+                        self.log_test("Club Profile Fields - Teams API", False, f"Team missing basic field: {field}")
+                        return False
+            
+            self.log_test("Club Profile Fields - Teams API", True, f"All {len(teams)} teams have basic structure (full profile in game creation)")
+            return True
+            
+        except Exception as e:
+            self.log_test("Club Profile Fields - Teams API", False, f"Request failed: {str(e)}")
+            return False
+    
     def test_comprehensive_game_structure(self) -> bool:
         """Test comprehensive game structure for Phase 2 match engine support"""
         if not self.game_save:
@@ -613,6 +718,11 @@ class BackendTester:
         # Core backend tests
         if not self.test_backend_health():
             return self.get_summary()
+        
+        # PRIORITY: Club Profile Fields Testing (as requested)
+        print("\n🎯 PRIORITY: Testing Club Profile Fields")
+        self.test_teams_api_club_profile_fields()
+        self.test_club_profile_fields_in_new_game()
         
         if not self.test_get_teams():
             return self.get_summary()

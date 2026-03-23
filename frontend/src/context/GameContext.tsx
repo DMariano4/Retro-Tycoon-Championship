@@ -77,6 +77,22 @@ export interface Team {
   secondary_color: string;
   squad: Player[];
   tactics: Record<string, any>;
+  // ============================================
+  // CLUB PROFILE — Foundation for Financial System
+  // ============================================
+  // Dynamic (auto-evolve based on performance)
+  reputation: number;               // 1-20
+  fan_loyalty: number;              // 1-20
+  sponsorship_monthly: number;      // Monthly sponsor income
+  // User-defined
+  ticket_price: number;             // £ per match ticket
+  ticket_price_base: number;        // Reference base for fan_loyalty calculation
+  // Upgradeable (spend money to improve)
+  stadium_capacity: number;         // Max fans per home match
+  youth_facilities: number;         // 1-20
+  training_facilities: number;      // 1-20
+  // Derived
+  staff_costs_weekly: number;       // Weekly overhead
 }
 
 export interface TeamStanding {

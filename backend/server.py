@@ -114,6 +114,22 @@ class Team(BaseModel):
     secondary_color: str = "#FFFFFF"
     squad: List[Player] = []
     tactics: Dict[str, Any] = {}
+    # ============================================
+    # CLUB PROFILE — Foundation for Financial System
+    # ============================================
+    # Dynamic (auto-evolve based on performance)
+    reputation: int = 16             # 1-20, affects sponsorship/player attraction
+    fan_loyalty: int = 16            # 1-20, affects base attendance %
+    sponsorship_monthly: int = 2000000  # Monthly sponsor income, recalculated from reputation + position
+    # User-defined
+    ticket_price: int = 40           # £ per match ticket, user adjustable
+    ticket_price_base: int = 40      # Reference base for fan_loyalty impact calculation
+    # Upgradeable (spend money to improve)
+    stadium_capacity: int = 40000    # Max fans per home match
+    youth_facilities: int = 16       # 1-20, youth academy quality
+    training_facilities: int = 16    # 1-20, player development rate
+    # Derived (calculated from facilities + squad)
+    staff_costs_weekly: int = 300000 # Weekly overhead, scales with facilities + squad size
 
 class TeamStanding(BaseModel):
     team_id: str
@@ -587,8 +603,25 @@ def generate_squad(division: int, season_year: int = 2025) -> List[Player]:
     
     return squad
 
+def calculate_staff_costs(facilities_avg: float, squad_size: int) -> int:
+    """Derive weekly staff costs from facilities level and squad size.
+    Higher facilities and bigger squads cost more to maintain."""
+    base_cost = 100000  # £100K minimum
+    facilities_cost = int(facilities_avg * 10000)  # £10K per facilities point
+    squad_cost = squad_size * 2000  # £2K per player
+    return base_cost + facilities_cost + squad_cost
+
+
 def generate_teams(division: int = 1) -> List[Team]:
-    """Generate teams for a division"""
+    """Generate teams for a division with scaled club profiles.
+    
+    Base values (Division 1 = 80% of theoretical max):
+    - reputation: 16, fan_loyalty: 16, youth_facilities: 16, training_facilities: 16
+    - stadium_capacity: 40,000, ticket_price: £40
+    - sponsorship_monthly: £2,000,000, starting_budget: £50,000,000
+    
+    Division scaling: value × (0.75 ^ (division - 1))
+    """
     teams = []
     team_data = PREMIER_LEAGUE_TEAMS if division == 1 else []
     
@@ -612,19 +645,55 @@ def generate_teams(division: int = 1) -> List[Team]:
                 "secondary": "#FFFFFF"
             })
     
+    # Division scaling factor: 25% reduction per division level
+    scale = 0.75 ** (division - 1)
+    
+    # Base values (Division 1 = 80% of theoretical max)
+    base_reputation = round(16 * scale)
+    base_fan_loyalty = round(16 * scale)
+    base_youth_facilities = round(16 * scale)
+    base_training_facilities = round(16 * scale)
+    base_stadium_capacity = round(40000 * scale)
+    base_ticket_price = round(40 * scale)
+    base_sponsorship = round(2000000 * scale)
+    base_budget = round(50000000 * scale)
+    base_wage_budget = round(2000000 * scale)
+    
+    # Ability ranges scale with division
+    ability_ranges = {
+        1: (11, 17),
+        2: (9, 14),
+        3: (7, 11),
+        4: (5, 9)
+    }
+    
     for i, data in enumerate(team_data):
+        squad = generate_squad(division, season_year=2025)
+        facilities_avg = (base_youth_facilities + base_training_facilities) / 2.0
+        staff_costs = calculate_staff_costs(facilities_avg, len(squad))
+        
         team = Team(
             id=f"team_{division}_{i}",
             name=data["name"],
             short_name=data["short"],
             stadium=data["stadium"],
             division=division,
-            budget=50000000 // division,
-            wage_budget=2000000 // division,
+            budget=base_budget,
+            wage_budget=base_wage_budget,
             formation="4-4-2",
             primary_color=data["primary"],
             secondary_color=data["secondary"],
-            squad=generate_squad(division, season_year=2025)
+            squad=squad,
+            # Club profile (scaled by division)
+            reputation=base_reputation,
+            fan_loyalty=base_fan_loyalty,
+            stadium_capacity=base_stadium_capacity,
+            ticket_price=base_ticket_price,
+            ticket_price_base=base_ticket_price,
+            sponsorship_monthly=base_sponsorship,
+            youth_facilities=base_youth_facilities,
+            training_facilities=base_training_facilities,
+            staff_costs_weekly=staff_costs,
         )
         teams.append(team)
     
