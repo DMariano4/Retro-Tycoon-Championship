@@ -127,8 +127,8 @@ class Team(BaseModel):
     ticket_price_base: int = 40      # Reference base for fan_loyalty impact calculation
     # Upgradeable (spend money to improve)
     stadium_capacity: int = 10000    # Max fans per home match (upgradeable to ~120K)
-    youth_facilities: int = 16       # 1-20, youth academy quality
-    training_facilities: int = 16    # 1-20, player development rate
+    youth_facilities: int = 10       # 1-20, youth academy quality (upgradeable)
+    training_facilities: int = 10    # 1-20, player development rate (upgradeable)
     # Derived (calculated from facilities + squad)
     staff_costs_weekly: int = 300000 # Weekly overhead, scales with facilities + squad size
 
@@ -653,8 +653,8 @@ def generate_teams(division: int = 1) -> List[Team]:
     base_reputation = round(16 * scale)
     base_fan_base = round(10000 * scale)
     base_fan_loyalty = round(16 * scale)
-    base_youth_facilities = round(16 * scale)
-    base_training_facilities = round(16 * scale)
+    base_youth_facilities = max(1, round(10 * scale))
+    base_training_facilities = max(1, round(10 * scale))
     base_stadium_capacity = round(10000 * scale)
     base_ticket_price = round(40 * scale)
     base_sponsorship = round(2000000 * scale)
