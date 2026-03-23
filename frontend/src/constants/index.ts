@@ -195,12 +195,12 @@ export const POSITION_COMPATIBILITY: Record<string, string[]> = {
 /**
  * Position groups for filtering
  */
-export const POSITION_GROUPS = {
+export const POSITION_GROUPS: Record<string, string[]> = {
   GOALKEEPERS: ['GK'],
   DEFENDERS: ['CB', 'LB', 'RB', 'LWB', 'RWB'],
   MIDFIELDERS: ['DM', 'CM', 'LM', 'RM', 'AM'],
   FORWARDS: ['LW', 'RW', 'ST'],
-} as const;
+};
 
 // ============================================
 // MATCH ENGINE CONSTANTS

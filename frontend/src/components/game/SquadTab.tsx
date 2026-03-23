@@ -1,0 +1,122 @@
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import { POSITION_GROUPS } from '../../constants';
+import { formatValue, getSeverityColor } from '../../utils/formatters';
+import { gameStyles as styles } from './gameStyles';
+
+export function SquadTab({ team }: any) {
+  if (!team) return null;
+
+  const groupByPosition = () => {
+    const groups: Record<string, any[]> = {};
+    for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
+      groups[groupName] = team.squad.filter((p: any) => positions.includes(p.position));
+    }
+    return groups;
+  };
+
+  const positionGroups = groupByPosition();
+  const injuredPlayers = team.squad.filter((p: any) => p.injury && p.injury.recoveryWeeks > 0);
+
+  const handlePlayerPress = (playerId: string) => {
+    router.push(`/player/${playerId}`);
+  };
+
+  return (
+    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+      {/* Medical Bay - Injury Report */}
+      {injuredPlayers.length > 0 && (
+        <View style={styles.positionGroup}>
+          <View style={[styles.positionHeader, { borderBottomColor: '#ff3b30' }]}>
+            <Text style={[styles.positionTitle, { color: '#ff3b30' }]}>MEDICAL BAY</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="medkit" size={14} color="#ff3b30" style={{ marginRight: 4 }} />
+              <Text style={[styles.positionCount, { color: '#ff3b30', backgroundColor: 'rgba(255, 59, 48, 0.2)' }]}>{injuredPlayers.length}</Text>
+            </View>
+          </View>
+          {injuredPlayers.map((player: any) => (
+            <TouchableOpacity 
+              key={`inj_${player.id}`} 
+              style={[styles.playerCard, { borderLeftWidth: 3, borderLeftColor: getSeverityColor(player.injury.severity) }]}
+              onPress={() => handlePlayerPress(player.id)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.playerInfo}>
+                <View style={styles.playerNameRow}>
+                  <View style={styles.positionBadge}>
+                    <Text style={styles.positionBadgeText}>{player.position}</Text>
+                  </View>
+                  <Text style={styles.playerName}>{player.name}</Text>
+                  <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 6 }} />
+                </View>
+                <View style={styles.playerMeta}>
+                  <Text style={[styles.playerAge, { color: getSeverityColor(player.injury.severity) }]}>
+                    {player.injury.type}
+                  </Text>
+                  <Text style={[styles.playerNat, { color: '#ff6b6b' }]}>
+                    {player.injury.recoveryWeeks === 1 ? '1 week' : `${player.injury.recoveryWeeks} weeks`}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.playerStats}>
+                <View style={[styles.abilityBadge, { backgroundColor: 'rgba(255, 59, 48, 0.2)' }]}>
+                  <Text style={[styles.abilityText, { color: '#ff6b6b' }]}>INJ</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
+              </View>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {Object.entries(positionGroups).map(([groupName, players]: [string, any[]]) => (
+        <View key={groupName} style={styles.positionGroup}>
+          <View style={styles.positionHeader}>
+            <Text style={styles.positionTitle}>{groupName}</Text>
+            <Text style={styles.positionCount}>{players.length}</Text>
+          </View>
+          {players.map((player: any) => {
+            const isInjured = player.injury && player.injury.recoveryWeeks > 0;
+            return (
+              <TouchableOpacity 
+                key={player.id} 
+                style={[styles.playerCard, isInjured && { opacity: 0.6, borderLeftWidth: 3, borderLeftColor: getSeverityColor(player.injury?.severity || '') }]}
+                onPress={() => handlePlayerPress(player.id)}
+                activeOpacity={0.7}
+              >
+                <View style={styles.playerInfo}>
+                  <View style={styles.playerNameRow}>
+                    <View style={styles.positionBadge}>
+                      <Text style={styles.positionBadgeText}>{player.position}</Text>
+                    </View>
+                    <Text style={styles.playerName}>{player.name}</Text>
+                    {isInjured && <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 6 }} />}
+                  </View>
+                  <View style={styles.playerMeta}>
+                    <Text style={styles.playerAge}>{player.age} yrs</Text>
+                    {isInjured ? (
+                      <Text style={[styles.playerNat, { color: '#ff6b6b' }]}>
+                        {player.injury.type} ({player.injury.recoveryWeeks}w)
+                      </Text>
+                    ) : (
+                      <Text style={styles.playerNat}>{player.nationality}</Text>
+                    )}
+                  </View>
+                </View>
+                <View style={styles.playerStats}>
+                  <View style={styles.abilityBadge}>
+                    <Text style={styles.abilityText}>{Math.round(player.current_ability)}</Text>
+                  </View>
+                  <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
+                  <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
+                </View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      ))}
+    </ScrollView>
+  );
+}
