@@ -95,7 +95,7 @@ export default function GameScreen() {
           onNextWeek={handleNextWeek}
         />;
       case 'squad':
-        return <SquadTab team={managedTeam} />;
+        return <SquadTab team={managedTeam} currency={currentSave?.currency_symbol} />;
       case 'tactics':
         return <TacticsTab team={managedTeam} />;
       case 'league':

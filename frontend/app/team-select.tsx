@@ -23,12 +23,14 @@ export default function TeamSelectScreen() {
     saveName: string;
     loading: boolean;
     error: string | null;
+    currency: string;
   }>({
     teams: [],
     selectedTeam: null,
     saveName: '',
     loading: true,
-    error: null
+    error: null,
+    currency: '£',
   });
 
   const { createNewGame, isLoading: gameLoading } = useGame();
@@ -78,7 +80,7 @@ export default function TeamSelectScreen() {
     setState(prev => ({ ...prev, saveName: name }));
   };
 
-  const { teams, selectedTeam, saveName, loading, error } = state;
+  const { teams, selectedTeam, saveName, loading, error, currency } = state;
 
   const handleStartGame = async () => {
     if (!selectedTeam) {
@@ -87,7 +89,7 @@ export default function TeamSelectScreen() {
     }
 
     const name = saveName.trim() || `${selectedTeam.name} Career`;
-    const success = await createNewGame(selectedTeam.id, name);
+    const success = await createNewGame(selectedTeam.id, name, currency);
     
     if (success) {
       router.replace('/game');
@@ -184,6 +186,28 @@ export default function TeamSelectScreen() {
               placeholder={`${selectedTeam.name} Career`}
               placeholderTextColor="#4a6a8a"
             />
+          </View>
+
+          {/* Currency Selection */}
+          <View style={styles.currencySection}>
+            <Text style={styles.saveNameLabel}>Currency:</Text>
+            <View style={styles.currencyRow}>
+              {['£', '$', '€'].map((sym) => (
+                <TouchableOpacity
+                  key={sym}
+                  style={[
+                    styles.currencyButton,
+                    currency === sym && styles.currencyButtonActive,
+                  ]}
+                  onPress={() => setState(prev => ({ ...prev, currency: sym }))}
+                >
+                  <Text style={[
+                    styles.currencyText,
+                    currency === sym && styles.currencyTextActive,
+                  ]}>{sym}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           <TouchableOpacity
@@ -339,5 +363,33 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '800',
     letterSpacing: 1,
+  },
+  currencySection: {
+    marginBottom: 16,
+  },
+  currencyRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  currencyButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+    backgroundColor: '#0a1628',
+    alignItems: 'center',
+  },
+  currencyButtonActive: {
+    borderColor: '#00ff88',
+    backgroundColor: '#1a4a3c',
+  },
+  currencyText: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#6a8aaa',
+  },
+  currencyTextActive: {
+    color: '#00ff88',
   },
 });

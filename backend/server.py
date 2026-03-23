@@ -118,7 +118,7 @@ class Team(BaseModel):
     # CLUB PROFILE — Foundation for Financial System
     # ============================================
     # Dynamic (auto-evolve based on performance)
-    reputation: int = 16             # 1-20, affects sponsorship/player attraction
+    reputation: int = 10             # 1-20, affects sponsorship/player attraction
     fan_base: int = 10000             # Total active supporter pool, grows with success (max ~200K)
     fan_loyalty: int = 16            # 1-20, affects base attendance %
     sponsorship_monthly: int = 2000000  # Monthly sponsor income, recalculated from reputation + position
@@ -206,10 +206,12 @@ class GameSave(BaseModel):
     is_cloud: bool = False
     transfer_window_open: bool = True  # Track if transfers are allowed
     is_pre_season: bool = True  # Track if in pre-season
+    currency_symbol: str = "£"  # User-selected: £, $ or €
 
 class CreateGameRequest(BaseModel):
     team_id: str
     save_name: str
+    currency_symbol: str = "£"  # User-selected at game start
 
 class SaveGameRequest(BaseModel):
     save_data: Dict[str, Any]
@@ -607,9 +609,9 @@ def generate_squad(division: int, season_year: int = 2025) -> List[Player]:
 def calculate_staff_costs(facilities_avg: float, squad_size: int) -> int:
     """Derive weekly staff costs from facilities level and squad size.
     Higher facilities and bigger squads cost more to maintain."""
-    base_cost = 100000  # £100K minimum
-    facilities_cost = int(facilities_avg * 10000)  # £10K per facilities point
-    squad_cost = squad_size * 2000  # £2K per player
+    base_cost = 50000    # £50K minimum
+    facilities_cost = int(facilities_avg * 5000)   # £5K per facilities point
+    squad_cost = squad_size * 1000   # £1K per player
     return base_cost + facilities_cost + squad_cost
 
 
@@ -650,7 +652,7 @@ def generate_teams(division: int = 1) -> List[Team]:
     scale = 0.75 ** (division - 1)
     
     # Base values (Division 1 = 80% of theoretical max)
-    base_reputation = round(16 * scale)
+    base_reputation = max(1, round(10 * scale))
     base_fan_base = round(10000 * scale)
     base_fan_loyalty = round(16 * scale)
     base_youth_facilities = max(1, round(10 * scale))
@@ -658,7 +660,9 @@ def generate_teams(division: int = 1) -> List[Team]:
     base_stadium_capacity = round(10000 * scale)
     base_ticket_price = round(40 * scale)
     base_sponsorship = round(2000000 * scale)
-    base_budget = round(50000000 * scale)
+    # Budget uses 50% reduction per division (steeper than other stats)
+    budget_scale = 0.50 ** (division - 1)
+    base_budget = round(50000000 * budget_scale)
     base_wage_budget = round(2000000 * scale)
     
     # Ability ranges scale with division
@@ -898,7 +902,8 @@ async def create_new_game(req: CreateGameRequest, request: Request):
         transfer_market=transfer_market,
         budget=selected_team.budget,
         transfer_window_open=True,
-        is_pre_season=True
+        is_pre_season=True,
+        currency_symbol=req.currency_symbol,
     )
     
     # Check if user is authenticated for cloud save option

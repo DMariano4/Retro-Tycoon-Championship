@@ -5,6 +5,7 @@ import { formatValue } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
 
 export function DashboardTab({ team, league, save, fixture, position, onNextWeek }: any) {
+  const currency = save?.currency_symbol || '£';
   return (
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       {/* Quick Stats */}
@@ -14,7 +15,7 @@ export function DashboardTab({ team, league, save, fixture, position, onNextWeek
           <Text style={styles.statLabel}>Position</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statValue}>{formatValue(save?.budget || 0)}</Text>
+          <Text style={styles.statValue}>{formatValue(save?.budget || 0, currency)}</Text>
           <Text style={styles.statLabel}>Budget</Text>
         </View>
         <View style={styles.statCard}>

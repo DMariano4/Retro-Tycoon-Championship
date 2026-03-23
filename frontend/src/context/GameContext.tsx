@@ -176,13 +176,15 @@ export interface GameSave {
   calendar?: SeasonCalendar;
   transfer_window_open?: boolean;
   is_pre_season?: boolean;
+  // Currency display
+  currency_symbol: string;  // £, $ or €
 }
 
 interface GameContextType {
   currentSave: GameSave | null;
   isLoading: boolean;
   error: string | null;
-  createNewGame: (teamId: string, saveName: string) => Promise<boolean>;
+  createNewGame: (teamId: string, saveName: string, currencySymbol?: string) => Promise<boolean>;
   saveGame: (isCloud?: boolean) => Promise<boolean>;
   loadFromLocal: () => Promise<boolean>;
   loadFromCloud: (saveId: string) => Promise<boolean>;
@@ -216,7 +218,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
   const { sessionToken } = useAuth();
 
-  const createNewGame = async (teamId: string, saveName: string): Promise<boolean> => {
+  const createNewGame = async (teamId: string, saveName: string, currencySymbol: string = '£'): Promise<boolean> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -227,7 +229,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
           'Content-Type': 'application/json',
           ...(sessionToken ? { 'Authorization': `Bearer ${sessionToken}` } : {})
         },
-        body: JSON.stringify({ team_id: teamId, save_name: saveName })
+        body: JSON.stringify({ team_id: teamId, save_name: saveName, currency_symbol: currencySymbol })
       });
 
       if (!response.ok) throw new Error('Failed to create game');

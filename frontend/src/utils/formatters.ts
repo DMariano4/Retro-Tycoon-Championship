@@ -4,22 +4,22 @@
  */
 
 // Format monetary values (player value, budget, etc.)
-export const formatValue = (value: number): string => {
-  if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
-  if (value >= 1000) return `£${(value / 1000).toFixed(0)}K`;
-  return `£${value}`;
+export const formatValue = (value: number, currency: string = '£'): string => {
+  if (value >= 1000000) return `${currency}${(value / 1000000).toFixed(1)}M`;
+  if (value >= 1000) return `${currency}${(value / 1000).toFixed(0)}K`;
+  return `${currency}${value}`;
 };
 
 // Format weekly wages
-export const formatWage = (wage: number): string => {
-  if (wage >= 1000) return `£${(wage / 1000).toFixed(1)}K/week`;
-  return `£${wage}/week`;
+export const formatWage = (wage: number, currency: string = '£'): string => {
+  if (wage >= 1000) return `${currency}${(wage / 1000).toFixed(1)}K/week`;
+  return `${currency}${wage}/week`;
 };
 
 // Format wage without /week suffix (for shorter display)
-export const formatWageShort = (wage: number): string => {
-  if (wage >= 1000) return `£${(wage / 1000).toFixed(1)}K`;
-  return `£${wage}`;
+export const formatWageShort = (wage: number, currency: string = '£'): string => {
+  if (wage >= 1000) return `${currency}${(wage / 1000).toFixed(1)}K`;
+  return `${currency}${wage}`;
 };
 
 // Get color based on attribute value (1-20 scale)

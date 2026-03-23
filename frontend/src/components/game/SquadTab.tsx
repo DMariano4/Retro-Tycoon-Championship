@@ -6,7 +6,7 @@ import { POSITION_GROUPS } from '../../constants';
 import { formatValue, getSeverityColor } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
 
-export function SquadTab({ team }: any) {
+export function SquadTab({ team, currency }: any) {
   if (!team) return null;
 
   const groupByPosition = () => {
@@ -109,7 +109,7 @@ export function SquadTab({ team }: any) {
                   <View style={styles.abilityBadge}>
                     <Text style={styles.abilityText}>{Math.round(player.current_ability)}</Text>
                   </View>
-                  <Text style={styles.playerValue}>{formatValue(player.value)}</Text>
+                  <Text style={styles.playerValue}>{formatValue(player.value, currency || '£')}</Text>
                   <Ionicons name="chevron-forward" size={16} color="#4a6a8a" />
                 </View>
               </TouchableOpacity>
