@@ -1098,16 +1098,28 @@ export function GameProvider({ children }: { children: ReactNode }) {
       };
     });
 
-    // 3. Reset all players' fitness, form, and clear injuries
+    // 3. Reset all players' fitness, form, and handle injuries
+    // Minor/Moderate/Serious injuries heal during off-season
+    // Severe/Critical injuries persist (reduced by ~6 weeks of off-season recovery)
+    const OFF_SEASON_RECOVERY_WEEKS = 6;
     updatedTeams = updatedTeams.map(team => ({
       ...team,
-      squad: team.squad.map(player => ({
-        ...player,
-        fitness: 16 + Math.random() * 4,  // 16-20 (pre-season fresh)
-        form: 10 + Math.random() * 4,     // 10-14 (neutral start)
-        morale: Math.max(10, player.morale), // Minimum 10 morale
-        injury: undefined, // Clear all injuries at new season
-      }))
+      squad: team.squad.map(player => {
+        let newInjury = undefined;
+        if (player.injury && (player.injury.severity === 'Severe' || player.injury.severity === 'Critical')) {
+          const remainingWeeks = player.injury.recoveryWeeks - OFF_SEASON_RECOVERY_WEEKS;
+          if (remainingWeeks > 0) {
+            newInjury = { ...player.injury, recoveryWeeks: remainingWeeks };
+          }
+        }
+        return {
+          ...player,
+          fitness: newInjury ? Math.min(12, 8 + Math.random() * 4) : 16 + Math.random() * 4,  // Injured players start less fit
+          form: 10 + Math.random() * 4,     // 10-14 (neutral start)
+          morale: Math.max(10, player.morale), // Minimum 10 morale
+          injury: newInjury,
+        };
+      })
     }));
 
     // 4. Refresh transfer market
