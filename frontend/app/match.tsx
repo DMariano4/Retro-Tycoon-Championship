@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Dimensions, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, Dimensions, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -518,10 +518,7 @@ export default function MatchScreen() {
       Alert.alert('Invalid Lineup', `You must select exactly 11 players. Current: ${currentSquad.length}`);
       return;
     }
-    if (benchPlayers.length > 9) {
-      Alert.alert('Too Many Subs', 'You can have maximum 9 substitutes on the bench.');
-      return;
-    }
+    // Allow any number of bench players - squads typically have 24+ players
     console.log('Setting lineup confirmed and closing modal');
     setLineupConfirmed(true);
     setShowLineupModal(false);
@@ -712,10 +709,15 @@ export default function MatchScreen() {
                   <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
                   <Text style={styles.lineupConfirmedText}>Team Selected</Text>
                 </View>
-                <TouchableOpacity style={styles.startButton} onPress={handleStartMatch}>
+                <Pressable 
+                  style={styles.startButton} 
+                  onPress={handleStartMatch}
+                  {...(Platform.OS === 'web' ? { onClick: handleStartMatch } : {})}
+                  accessibilityRole="button"
+                >
                   <Ionicons name="play" size={20} color="#0a1628" />
                   <Text style={styles.startButtonText}>KICK OFF</Text>
-                </TouchableOpacity>
+                </Pressable>
               </>
             )}
           </View>
@@ -1388,12 +1390,14 @@ export default function MatchScreen() {
                 : 'Tap a player to select, then tap another to swap'}
             </Text>
 
-            <TouchableOpacity 
+            <Pressable 
               style={styles.modalCloseButton}
               onPress={handleConfirmLineup}
+              {...(Platform.OS === 'web' ? { onClick: handleConfirmLineup } : {})}
+              accessibilityRole="button"
             >
               <Text style={styles.modalCloseButtonText}>CONFIRM LINEUP</Text>
-            </TouchableOpacity>
+            </Pressable>
           </View>
         </View>
       </Modal>
