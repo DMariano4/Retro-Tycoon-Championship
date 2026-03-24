@@ -314,6 +314,120 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
         </View>
       </View>
 
+      {/* Sponsor Deals */}
+      {team?.sponsors && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>SPONSOR DEALS (Annual)</Text>
+          <View style={financeStyles.breakdownCard}>
+            {/* Kit Manufacturer */}
+            <View style={financeStyles.sponsorRow}>
+              <View style={financeStyles.sponsorInfo}>
+                <Ionicons name="shirt" size={18} color="#4a9eff" />
+                <View style={financeStyles.sponsorText}>
+                  <Text style={financeStyles.sponsorName}>{team.sponsors.kit_manufacturer.name}</Text>
+                  <Text style={financeStyles.sponsorType}>Kit Manufacturer • {team.sponsors.kit_manufacturer.tier}</Text>
+                </View>
+              </View>
+              <Text style={financeStyles.sponsorValue}>
+                {formatValue(team.sponsors.kit_manufacturer.annual, currency)}/yr
+              </Text>
+            </View>
+
+            {/* Main Shirt Sponsor */}
+            <View style={financeStyles.sponsorRow}>
+              <View style={financeStyles.sponsorInfo}>
+                <Ionicons name="pricetag" size={18} color="#ff9f43" />
+                <View style={financeStyles.sponsorText}>
+                  <Text style={financeStyles.sponsorName}>{team.sponsors.main_shirt.name}</Text>
+                  <Text style={financeStyles.sponsorType}>Shirt Sponsor • {team.sponsors.main_shirt.tier}</Text>
+                </View>
+              </View>
+              <Text style={financeStyles.sponsorValue}>
+                {formatValue(team.sponsors.main_shirt.annual, currency)}/yr
+              </Text>
+            </View>
+
+            {/* Sleeve Sponsor (if available) */}
+            {team.sponsors.sleeve && (
+              <View style={financeStyles.sponsorRow}>
+                <View style={financeStyles.sponsorInfo}>
+                  <Ionicons name="hand-left" size={18} color="#a55eea" />
+                  <View style={financeStyles.sponsorText}>
+                    <Text style={financeStyles.sponsorName}>{team.sponsors.sleeve.name}</Text>
+                    <Text style={financeStyles.sponsorType}>Sleeve Sponsor • {team.sponsors.sleeve.tier}</Text>
+                  </View>
+                </View>
+                <Text style={financeStyles.sponsorValue}>
+                  {formatValue(team.sponsors.sleeve.annual, currency)}/yr
+                </Text>
+              </View>
+            )}
+
+            {/* Stadium Naming (if available) */}
+            {team.sponsors.stadium_naming && (
+              <View style={financeStyles.sponsorRow}>
+                <View style={financeStyles.sponsorInfo}>
+                  <Ionicons name="business" size={18} color="#00ff88" />
+                  <View style={financeStyles.sponsorText}>
+                    <Text style={financeStyles.sponsorName}>{team.sponsors.stadium_naming.name}</Text>
+                    <Text style={financeStyles.sponsorType}>Stadium Naming • {team.sponsors.stadium_naming.tier}</Text>
+                  </View>
+                </View>
+                <Text style={financeStyles.sponsorValue}>
+                  {formatValue(team.sponsors.stadium_naming.annual, currency)}/yr
+                </Text>
+              </View>
+            )}
+
+            {/* Training Ground (if available) */}
+            {team.sponsors.training_ground && (
+              <View style={financeStyles.sponsorRow}>
+                <View style={financeStyles.sponsorInfo}>
+                  <Ionicons name="fitness" size={18} color="#ffcc00" />
+                  <View style={financeStyles.sponsorText}>
+                    <Text style={financeStyles.sponsorName}>{team.sponsors.training_ground.name}</Text>
+                    <Text style={financeStyles.sponsorType}>Training Ground • {team.sponsors.training_ground.tier}</Text>
+                  </View>
+                </View>
+                <Text style={financeStyles.sponsorValue}>
+                  {formatValue(team.sponsors.training_ground.annual, currency)}/yr
+                </Text>
+              </View>
+            )}
+
+            {/* Official Partners (if available) */}
+            {team.sponsors.official_partners && (
+              <View style={financeStyles.sponsorRow}>
+                <View style={financeStyles.sponsorInfo}>
+                  <Ionicons name="globe" size={18} color="#4a9eff" />
+                  <View style={financeStyles.sponsorText}>
+                    <Text style={financeStyles.sponsorName}>{team.sponsors.official_partners.count} Official Partners</Text>
+                    <Text style={financeStyles.sponsorType}>{team.sponsors.official_partners.tier} Tier</Text>
+                  </View>
+                </View>
+                <Text style={financeStyles.sponsorValue}>
+                  {formatValue(team.sponsors.official_partners.annual, currency)}/yr
+                </Text>
+              </View>
+            )}
+
+            <View style={financeStyles.breakdownDivider} />
+            <View style={financeStyles.breakdownRow}>
+              <Text style={financeStyles.breakdownTotalLabel}>Total Annual Sponsorship</Text>
+              <Text style={[financeStyles.breakdownValue, { color: '#00ff88' }]}>
+                {formatValue(team.sponsors.total_annual, currency)}/yr
+              </Text>
+            </View>
+            <View style={financeStyles.breakdownRow}>
+              <Text style={financeStyles.breakdownLabel}>Monthly Income</Text>
+              <Text style={financeStyles.breakdownValue}>
+                {formatValue(team.sponsorship_monthly, currency)}/mo
+              </Text>
+            </View>
+          </View>
+        </View>
+      )}
+
       {/* Expenses Breakdown */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>EXPENSES BREAKDOWN</Text>
@@ -780,5 +894,38 @@ const financeStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#fff',
+  },
+  // Sponsor styles
+  sponsorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a3a5c',
+  },
+  sponsorInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 10,
+  },
+  sponsorText: {
+    flex: 1,
+  },
+  sponsorName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  sponsorType: {
+    fontSize: 11,
+    color: '#6a8aaa',
+    marginTop: 2,
+  },
+  sponsorValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#00ff88',
   },
 });

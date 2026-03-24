@@ -5,6 +5,7 @@ import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
 import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite, MatchInjury } from '../utils/matchEngine';
 import { getBackendUrl } from '../utils/api';
+import { calculateSponsors, getMonthlySponsorship } from '../utils/sponsors';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -84,7 +85,7 @@ export interface Team {
   reputation: number;               // 1-20
   fan_base: number;                 // Total active supporter pool, grows with success
   fan_loyalty: number;              // 1-20
-  sponsorship_monthly: number;      // Monthly sponsor income
+  sponsorship_monthly: number;      // Monthly sponsor income (total of all sponsors)
   // User-defined
   ticket_price: number;             // £ per match ticket
   ticket_price_base: number;        // Reference base for fan_loyalty calculation
@@ -94,6 +95,18 @@ export interface Team {
   training_facilities: number;      // 1-20
   // Derived
   staff_costs_weekly: number;       // Weekly overhead
+  // ============================================
+  // SPONSORSHIP BREAKDOWN
+  // ============================================
+  sponsors?: {
+    kit_manufacturer: { name: string; annual: number; tier: string };
+    main_shirt: { name: string; annual: number; tier: string };
+    sleeve?: { name: string; annual: number; tier: string };        // Rep 8+ only
+    stadium_naming?: { name: string; annual: number; tier: string }; // Rep 12+ only
+    training_ground?: { name: string; annual: number; tier: string }; // Rep 6+ only
+    official_partners?: { name: string; annual: number; tier: string; count: number }; // Rep 10+ only
+    total_annual: number;
+  };
   // ============================================
   // FINANCIAL TRACKING — Season P&L
   // ============================================
@@ -253,10 +266,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       if (!response.ok) throw new Error('Failed to create game');
 
       const gameData = await response.json();
-      setCurrentSave(gameData);
+      
+      // Calculate sponsors for all teams based on their reputation
+      const teamsWithSponsors = gameData.teams.map((team: any) => {
+        const sponsors = calculateSponsors(team.reputation);
+        return {
+          ...team,
+          sponsors,
+          sponsorship_monthly: getMonthlySponsorship(sponsors),
+        };
+      });
+      
+      const enrichedGameData = { ...gameData, teams: teamsWithSponsors };
+      setCurrentSave(enrichedGameData);
       
       // Save locally
-      await AsyncStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(gameData));
+      await AsyncStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(enrichedGameData));
       
       return true;
     } catch (err: any) {
@@ -1371,9 +1396,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ));
       const newFanBase = Math.max(5000, Math.round(team.fan_base * fanBaseMultiplier));
       
-      // Recalculate sponsorship based on new reputation
-      // Base: £500k per reputation point per month
-      const newSponsorship = Math.round(newReputation * 500000);
+      // Recalculate sponsors based on new reputation
+      const newSponsors = calculateSponsors(newReputation);
+      const newSponsorship = getMonthlySponsorship(newSponsors);
       
       // Reset season finances
       const resetFinances = {
@@ -1391,6 +1416,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ...team,
         reputation: newReputation,
         fan_base: newFanBase,
+        sponsors: newSponsors,
         sponsorship_monthly: newSponsorship,
         finances: resetFinances,
       };
