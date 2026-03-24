@@ -439,8 +439,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const formChange = (rating - 6.5) * 0.5;
         const newForm = Math.max(1, Math.min(20, player.form + formChange));
         
-        // Slight fitness decrease after match (0.5-1.5)
-        const fitnessLoss = 0.5 + Math.random();
+        // Fitness decrease after match (1-3) - more realistic fatigue
+        const fitnessLoss = 1 + Math.random() * 2;
         const newFitness = Math.max(1, player.fitness - fitnessLoss);
 
         // Phase 3: Check if player was injured in this match
@@ -549,7 +549,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
             const formChange = (rating - 6.5) * 0.5;
             const newForm = Math.max(1, Math.min(20, player.form + formChange));
-            const fitnessLoss = 0.5 + Math.random();
+            // Fitness decrease after match (1-3) - more realistic fatigue
+            const fitnessLoss = 1 + Math.random() * 2;
             const newFitness = Math.max(1, player.fitness - fitnessLoss);
 
             // Phase 3: Check for injuries from lite match
@@ -583,9 +584,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       squad: team.squad.map(player => {
         let updatedPlayer = { ...player };
 
-        // Fitness recovery (non-injured recover 2-4 per week, injured recover 0.5-1)
+        // Fitness recovery - balanced to create meaningful squad rotation
         if (updatedPlayer.injury) {
-          // Injured: minimal fitness recovery
+          // Injured: minimal fitness recovery (0.5-1 per week)
           updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + 0.5 + Math.random() * 0.5);
 
           // Decrease recovery weeks
@@ -594,13 +595,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
             // Fully recovered
             updatedPlayer.injury = undefined;
             // Boost fitness slightly on recovery
-            updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + 2);
+            updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + 1.5);
           } else {
             updatedPlayer.injury = { ...updatedPlayer.injury, recoveryWeeks: newRecoveryWeeks };
           }
         } else {
-          // Healthy: good fitness recovery
-          const recovery = 2 + Math.random() * 2; // 2-4 points per week
+          // Healthy: moderate fitness recovery (1.5-3 per week)
+          const recovery = 1.5 + Math.random() * 1.5;
           updatedPlayer.fitness = Math.min(20, updatedPlayer.fitness + recovery);
         }
 
