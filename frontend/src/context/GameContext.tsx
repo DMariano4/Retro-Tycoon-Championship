@@ -221,6 +221,11 @@ interface GameContextType {
   getRetirementCandidates: () => { mustRetire: Player[]; userChoice: Player[] };
   // Phase 3: Injuries
   getInjuredPlayers: () => Player[];
+  // Financial System
+  updateTicketPrice: (newPrice: number) => void;
+  upgradeStadium: () => boolean;
+  upgradeYouthFacilities: () => boolean;
+  upgradeTrainingFacilities: () => boolean;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -900,6 +905,129 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   // ============================================
+  // FINANCIAL SYSTEM - User Controls
+  // ============================================
+
+  // Upgrade costs
+  const STADIUM_UPGRADE_COST = 500000;    // £500k per 1,000 seats
+  const STADIUM_UPGRADE_AMOUNT = 1000;    // +1,000 seats per upgrade
+  const STADIUM_MAX_CAPACITY = 120000;    // Max 120k capacity
+  
+  const FACILITY_UPGRADE_COST = 500000;   // £500k per level
+  const FACILITY_UPGRADE_AMOUNT = 1;      // +1 rating per upgrade
+  const FACILITY_MAX_LEVEL = 20;          // Max 20 rating
+
+  /** Update ticket price (range: 1-999) */
+  const updateTicketPrice = (newPrice: number) => {
+    if (!currentSave) return;
+    
+    // Clamp price between 1 and 999
+    const clampedPrice = Math.max(1, Math.min(999, Math.round(newPrice)));
+    
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      return { ...team, ticket_price: clampedPrice };
+    });
+    
+    setCurrentSave({ ...currentSave, teams: updatedTeams });
+  };
+
+  /** Upgrade stadium capacity (+1,000 seats for £500k) */
+  const upgradeStadium = (): boolean => {
+    if (!currentSave) return false;
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return false;
+    
+    // Check if already at max capacity
+    if (managedTeam.stadium_capacity >= STADIUM_MAX_CAPACITY) return false;
+    
+    // Check if enough budget
+    if (managedTeam.budget < STADIUM_UPGRADE_COST) return false;
+    
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      return {
+        ...team,
+        budget: team.budget - STADIUM_UPGRADE_COST,
+        stadium_capacity: Math.min(STADIUM_MAX_CAPACITY, team.stadium_capacity + STADIUM_UPGRADE_AMOUNT),
+      };
+    });
+    
+    // Also update the save's budget field
+    const newBudget = managedTeam.budget - STADIUM_UPGRADE_COST;
+    setCurrentSave({ ...currentSave, teams: updatedTeams, budget: newBudget });
+    return true;
+  };
+
+  /** Upgrade youth facilities (+1 rating for £500k) */
+  const upgradeYouthFacilities = (): boolean => {
+    if (!currentSave) return false;
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return false;
+    
+    // Check if already at max level
+    if (managedTeam.youth_facilities >= FACILITY_MAX_LEVEL) return false;
+    
+    // Check if enough budget
+    if (managedTeam.budget < FACILITY_UPGRADE_COST) return false;
+    
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      
+      // Recalculate staff costs with new facilities
+      const newYouthFacilities = Math.min(FACILITY_MAX_LEVEL, team.youth_facilities + FACILITY_UPGRADE_AMOUNT);
+      const newStaffCosts = Math.round(
+        ((newYouthFacilities + team.training_facilities) * 5000 + team.squad.length * 8000) / 2
+      );
+      
+      return {
+        ...team,
+        budget: team.budget - FACILITY_UPGRADE_COST,
+        youth_facilities: newYouthFacilities,
+        staff_costs_weekly: newStaffCosts,
+      };
+    });
+    
+    const newBudget = managedTeam.budget - FACILITY_UPGRADE_COST;
+    setCurrentSave({ ...currentSave, teams: updatedTeams, budget: newBudget });
+    return true;
+  };
+
+  /** Upgrade training facilities (+1 rating for £500k) */
+  const upgradeTrainingFacilities = (): boolean => {
+    if (!currentSave) return false;
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return false;
+    
+    // Check if already at max level
+    if (managedTeam.training_facilities >= FACILITY_MAX_LEVEL) return false;
+    
+    // Check if enough budget
+    if (managedTeam.budget < FACILITY_UPGRADE_COST) return false;
+    
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      
+      // Recalculate staff costs with new facilities
+      const newTrainingFacilities = Math.min(FACILITY_MAX_LEVEL, team.training_facilities + FACILITY_UPGRADE_AMOUNT);
+      const newStaffCosts = Math.round(
+        ((team.youth_facilities + newTrainingFacilities) * 5000 + team.squad.length * 8000) / 2
+      );
+      
+      return {
+        ...team,
+        budget: team.budget - FACILITY_UPGRADE_COST,
+        training_facilities: newTrainingFacilities,
+        staff_costs_weekly: newStaffCosts,
+      };
+    });
+    
+    const newBudget = managedTeam.budget - FACILITY_UPGRADE_COST;
+    setCurrentSave({ ...currentSave, teams: updatedTeams, budget: newBudget });
+    return true;
+  };
+
+  // ============================================
   // SEASON PROGRESSION FUNCTIONS
   // ============================================
 
@@ -1315,6 +1443,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         getExpiringContracts,
         getRetirementCandidates,
         getInjuredPlayers,
+        // Financial System
+        updateTicketPrice,
+        upgradeStadium,
+        upgradeYouthFacilities,
+        upgradeTrainingFacilities,
       }}
     >
       {children}
