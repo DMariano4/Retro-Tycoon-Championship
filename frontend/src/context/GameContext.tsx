@@ -446,7 +446,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
 
     // Update player form based on match performance
-    const updatedTeams = currentSave.teams.map(team => {
+    let updatedTeams = currentSave.teams.map(team => {
       if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
       
       const updatedSquad = team.squad.map(player => {
@@ -484,6 +484,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
       
       return { ...team, squad: updatedSquad };
     });
+
+    // ============================================
+    // FAN BASE CHANGE based on match result (only for managed team)
+    // Win: +1-2%, Draw: 0%, Loss: -1%
+    // ============================================
+    const managedTeamId = currentSave.managed_team_id;
+    const managedTeamPlayed = homeTeam.id === managedTeamId || awayTeam.id === managedTeamId;
+    
+    if (managedTeamPlayed) {
+      const isHome = homeTeam.id === managedTeamId;
+      const managedGoals = isHome ? matchResult.homeScore : matchResult.awayScore;
+      const opponentGoals = isHome ? matchResult.awayScore : matchResult.homeScore;
+      
+      let fanBaseChange = 0;
+      if (managedGoals > opponentGoals) {
+        // Win: +1-2% fans
+        fanBaseChange = 0.01 + Math.random() * 0.01;
+      } else if (managedGoals < opponentGoals) {
+        // Loss: -1% fans
+        fanBaseChange = -0.01;
+      }
+      // Draw: no change
+      
+      if (fanBaseChange !== 0) {
+        updatedTeams = updatedTeams.map(team => {
+          if (team.id !== managedTeamId) return team;
+          const newFanBase = Math.max(5000, Math.round(team.fan_base * (1 + fanBaseChange)));
+          return { ...team, fan_base: newFanBase };
+        });
+      }
+    }
 
     setCurrentSave({ ...currentSave, leagues: updatedLeagues, teams: updatedTeams });
 
@@ -1268,6 +1299,101 @@ export function GameProvider({ children }: { children: ReactNode }) {
       });
 
       return { ...team, squad: newSquad };
+    });
+
+    // ============================================
+    // 1.5 REPUTATION & FAN BASE EVOLUTION
+    // Based on end-of-season league position
+    // ============================================
+    updatedTeams = updatedTeams.map(team => {
+      // Find the team's final league position
+      const teamLeague = currentSave.leagues.find(l => l.teams.includes(team.id));
+      if (!teamLeague) return team;
+      
+      const sortedTable = [...teamLeague.table].sort((a, b) => {
+        if (b.points !== a.points) return b.points - a.points;
+        if (b.goal_difference !== a.goal_difference) return b.goal_difference - a.goal_difference;
+        return b.goals_for - a.goals_for;
+      });
+      
+      const position = sortedTable.findIndex(s => s.team_id === team.id) + 1;
+      const totalTeams = sortedTable.length;
+      
+      // Calculate reputation change based on position
+      let reputationChange = 0;
+      if (position === 1) {
+        // Won the league (title)
+        reputationChange = 1.0;
+      } else if (position <= 4) {
+        // Top 4 finish
+        reputationChange = 0.5;
+      } else if (position <= Math.floor(totalTeams * 0.75)) {
+        // Mid-table (5th to 75% of teams)
+        // Interpolate from +0.4 (5th) to -0.4 (15th in 20-team league)
+        const midStart = 5;
+        const midEnd = Math.floor(totalTeams * 0.75);
+        const midRange = midEnd - midStart;
+        const posInMid = position - midStart;
+        reputationChange = 0.4 - (posInMid / midRange) * 0.8;
+      } else if (position <= totalTeams - 3) {
+        // Relegation zone (but not relegated)
+        reputationChange = -0.5;
+      } else {
+        // Relegated (bottom 3)
+        reputationChange = -1.0;
+      }
+      
+      // Calculate fan base change
+      let fanBaseMultiplier = 1.0;
+      if (position === 1) {
+        // Won the league - +10% fans
+        fanBaseMultiplier = 1.10;
+      } else if (position <= 4) {
+        // Top 4 - +5% fans
+        fanBaseMultiplier = 1.05;
+      } else if (position <= Math.floor(totalTeams * 0.5)) {
+        // Upper mid-table - +2% fans
+        fanBaseMultiplier = 1.02;
+      } else if (position <= Math.floor(totalTeams * 0.75)) {
+        // Lower mid-table - no change
+        fanBaseMultiplier = 1.0;
+      } else if (position <= totalTeams - 3) {
+        // Relegation battle - -3% fans
+        fanBaseMultiplier = 0.97;
+      } else {
+        // Relegated - -5% fans
+        fanBaseMultiplier = 0.95;
+      }
+      
+      // Apply changes
+      const newReputation = Math.max(1, Math.min(20, 
+        Math.round((team.reputation + reputationChange) * 10) / 10
+      ));
+      const newFanBase = Math.max(5000, Math.round(team.fan_base * fanBaseMultiplier));
+      
+      // Recalculate sponsorship based on new reputation
+      // Base: £500k per reputation point per month
+      const newSponsorship = Math.round(newReputation * 500000);
+      
+      // Reset season finances
+      const resetFinances = {
+        season_income: 0,
+        season_expenses: 0,
+        season_match_revenue: 0,
+        season_sponsorship: 0,
+        season_wages: 0,
+        season_staff_costs: 0,
+        last_match_attendance: undefined,
+        last_match_revenue: undefined,
+      };
+      
+      return {
+        ...team,
+        reputation: newReputation,
+        fan_base: newFanBase,
+        sponsorship_monthly: newSponsorship,
+        finances: resetFinances,
+      };
     });
 
     // 2. Generate new fixtures for each league
