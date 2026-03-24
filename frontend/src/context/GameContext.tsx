@@ -94,6 +94,19 @@ export interface Team {
   training_facilities: number;      // 1-20
   // Derived
   staff_costs_weekly: number;       // Weekly overhead
+  // ============================================
+  // FINANCIAL TRACKING — Season P&L
+  // ============================================
+  finances?: {
+    season_income: number;          // Total income this season
+    season_expenses: number;        // Total expenses this season
+    season_match_revenue: number;   // Match day income
+    season_sponsorship: number;     // Sponsorship income
+    season_wages: number;           // Wage expenses
+    season_staff_costs: number;     // Staff costs
+    last_match_attendance?: number; // Last home match attendance
+    last_match_revenue?: number;    // Last home match revenue
+  };
 }
 
 export interface TeamStanding {
@@ -480,6 +493,105 @@ export function GameProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  // ============================================
+  // FINANCIAL SYSTEM - Helper Functions
+  // ============================================
+
+  /**
+   * Calculate match attendance based on ticket price, fan base, and team form
+   * Higher prices = lower attendance, lower prices = higher attendance
+   */
+  const calculateAttendance = (team: Team, isHomeMatch: boolean): number => {
+    if (!isHomeMatch) return 0; // No revenue from away matches
+    
+    const baseAttendance = Math.min(team.fan_base, team.stadium_capacity);
+    
+    // Price factor: ticket_price of 40 = 1.0, higher = lower attendance
+    // Formula: 1 / (1 + (price - 40) / 100)
+    // price 40 = 1.0, price 140 = 0.5, price 1 = 1.39
+    const priceFactor = 1 / (1 + (team.ticket_price - 40) / 100);
+    
+    // Form factor: form 10 = 1.0, form 20 = 1.2, form 1 = 0.82
+    const avgForm = team.squad.reduce((sum, p) => sum + p.form, 0) / Math.max(1, team.squad.length);
+    const formFactor = 0.8 + (avgForm / 50);
+    
+    // Random variance ±10%
+    const variance = 0.9 + Math.random() * 0.2;
+    
+    const attendance = Math.floor(baseAttendance * priceFactor * formFactor * variance);
+    return Math.max(0, Math.min(attendance, team.stadium_capacity));
+  };
+
+  /**
+   * Calculate weekly finances for a team
+   * Returns income and expenses breakdown
+   */
+  const calculateWeeklyFinances = (team: Team, hadHomeMatch: boolean, attendance: number): {
+    matchRevenue: number;
+    sponsorshipIncome: number;
+    totalIncome: number;
+    wageExpenses: number;
+    staffExpenses: number;
+    totalExpenses: number;
+    netChange: number;
+  } => {
+    // Income
+    const matchRevenue = hadHomeMatch ? attendance * team.ticket_price : 0;
+    const sponsorshipIncome = team.sponsorship_monthly / 4; // Weekly portion
+    const totalIncome = matchRevenue + sponsorshipIncome;
+    
+    // Expenses
+    const wageExpenses = team.squad.reduce((sum, player) => sum + player.wage, 0);
+    const staffExpenses = team.staff_costs_weekly;
+    const totalExpenses = wageExpenses + staffExpenses;
+    
+    return {
+      matchRevenue,
+      sponsorshipIncome,
+      totalIncome,
+      wageExpenses,
+      staffExpenses,
+      totalExpenses,
+      netChange: totalIncome - totalExpenses,
+    };
+  };
+
+  /**
+   * Apply weekly financial changes to a team
+   */
+  const applyWeeklyFinances = (
+    team: Team, 
+    hadHomeMatch: boolean, 
+    attendance: number
+  ): Team => {
+    const finances = calculateWeeklyFinances(team, hadHomeMatch, attendance);
+    
+    // Initialize finances if not present
+    const currentFinances = team.finances || {
+      season_income: 0,
+      season_expenses: 0,
+      season_match_revenue: 0,
+      season_sponsorship: 0,
+      season_wages: 0,
+      season_staff_costs: 0,
+    };
+    
+    return {
+      ...team,
+      budget: team.budget + finances.netChange,
+      finances: {
+        season_income: currentFinances.season_income + finances.totalIncome,
+        season_expenses: currentFinances.season_expenses + finances.totalExpenses,
+        season_match_revenue: currentFinances.season_match_revenue + finances.matchRevenue,
+        season_sponsorship: currentFinances.season_sponsorship + finances.sponsorshipIncome,
+        season_wages: currentFinances.season_wages + finances.wageExpenses,
+        season_staff_costs: currentFinances.season_staff_costs + finances.staffExpenses,
+        last_match_attendance: hadHomeMatch ? attendance : currentFinances.last_match_attendance,
+        last_match_revenue: hadHomeMatch ? finances.matchRevenue : currentFinances.last_match_revenue,
+      },
+    };
+  };
+
   // Simulate all other matches for the current week (AI vs AI) and advance the week
   // Handles ALL leagues, not just the managed team's league
   const simulateOtherWeekMatches = () => {
@@ -609,6 +721,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return updatedPlayer;
       })
     }));
+
+    // ============================================
+    // WEEKLY FINANCIAL PROCESSING for ALL teams
+    // ============================================
+    updatedTeams = updatedTeams.map(team => {
+      // Find if this team had a home match this week (already played)
+      const homeFixture = currentSave.leagues
+        .flatMap(l => l.fixtures)
+        .find(f => 
+          f.home_team_id === team.id && 
+          f.played &&
+          f.week === currentSave.leagues[0]?.current_week
+        );
+      
+      const hadHomeMatch = !!homeFixture;
+      const attendance = hadHomeMatch ? calculateAttendance(team, true) : 0;
+      
+      return applyWeeklyFinances(team, hadHomeMatch, attendance);
+    });
 
     // Advance week counter only for leagues that still have remaining fixtures
     updatedLeagues = updatedLeagues.map(l => {

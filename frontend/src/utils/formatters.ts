@@ -10,6 +10,16 @@ export const formatValue = (value: number, currency: string = '£'): string => {
   return `${currency}${value}`;
 };
 
+// Format compact monetary values for smaller displays
+export const formatCompactValue = (value: number, currency: string = '£'): string => {
+  const absValue = Math.abs(value);
+  const sign = value < 0 ? '-' : '';
+  if (absValue >= 1000000000) return `${sign}${currency}${(absValue / 1000000000).toFixed(1)}B`;
+  if (absValue >= 1000000) return `${sign}${currency}${(absValue / 1000000).toFixed(1)}M`;
+  if (absValue >= 1000) return `${sign}${currency}${(absValue / 1000).toFixed(0)}K`;
+  return `${sign}${currency}${absValue}`;
+};
+
 // Format weekly wages
 export const formatWage = (wage: number, currency: string = '£'): string => {
   if (wage >= 1000) return `${currency}${(wage / 1000).toFixed(1)}K/week`;
