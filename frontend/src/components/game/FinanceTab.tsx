@@ -5,6 +5,7 @@ import { formatValue, formatCompactValue } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
 import { StyleSheet } from 'react-native';
 import { useGame } from '../../context/GameContext';
+import { FFP_TIERS, FFPStatus } from '../../utils/ffp';
 
 interface FinanceTabProps {
   team: any;
@@ -487,38 +488,74 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
       {/* Financial Fair Play Status */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>FINANCIAL FAIR PLAY</Text>
-        <View style={[financeStyles.ffpCard, { borderColor: wageStatus.color }]}>
-          <View style={financeStyles.ffpHeader}>
-            <Ionicons name={wageStatus.icon as any} size={28} color={wageStatus.color} />
-            <View style={financeStyles.ffpHeaderText}>
-              <Text style={[financeStyles.ffpStatus, { color: wageStatus.color }]}>
-                {wageStatus.status}
-              </Text>
-              <Text style={financeStyles.ffpSubtext}>
-                Wage-to-Revenue Ratio
-              </Text>
+        {(() => {
+          const ffpStatus = (team?.ffp?.status || 'healthy') as FFPStatus;
+          const ffpTier = FFP_TIERS[ffpStatus];
+          const actualWageRatio = team?.ffp?.wage_ratio || wageRatio;
+          
+          return (
+            <View style={[financeStyles.ffpCard, { borderColor: ffpTier.color }]}>
+              <View style={financeStyles.ffpHeader}>
+                <Ionicons name={ffpTier.icon as any} size={28} color={ffpTier.color} />
+                <View style={financeStyles.ffpHeaderText}>
+                  <Text style={[financeStyles.ffpStatus, { color: ffpTier.color }]}>
+                    {ffpTier.label}
+                  </Text>
+                  <Text style={financeStyles.ffpSubtext}>
+                    {ffpTier.description}
+                  </Text>
+                </View>
+                <Text style={[financeStyles.ffpRatio, { color: ffpTier.color }]}>
+                  {isFinite(actualWageRatio) ? actualWageRatio.toFixed(0) : '0'}%
+                </Text>
+              </View>
+              
+              <View style={financeStyles.ffpBar}>
+                <View style={[financeStyles.ffpBarFill, { 
+                  width: `${Math.min(isFinite(actualWageRatio) ? actualWageRatio : 0, 100)}%`,
+                  backgroundColor: ffpTier.color 
+                }]} />
+                <View style={[financeStyles.ffpThreshold, { left: '60%' }]} />
+                <View style={[financeStyles.ffpThreshold, { left: '70%' }]} />
+                <View style={[financeStyles.ffpThreshold, { left: '80%' }]} />
+              </View>
+              <View style={financeStyles.ffpLegend}>
+                <Text style={financeStyles.ffpLegendText}>0%</Text>
+                <Text style={[financeStyles.ffpLegendText, { color: '#00ff88' }]}>60%</Text>
+                <Text style={[financeStyles.ffpLegendText, { color: '#ffcc00' }]}>70%</Text>
+                <Text style={[financeStyles.ffpLegendText, { color: '#ff9f43' }]}>80%</Text>
+                <Text style={[financeStyles.ffpLegendText, { color: '#ff4757' }]}>100%</Text>
+              </View>
+              
+              {/* Consequences */}
+              {ffpStatus !== 'healthy' && (
+                <View style={financeStyles.ffpConsequences}>
+                  <Text style={financeStyles.ffpConsequencesTitle}>Current Restrictions:</Text>
+                  {ffpTier.consequences.map((consequence, idx) => (
+                    <View key={idx} style={financeStyles.ffpConsequenceRow}>
+                      <Ionicons name="alert" size={12} color={ffpTier.color} />
+                      <Text style={[financeStyles.ffpConsequenceText, { color: ffpTier.color }]}>
+                        {consequence}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+              
+              {/* Transfer Restriction Badge */}
+              {ffpTier.transferRestriction > 0 && (
+                <View style={[financeStyles.ffpBadge, { backgroundColor: ffpTier.color }]}>
+                  <Ionicons name="lock-closed" size={14} color="#fff" />
+                  <Text style={financeStyles.ffpBadgeText}>
+                    {ffpTier.transferRestriction === 1 
+                      ? 'Transfer Embargo Active' 
+                      : 'Transfer Budget Capped 50%'}
+                  </Text>
+                </View>
+              )}
             </View>
-            <Text style={[financeStyles.ffpRatio, { color: wageStatus.color }]}>
-              {isFinite(wageRatio) ? wageRatio.toFixed(0) : '0'}%
-            </Text>
-          </View>
-          <View style={financeStyles.ffpBar}>
-            <View style={[financeStyles.ffpBarFill, { 
-              width: `${Math.min(isFinite(wageRatio) ? wageRatio : 0, 100)}%`,
-              backgroundColor: wageStatus.color 
-            }]} />
-            <View style={[financeStyles.ffpThreshold, { left: '60%' }]} />
-            <View style={[financeStyles.ffpThreshold, { left: '70%' }]} />
-            <View style={[financeStyles.ffpThreshold, { left: '80%' }]} />
-          </View>
-          <View style={financeStyles.ffpLegend}>
-            <Text style={financeStyles.ffpLegendText}>0%</Text>
-            <Text style={financeStyles.ffpLegendText}>60%</Text>
-            <Text style={financeStyles.ffpLegendText}>70%</Text>
-            <Text style={financeStyles.ffpLegendText}>80%</Text>
-            <Text style={financeStyles.ffpLegendText}>100%</Text>
-          </View>
-        </View>
+          );
+        })()}
       </View>
 
       {/* Weekly Summary */}
@@ -927,5 +964,42 @@ const financeStyles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#00ff88',
+  },
+  // FFP Consequences styles
+  ffpConsequences: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1a3a5c',
+  },
+  ffpConsequencesTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#8aa8c8',
+    marginBottom: 8,
+  },
+  ffpConsequenceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
+  },
+  ffpConsequenceText: {
+    fontSize: 11,
+    flex: 1,
+  },
+  ffpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 12,
+    padding: 10,
+    borderRadius: 6,
+    justifyContent: 'center',
+  },
+  ffpBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
   },
 });

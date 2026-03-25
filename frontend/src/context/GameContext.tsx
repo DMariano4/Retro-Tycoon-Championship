@@ -6,6 +6,7 @@ import Constants from 'expo-constants';
 import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite, MatchInjury } from '../utils/matchEngine';
 import { getBackendUrl } from '../utils/api';
 import { calculateSponsors, getMonthlySponsorship } from '../utils/sponsors';
+import { initializeFFP, updateFFPState, processSeasonEndFFP, getFFPWarningMessage } from '../utils/ffp';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -119,6 +120,17 @@ export interface Team {
     season_staff_costs: number;     // Staff costs
     last_match_attendance?: number; // Last home match attendance
     last_match_revenue?: number;    // Last home match revenue
+  };
+  // ============================================
+  // FINANCIAL FAIR PLAY (FFP)
+  // ============================================
+  ffp?: {
+    status: 'healthy' | 'warning' | 'caution' | 'crisis' | 'insolvency';
+    wage_ratio: number;             // Current wage-to-revenue percentage
+    consecutive_deficit_seasons: number;  // Seasons with negative budget
+    transfer_restriction: number;   // 0 = none, 0.5 = 50% cap, 1 = full embargo
+    warnings_issued: number;        // Number of warnings this season
+    last_warning_date?: string;     // When last warning was issued
   };
 }
 
@@ -267,13 +279,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       const gameData = await response.json();
       
-      // Calculate sponsors for all teams based on their reputation
+      // Calculate sponsors and initialize FFP for all teams based on their reputation
       const teamsWithSponsors = gameData.teams.map((team: any) => {
         const sponsors = calculateSponsors(team.reputation);
         return {
           ...team,
           sponsors,
           sponsorship_monthly: getMonthlySponsorship(sponsors),
+          ffp: initializeFFP(), // Initialize FFP state for all teams
         };
       });
       
@@ -800,6 +813,43 @@ export function GameProvider({ children }: { children: ReactNode }) {
       const attendance = hadHomeMatch ? calculateAttendance(team, true) : 0;
       
       return applyWeeklyFinances(team, hadHomeMatch, attendance);
+    });
+
+    // ============================================
+    // FFP CHECK for managed team only
+    // ============================================
+    const gameDate = currentSave.game_date;
+    updatedTeams = updatedTeams.map(team => {
+      if (team.id !== currentSave.managed_team_id) return team;
+      
+      // Calculate current financials
+      const weeklyWages = team.squad.reduce((sum, p) => sum + (p.wage || 0), 0);
+      const weeklySponsorship = (team.sponsorship_monthly || 0) / 4;
+      const avgMatchRevenue = team.finances?.season_match_revenue 
+        ? team.finances.season_match_revenue / Math.max(1, currentSave.leagues[0]?.current_week || 1)
+        : 0;
+      const weeklyRevenue = weeklySponsorship + avgMatchRevenue;
+      
+      // Update FFP state
+      const previousStatus = team.ffp?.status;
+      const updatedFFP = updateFFPState(
+        team.ffp,
+        weeklyWages,
+        weeklyRevenue,
+        team.budget,
+        gameDate
+      );
+      
+      // Check if FFP status worsened and log warning
+      if (updatedFFP.status !== previousStatus && updatedFFP.status !== 'healthy') {
+        const warningMsg = getFFPWarningMessage(updatedFFP.status, previousStatus, team.name);
+        if (warningMsg) {
+          console.log(warningMsg);
+          // Could show Alert here, but for now just log
+        }
+      }
+      
+      return { ...team, ffp: updatedFFP };
     });
 
     // Advance week counter only for leagues that still have remaining fixtures
@@ -1412,6 +1462,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         last_match_revenue: undefined,
       };
       
+      // Process end-of-season FFP
+      const updatedFFP = processSeasonEndFFP(team.ffp, team.budget);
+      
       return {
         ...team,
         reputation: newReputation,
@@ -1419,6 +1472,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         sponsors: newSponsors,
         sponsorship_monthly: newSponsorship,
         finances: resetFinances,
+        ffp: updatedFFP,
       };
     });
 
