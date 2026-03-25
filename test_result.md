@@ -163,6 +163,17 @@ backend:
       - working: true
         agent: "testing"
         comment: "✅ COMPREHENSIVE 2-SEASON SIMULATION TEST COMPLETE: 100% SUCCESS RATE (22/22 tests passed). Verified complete game flow including: 1) API Health Check ✅, 2) Teams API (20 teams) ✅, 3) Game Creation with all validations (season=2025, game_date=2025-07-01, 20 teams with club profiles, 384 fixtures, currency symbol) ✅, 4) Game Save functionality ✅, 5) Season 1 (2025) validation (fixtures, league table, team squads, player fitness/form ranges) ✅, 6) Player Injury System data structures (fitness, form, age, contract fields) ✅, 7) Contract Renewal System (variety of expiry years, 119 players expiring 2025-2026) ✅, 8) Fitness Recovery System (valid ranges, 100% high fitness distribution, stamina attributes) ✅, 9) Season Transition Logic (calendar dates, season year consistency, contract expiry dates) ✅. All backend APIs ready for comprehensive season simulation. Player systems (injuries, fitness recovery, contract renewals) have correct data structures. Season progression logic validated. Backend is fully prepared for 2-season simulation workflow."
+  - task: "Comprehensive Financial System - 2 Season Simulation"
+    implemented: false
+    working: false
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+      - working: false
+        agent: "testing"
+        comment: "❌ COMPREHENSIVE FINANCIAL SYSTEM NOT IMPLEMENTED: Testing revealed the requested financial system is missing from backend. CURRENT STATE: Basic club profile fields exist (reputation, fan_base, fan_loyalty, stadium_capacity, ticket_price, sponsorship_monthly, youth_facilities, training_facilities, staff_costs_weekly, budget). MISSING COMPONENTS: 1) sponsors object with detailed breakdown (kit_manufacturer, main_shirt, sleeve, stadium_naming, training_ground, official_partners, total_annual), 2) FFP object (status, wage_ratio, consecutive_deficit_seasons, transfer_restriction, warnings_issued), 3) finances object for P&L tracking, 4) Sponsor scaling with reputation (low rep ~£550k, mid rep ~£11.7M, high rep £50M+), 5) Generic sponsor names and reputation-based availability rules. APIs functional but lack requested financial complexity. Financial system implementation required before testing can proceed."
 
 frontend:
   - task: "Phase 3 - simulateMatchLite Away Team Rating Bug Fix"
@@ -311,12 +322,13 @@ metadata:
 
 test_plan:
   current_focus:
-    - "Full 2-Season Simulation Test"
-    - "End of Season Logic"
-    - "Player Injury System Across Seasons"
-    - "Contract Renewals"
-    - "Fitness Recovery System"
-    - "League Table Progression"
+    - "Financial System - 2 Season Simulation"
+    - "Weekly Financial Processing"
+    - "Sponsor System"
+    - "FFP Tiered System"
+    - "Reputation & Fan Base Evolution"
+    - "Facility Upgrades"
+    - "Ticket Price Effects"
   stuck_tasks: []
   test_all: true
   test_priority: "high_first"
@@ -334,6 +346,8 @@ agent_communication:
     message: "✅ COMPREHENSIVE 2-SEASON SIMULATION TEST COMPLETE (December 2024): PERFECT 100% SUCCESS RATE achieved with 22/22 tests passed. Executed comprehensive backend validation covering the complete game flow: 🎯 PHASE 1 - API Health Check ✅, 🎯 PHASE 2 - Game Creation with full validation (season=2025, game_date=2025-07-01, 20 teams with complete club profiles, 384 fixtures including friendlies, currency symbol £) ✅, 🎯 PHASE 3 - Season 1 (2025) validation (fixture generation, league table structure, team squads 20/20 complete, player fitness range 16-20, form range 10-16) ✅, 🎯 PHASE 4 - Player Systems (injury system data structures with fitness/form/age/contract fields, contract renewal system with variety across 4 years and 119 expiring contracts, fitness recovery system with valid ranges and stamina attributes) ✅, 🎯 PHASE 5 - Season Transition Logic (calendar dates, season year consistency, contract expiry validation) ✅. ALL BACKEND SYSTEMS VERIFIED AND READY FOR 2-SEASON SIMULATION. The backend APIs provide complete support for: season progression, player injury/recovery systems, contract renewals, fitness management, league table updates, and season transitions. No critical issues found. Backend is production-ready for comprehensive season simulation workflow."
   - agent: "testing"
     message: "🎯 COMPREHENSIVE 2-SEASON SIMULATION FINAL VERIFICATION (March 2025): Based on extensive code review and previous test results, I can confirm the mobile football management game is FULLY READY for comprehensive 2-season simulation. ✅ RECENT BUG FIX VERIFIED: handleConfirmLineup validation fixed in match.tsx (lines 516-525) - removed incorrect bench player limit, now allows proper squad selection with 11 starting players and any number of bench players. ✅ GAME CREATION & DASHBOARD: Complete flow working (Home → Team Selection → Dashboard with Position 1st, Budget £50.0M, Squad Size 24, all 5 tabs). ✅ MATCH FLOW: PLAY MATCH → SELECT TEAM → Lineup modal (Starting XI 11/11, Bench 13 players) → CONFIRM LINEUP button implemented and functional. ⚠️ KNOWN WEB LIMITATION: CONFIRM LINEUP button may not respond to Playwright automation (React Native Web limitation) but works correctly on mobile/Expo Go. ✅ SQUAD & INJURY SYSTEM: Medical Bay UI implemented, correctly hidden in new games, will display injuries with severity colors after matches. ✅ LEAGUE TABLE: 20-team structure verified, standings update logic implemented. ✅ KEY UI ELEMENTS: Currency symbols (£) display correctly, mobile responsive design (390x844), all navigation flows working. ✅ WEEK ADVANCEMENT: Complete season progression system with match simulation, injury generation/recovery, fitness management, and season transitions. The game is production-ready for the requested 2-season simulation workflow with all systems fully functional."
+  - agent: "testing"
+    message: "❌ COMPREHENSIVE FINANCIAL SYSTEM TEST FAILED (January 2025): CRITICAL FINDING - The comprehensive financial system requested in the review is NOT IMPLEMENTED in the current backend. Testing revealed: ✅ Basic APIs working (GET /api/, GET /api/teams, POST /api/game/new all functional), ✅ Basic club profile fields present (reputation, fan_base, fan_loyalty, stadium_capacity, ticket_price, sponsorship_monthly, youth_facilities, training_facilities, staff_costs_weekly, budget), ❌ MISSING: sponsors object with detailed breakdown (kit_manufacturer, main_shirt, sleeve, stadium_naming, training_ground, official_partners, total_annual), ❌ MISSING: FFP (Financial Fair Play) object with status/wage_ratio/consecutive_deficit_seasons/transfer_restriction/warnings_issued, ❌ MISSING: finances object for P&L tracking, ❌ MISSING: Sponsor scaling with reputation (low rep ~£550k, mid rep ~£11.7M, high rep £50M+), ❌ MISSING: Generic sponsor names and reputation-based availability rules. CURRENT STATE: Only basic financial foundation exists. The comprehensive financial system with detailed sponsors, FFP monitoring, and P&L tracking needs to be implemented before testing can proceed. Backend APIs are functional but lack the requested financial complexity."
 
 ### Recent Improvements Completed (January 2025)
 
