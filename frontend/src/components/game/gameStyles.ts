@@ -148,6 +148,112 @@ export const gameStyles = StyleSheet.create({
     color: '#6a8aaa',
     fontSize: 14,
   },
+  
+  // ============================================
+  // EVENT CARD STYLES (v2 Calendar System)
+  // ============================================
+  currentDateBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    marginBottom: 16,
+    backgroundColor: '#0d2137',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  currentDateText: {
+    color: '#4a9eff',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  eventCard: {
+    backgroundColor: '#0d2137',
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+    marginBottom: 10,
+  },
+  eventCardNext: {
+    borderColor: '#00ff88',
+    borderWidth: 2,
+  },
+  eventHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  eventDateBadge: {
+    backgroundColor: '#1a3a5c',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  eventDateText: {
+    color: '#9ab8d8',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  eventTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  eventTypeText: {
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  eventMatchInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  eventTeamName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#9ab8d8',
+    flex: 1,
+    textAlign: 'center',
+  },
+  eventTeamHighlight: {
+    color: '#00ff88',
+    fontWeight: '700',
+  },
+  eventVs: {
+    fontSize: 11,
+    color: '#4a6a8a',
+    fontWeight: '600',
+  },
+  eventDrawInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  eventDrawText: {
+    color: '#9ab8d8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  eventTransferInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+  },
+  eventTransferText: {
+    color: '#9ab8d8',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  
   tablePreview: {
     backgroundColor: '#0d2137',
     borderRadius: 8,

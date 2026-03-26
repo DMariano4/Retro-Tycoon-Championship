@@ -20,7 +20,14 @@ function TabButton({ icon, label, active, onPress }: { icon: string; label: stri
 
 export default function GameScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const { currentSave, getManagedTeam, getLeague, advanceWeek } = useGame();
+  const { 
+    currentSave, 
+    getManagedTeam, 
+    getLeague, 
+    advanceWeek,
+    getUpcomingEvents,
+    getCurrentDate,
+  } = useGame();
   const { activeSlotId, saveToSlot } = useSaveSlots();
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -121,6 +128,10 @@ export default function GameScreen() {
   const position = getTeamPosition();
 
   const renderTabContent = () => {
+    // Get upcoming events for the v2 system
+    const upcomingEvents = getUpcomingEvents ? getUpcomingEvents(5) : [];
+    const currentDate = getCurrentDate ? getCurrentDate() : undefined;
+    
     switch (activeTab) {
       case 'dashboard':
         return <DashboardTab 
@@ -130,6 +141,8 @@ export default function GameScreen() {
           fixture={upcomingFixture}
           position={position}
           onNextWeek={handleNextWeek}
+          upcomingEvents={upcomingEvents}
+          currentDate={currentDate}
         />;
       case 'squad':
         return <SquadTab team={managedTeam} currency={currentSave?.currency_symbol} />;

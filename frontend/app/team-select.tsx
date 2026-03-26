@@ -88,7 +88,7 @@ export default function TeamSelectScreen() {
         
         // Event-based calendar (v2)
         events: gameData.events,
-        calendar: gameData.calendar,
+        calendarV2: gameData.calendar,
         
         // Legacy league format for backward compatibility
         leagues: [{

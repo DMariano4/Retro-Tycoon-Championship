@@ -7,6 +7,29 @@ import { getBackendUrl } from '../utils/api';
 import { calculateSponsors, getMonthlySponsorship } from '../utils/sponsors';
 import { initializeFFP, updateFFPState, processSeasonEndFFP, getFFPWarningMessage } from '../utils/ffp';
 import { getRandomNationality, generatePlayerName } from '../utils/nationalities';
+import { 
+  GameEvent, 
+  CompetitionType, 
+  formatDateDisplay, 
+  getNextEvent, 
+  getUpcomingEvents,
+  getTeamEvents,
+  sortEvents,
+  parseDate,
+  formatDate,
+  addDays,
+} from '../utils/calendar';
+import {
+  CupCompetitionState,
+  generateCupDraw,
+  getCupRoundWinners,
+  determineCupWinner,
+  getCupRoundDate,
+  FA_CUP_SCHEDULE,
+  LEAGUE_CUP_SCHEDULE,
+  getCompetitionIcon,
+  getCompetitionColor,
+} from '../utils/competitions';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -217,6 +240,32 @@ export interface GameSave {
   is_pre_season?: boolean;
   // Currency display
   currency_symbol: string;  // £, $ or €
+  
+  // ============================================
+  // EVENT-BASED CALENDAR SYSTEM (v2)
+  // ============================================
+  events?: GameEvent[];                    // All scheduled events
+  competitions?: {
+    league: {
+      id: string;
+      name: string;
+      standings: any[];
+      fixtures: any[];
+    };
+    faCup?: CupCompetitionState;
+    leagueCup?: CupCompetitionState;
+    championsLeague?: CupCompetitionState;
+    europaLeague?: CupCompetitionState;
+  };
+  calendarV2?: {
+    currentDate: string;                   // Current game date (YYYY-MM-DD)
+    seasonStart: string;
+    seasonEnd: string;
+    transferWindows: {
+      summer: { start: string; end: string };
+      winter: { start: string; end: string };
+    };
+  };
 }
 
 interface GameContextType {
@@ -253,6 +302,17 @@ interface GameContextType {
   upgradeStadium: () => boolean;
   upgradeYouthFacilities: () => boolean;
   upgradeTrainingFacilities: () => boolean;
+  
+  // ============================================
+  // EVENT-BASED CALENDAR SYSTEM (v2)
+  // ============================================
+  getNextEvent: () => GameEvent | null;
+  getUpcomingEvents: (count?: number) => GameEvent[];
+  getCurrentDate: () => string;
+  advanceToNextEvent: () => GameEvent | null;
+  processEvent: (event: GameEvent) => void;
+  executeCupDraw: (competition: CompetitionType, round: string) => void;
+  getCupCompetition: (type: CompetitionType) => CupCompetitionState | null;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -1631,6 +1691,186 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // ============================================
+  // EVENT-BASED CALENDAR SYSTEM (v2)
+  // ============================================
+
+  /** Get the current game date */
+  const getCurrentDate = (): string => {
+    if (currentSave?.calendarV2?.currentDate) {
+      return currentSave.calendarV2.currentDate;
+    }
+    // Fallback to game_date or calculate from season
+    return currentSave?.game_date || `${currentSave?.season || 2025}-07-01`;
+  };
+
+  /** Get the next uncompleted event */
+  const getNextEventFn = (): GameEvent | null => {
+    if (!currentSave?.events) return null;
+    const teamId = currentSave.managed_team_id;
+    const teamEvents = getTeamEvents(currentSave.events, teamId);
+    return getNextEvent(teamEvents);
+  };
+
+  /** Get upcoming events for the managed team */
+  const getUpcomingEventsFn = (count: number = 5): GameEvent[] => {
+    if (!currentSave?.events) return [];
+    const teamId = currentSave.managed_team_id;
+    const teamEvents = getTeamEvents(currentSave.events, teamId);
+    return getUpcomingEvents(teamEvents, count);
+  };
+
+  /** Advance to the next event and return it */
+  const advanceToNextEvent = (): GameEvent | null => {
+    const nextEvent = getNextEventFn();
+    if (!nextEvent || !currentSave) return null;
+
+    // Update the current date to the event date
+    const updatedSave = {
+      ...currentSave,
+      game_date: nextEvent.date,
+      calendarV2: currentSave.calendarV2 ? {
+        ...currentSave.calendarV2,
+        currentDate: nextEvent.date,
+      } : undefined,
+    };
+
+    setCurrentSave(updatedSave);
+    return nextEvent;
+  };
+
+  /** Process an event (mark as completed) */
+  const processEvent = (event: GameEvent): void => {
+    if (!currentSave?.events) return;
+
+    const updatedEvents = currentSave.events.map(e => 
+      e.id === event.id ? { ...e, completed: true } : e
+    );
+
+    setCurrentSave({
+      ...currentSave,
+      events: updatedEvents,
+    });
+  };
+
+  /** Execute a cup draw for a specific competition and round */
+  const executeCupDraw = (competition: CompetitionType, round: string): void => {
+    if (!currentSave?.competitions) return;
+
+    const cupState = competition === 'fa_cup' 
+      ? currentSave.competitions.faCup 
+      : competition === 'league_cup'
+        ? currentSave.competitions.leagueCup
+        : null;
+
+    if (!cupState) return;
+
+    // Get teams still in the competition
+    const remainingTeams = cupState.teams
+      .filter(t => !t.eliminated)
+      .map(t => ({ id: t.id, name: t.name }));
+
+    // Generate fixtures from draw
+    const schedule = competition === 'fa_cup' ? FA_CUP_SCHEDULE : LEAGUE_CUP_SCHEDULE;
+    const matchDate = getCupRoundDate(round, schedule, currentSave.season);
+    
+    const fixtures = generateCupDraw(
+      cupState.id,
+      round,
+      remainingTeams,
+      matchDate,
+      false // Not seeded
+    );
+
+    // Create events for managed team's cup matches
+    const managedTeamId = currentSave.managed_team_id;
+    const newEvents: GameEvent[] = fixtures
+      .filter(f => f.homeTeamId === managedTeamId || f.awayTeamId === managedTeamId)
+      .map(f => ({
+        id: `event_cup_${competition}_${round}_${f.id}`,
+        date: f.matchDate,
+        type: 'match' as const,
+        competition,
+        competitionRound: round,
+        priority: 5,
+        title: competition === 'fa_cup' ? 'FA Cup' : 'League Cup',
+        description: `${f.homeTeamName} vs ${f.awayTeamName}`,
+        data: {
+          id: f.id,
+          match_date: f.matchDate,
+          home_team_id: f.homeTeamId,
+          home_team_name: f.homeTeamName,
+          away_team_id: f.awayTeamId,
+          away_team_name: f.awayTeamName,
+          home_score: null,
+          away_score: null,
+          played: false,
+        },
+        completed: false,
+      }));
+
+    // Update cup state with fixtures
+    const updatedCupState: CupCompetitionState = {
+      ...cupState,
+      fixtures: cupState.fixtures.map(f => ({
+        id: f.id,
+        competitionId: cupState.id,
+        round: f.round,
+        matchDate: f.matchDate,
+        homeTeamId: f.homeTeamId,
+        homeTeamName: f.homeTeamName,
+        awayTeamId: f.awayTeamId,
+        awayTeamName: f.awayTeamName,
+        homeScore: f.homeScore,
+        awayScore: f.awayScore,
+        played: f.played,
+        isReplay: false,
+      })).concat(fixtures),
+      drawCompleted: true,
+    };
+
+    // Mark the draw event as completed
+    const updatedEvents = [
+      ...(currentSave.events || []).map(e => {
+        if (e.type === 'cup_draw' && e.competition === competition && e.competitionRound === round) {
+          return { ...e, completed: true };
+        }
+        return e;
+      }),
+      ...newEvents,
+    ];
+
+    // Update competitions
+    const updatedCompetitions = {
+      ...currentSave.competitions,
+      [competition === 'fa_cup' ? 'faCup' : 'leagueCup']: updatedCupState,
+    };
+
+    setCurrentSave({
+      ...currentSave,
+      events: sortEvents(updatedEvents),
+      competitions: updatedCompetitions,
+    });
+  };
+
+  /** Get a cup competition state */
+  const getCupCompetition = (type: CompetitionType): CupCompetitionState | null => {
+    if (!currentSave?.competitions) return null;
+    
+    switch (type) {
+      case 'fa_cup':
+        return currentSave.competitions.faCup || null;
+      case 'league_cup':
+        return currentSave.competitions.leagueCup || null;
+      case 'champions_league':
+        return currentSave.competitions.championsLeague || null;
+      case 'europa_league':
+        return currentSave.competitions.europaLeague || null;
+      default:
+        return null;
+    }
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -1665,6 +1905,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
         upgradeStadium,
         upgradeYouthFacilities,
         upgradeTrainingFacilities,
+        // Event-based calendar system (v2)
+        getNextEvent: getNextEventFn,
+        getUpcomingEvents: getUpcomingEventsFn,
+        getCurrentDate,
+        advanceToNextEvent,
+        processEvent,
+        executeCupDraw,
+        getCupCompetition,
       }}
     >
       {children}

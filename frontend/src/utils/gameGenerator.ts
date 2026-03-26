@@ -740,7 +740,7 @@ export function generateNewGame(
     events: sortEvents(events),
     transferMarket,
     calendar: {
-      currentDate: `${season}-07-01`, // Start at July 1st (pre-season)
+      currentDate: `${season}-06-14`, // Start at June 14 (transfer window opening)
       seasonStart: seasonDates.seasonStart,
       seasonEnd: seasonDates.seasonEnd,
       transferWindows: {
