@@ -60,7 +60,7 @@ export default function TeamSelectScreen() {
         throw new Error('Failed to generate team data');
       }
       
-      // Create the save object structure
+      // Create the save object structure (v2 - event-based)
       const saveData = {
         id: `save_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
         name,
@@ -77,15 +77,54 @@ export default function TeamSelectScreen() {
         // Teams data
         teams: gameData.teams.map(team => ({
           ...team,
-          // Ensure player nationalityFlag is included
           squad: team.squad.map(player => ({
             ...player,
             nationalityFlag: player.nationalityFlag,
           })),
         })),
         
-        // League data
-        leagues: [gameData.league],
+        // Competitions (v2 structure)
+        competitions: gameData.competitions,
+        
+        // Event-based calendar (v2)
+        events: gameData.events,
+        calendar: gameData.calendar,
+        
+        // Legacy league format for backward compatibility
+        leagues: [{
+          id: gameData.competitions.league.id,
+          name: gameData.competitions.league.name,
+          division: 1,
+          season,
+          current_week: 0,
+          teams: gameData.teams.map(t => t.id),
+          table: gameData.competitions.league.standings.map(s => ({
+            team_id: s.teamId,
+            team_name: s.teamName,
+            played: s.played,
+            won: s.won,
+            drawn: s.drawn,
+            lost: s.lost,
+            goals_for: s.goalsFor,
+            goals_against: s.goalsAgainst,
+            goal_difference: s.goalDifference,
+            points: s.points,
+          })),
+          fixtures: gameData.competitions.league.fixtures.map(f => ({
+            id: f.id,
+            week: parseInt(f.round.replace('Week ', '')) || 0,
+            match_date: f.matchDate,
+            match_type: f.competitionType,
+            home_team_id: f.homeTeamId,
+            away_team_id: f.awayTeamId,
+            home_team_name: f.homeTeamName,
+            away_team_name: f.awayTeamName,
+            home_score: f.homeScore,
+            away_score: f.awayScore,
+            played: f.played,
+            events: f.events,
+          })),
+        }],
         
         // Transfer market
         transfer_market: gameData.transferMarket,

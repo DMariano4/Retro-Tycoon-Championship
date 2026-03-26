@@ -1,9 +1,41 @@
 /**
- * Offline Game Generator
- * Generates teams, players, and fixtures entirely client-side
+ * Offline Game Generator v2
+ * Event-based calendar system with multiple competitions.
+ * Generates teams, players, fixtures, and cup draws entirely client-side.
  */
 
 import { getRandomNationality, generatePlayerName } from './nationalities';
+import {
+  GameEvent,
+  CompetitionType,
+  SeasonCalendarTemplate,
+  ENGLISH_CALENDAR,
+  formatDate,
+  parseDate,
+  addDays,
+  getNextMatchDate,
+  generateSeasonDates,
+  createMatchEvent,
+  createCupDrawEvent,
+  createTransferWindowEvent,
+  sortEvents,
+} from './calendar';
+import {
+  Competition,
+  CupFixture,
+  CupRound,
+  LeagueStanding,
+  FA_CUP_ROUNDS,
+  FA_CUP_SCHEDULE,
+  LEAGUE_CUP_ROUNDS,
+  LEAGUE_CUP_SCHEDULE,
+  createLeagueCompetition,
+  createCupCompetition,
+  generateCupDraw,
+  getCupRoundDate,
+  getCompetitionIcon,
+  getCompetitionColor,
+} from './competitions';
 
 // ============================================
 // TEAM TEMPLATES (20 Premier League-style teams)
@@ -41,7 +73,7 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
   // Mid-table (Rep 9-11)
   { id: 'team_wolves_fc', name: 'Midlands Wolves', short_name: 'MWO', stadium: 'Molineux Stadium', primary_color: '#fdb913', secondary_color: '#231f20', reputation: 11, budget: 45000000, wage_budget: 1100000, stadium_capacity: 32000, fan_base: 200000 },
   { id: 'team_palace_eagles', name: 'Crystal Palace Eagles', short_name: 'CPE', stadium: 'Selhurst Park', primary_color: '#1b458f', secondary_color: '#c4122e', reputation: 10, budget: 40000000, wage_budget: 1000000, stadium_capacity: 26000, fan_base: 160000 },
-  { id: 'team_brentford_bees', name: 'West London Bees', short_name: 'WLB', stadium: 'Tech Stadium', primary_color: '#e30613', secondary_color: '#ffffff', reputation: 10, budget: 35000000, wage_budget: 900000, stadium_capacity: 17000, fan_base: 120000 },
+  { id: 'team_brentford_bees', name: 'West London Bees', short_name: 'WLB2', stadium: 'Tech Stadium', primary_color: '#e30613', secondary_color: '#ffffff', reputation: 10, budget: 35000000, wage_budget: 900000, stadium_capacity: 17000, fan_base: 120000 },
   { id: 'team_fulham_cottagers', name: 'Riverside Cottagers', short_name: 'RCO', stadium: 'Craven Cottage', primary_color: '#000000', secondary_color: '#ffffff', reputation: 9, budget: 35000000, wage_budget: 900000, stadium_capacity: 25000, fan_base: 140000 },
   { id: 'team_forest_reds', name: 'Forest Reds', short_name: 'FOR', stadium: 'City Ground', primary_color: '#dd0000', secondary_color: '#ffffff', reputation: 9, budget: 40000000, wage_budget: 950000, stadium_capacity: 30000, fan_base: 180000 },
   
@@ -49,7 +81,7 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
   { id: 'team_bournemouth_cherries', name: 'South Coast Cherries', short_name: 'SCC', stadium: 'Vitality Stadium', primary_color: '#da291c', secondary_color: '#000000', reputation: 8, budget: 30000000, wage_budget: 800000, stadium_capacity: 11000, fan_base: 100000 },
   { id: 'team_everton_toffees', name: 'Blue Toffees', short_name: 'BTF', stadium: 'Goodison Park', primary_color: '#003399', secondary_color: '#ffffff', reputation: 8, budget: 35000000, wage_budget: 850000, stadium_capacity: 40000, fan_base: 220000 },
   
-  // Relegation Battle (Rep 4-5)
+  // Relegation Battle (Rep 4-7)
   { id: 'team_leicester_foxes', name: 'East Midlands Foxes', short_name: 'EMF', stadium: 'King Power Arena', primary_color: '#003090', secondary_color: '#fdbe11', reputation: 7, budget: 25000000, wage_budget: 700000, stadium_capacity: 32000, fan_base: 150000 },
   { id: 'team_southampton_saints', name: 'South Coast Saints', short_name: 'SSA', stadium: "St Mary's Stadium", primary_color: '#d71920', secondary_color: '#ffffff', reputation: 6, budget: 20000000, wage_budget: 600000, stadium_capacity: 32000, fan_base: 130000 },
   { id: 'team_ipswich_tractors', name: 'East Anglia Tractors', short_name: 'EAT', stadium: 'Portman Road', primary_color: '#0033a0', secondary_color: '#ffffff', reputation: 5, budget: 15000000, wage_budget: 500000, stadium_capacity: 30000, fan_base: 100000 },
@@ -59,9 +91,6 @@ export const TEAM_TEMPLATES: TeamTemplate[] = [
 // PLAYER GENERATION
 // ============================================
 
-const POSITIONS = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST'];
-
-// Squad structure: How many of each position per team
 const SQUAD_STRUCTURE = {
   GK: 3,
   CB: 5,
@@ -83,36 +112,29 @@ export interface GeneratedPlayer {
   nationalityFlag: string;
   position: string;
   preferred_positions: string[];
-  // Physical
   pace: number;
   strength: number;
   stamina: number;
   agility: number;
-  // Mental
   work_rate: number;
   concentration: number;
   decision_making: number;
   composure: number;
-  // GK
   reflexes: number;
   handling: number;
   communication: number;
-  // Defenders
   tackling: number;
   marking: number;
   positioning: number;
   crossing: number;
-  // Midfielders
   passing: number;
   vision: number;
   dribbling: number;
   control: number;
-  // Forwards
   finishing: number;
   off_the_ball: number;
   flair: number;
   heading: number;
-  // Overall
   current_ability: number;
   potential_ability: number;
   value: number;
@@ -123,90 +145,38 @@ export interface GeneratedPlayer {
   form: number;
 }
 
-/**
- * Generate a random attribute value within a range
- */
 function randAttr(base: number, variance: number = 3): number {
   const value = base + Math.floor(Math.random() * variance * 2) - variance;
   return Math.max(1, Math.min(20, value));
 }
 
-/**
- * Generate a single player for a given position and team reputation
- */
 export function generatePlayer(
   position: string,
   teamReputation: number,
   teamId: string,
   season: number = 2025
 ): GeneratedPlayer {
-  // Get nationality
   const nationality = getRandomNationality();
   const name = generatePlayerName(nationality);
   
-  // Age distribution: younger teams for higher rep (more investment)
   const ageBase = teamReputation >= 15 ? 22 : teamReputation >= 10 ? 24 : 26;
-  const age = ageBase + Math.floor(Math.random() * 12) - 4; // ±4 years
+  const age = ageBase + Math.floor(Math.random() * 12) - 4;
   const clampedAge = Math.max(17, Math.min(38, age));
   
-  // Base ability scales with team reputation (1-20 scale)
-  // Rep 20 = base 14-17, Rep 10 = base 10-13, Rep 5 = base 7-10
   const abilityBase = Math.floor(teamReputation * 0.7) + 3 + Math.floor(Math.random() * 4);
   const baseAbility = Math.max(5, Math.min(18, abilityBase));
   
-  // Potential: young players have higher ceiling
   const ageFactor = clampedAge < 23 ? 4 : clampedAge < 27 ? 2 : 0;
   const potential = Math.min(20, baseAbility + ageFactor + Math.floor(Math.random() * 3));
   
-  // Generate position-specific attributes
   const isGK = position === 'GK';
   const isDef = ['CB', 'LB', 'RB'].includes(position);
   const isMid = ['DM', 'CM', 'AM'].includes(position);
   const isAtt = ['LW', 'RW', 'ST'].includes(position);
   
-  // Physical attributes
-  const pace = isGK ? randAttr(baseAbility - 3) : randAttr(baseAbility);
-  const strength = isDef ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1);
-  const stamina = isMid ? randAttr(baseAbility + 1) : randAttr(baseAbility);
-  const agility = isAtt ? randAttr(baseAbility + 1) : randAttr(baseAbility);
-  
-  // Mental attributes
-  const work_rate = isMid ? randAttr(baseAbility + 1) : randAttr(baseAbility);
-  const concentration = isDef ? randAttr(baseAbility + 1) : randAttr(baseAbility);
-  const decision_making = randAttr(baseAbility);
-  const composure = randAttr(baseAbility);
-  
-  // GK attributes
-  const reflexes = isGK ? randAttr(baseAbility + 2) : randAttr(baseAbility - 4);
-  const handling = isGK ? randAttr(baseAbility + 2) : randAttr(baseAbility - 5);
-  const communication = isGK ? randAttr(baseAbility + 1) : randAttr(baseAbility - 3);
-  
-  // Defensive attributes
-  const tackling = isDef ? randAttr(baseAbility + 2) : isMid ? randAttr(baseAbility) : randAttr(baseAbility - 3);
-  const marking = isDef ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2);
-  const positioning_attr = isDef || isGK ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1);
-  const crossing = ['LB', 'RB', 'LW', 'RW'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2);
-  
-  // Midfield attributes
-  const passing = isMid ? randAttr(baseAbility + 2) : randAttr(baseAbility);
-  const vision = ['AM', 'CM'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1);
-  const dribbling = isAtt || position === 'AM' ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1);
-  const control = isMid || isAtt ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1);
-  
-  // Forward attributes
-  const finishing = isAtt ? randAttr(baseAbility + 3) : isMid ? randAttr(baseAbility - 1) : randAttr(baseAbility - 4);
-  const off_the_ball = isAtt ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2);
-  const flair_attr = isAtt || position === 'AM' ? randAttr(baseAbility + 1) : randAttr(baseAbility - 2);
-  const heading = ['CB', 'ST'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1);
-  
-  // Calculate value based on ability and age
   const ageMultiplier = clampedAge < 24 ? 1.5 : clampedAge < 28 ? 1.2 : clampedAge < 32 ? 0.8 : 0.4;
   const value = Math.round(baseAbility * 800000 * ageMultiplier * (0.8 + Math.random() * 0.4));
-  
-  // Calculate wage based on ability
   const wage = Math.round(baseAbility * 2000 * (0.8 + Math.random() * 0.4));
-  
-  // Contract end: 1-5 years
   const contractYears = 1 + Math.floor(Math.random() * 5);
   const contract_end = `${season + contractYears}-06-30`;
   
@@ -218,152 +188,52 @@ export function generatePlayer(
     nationalityFlag: nationality.flag,
     position,
     preferred_positions: [position],
-    pace, strength, stamina, agility,
-    work_rate, concentration, decision_making, composure,
-    reflexes, handling, communication,
-    tackling, marking, positioning: positioning_attr, crossing,
-    passing, vision, dribbling, control,
-    finishing, off_the_ball, flair: flair_attr, heading,
+    pace: isGK ? randAttr(baseAbility - 3) : randAttr(baseAbility),
+    strength: isDef ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1),
+    stamina: isMid ? randAttr(baseAbility + 1) : randAttr(baseAbility),
+    agility: isAtt ? randAttr(baseAbility + 1) : randAttr(baseAbility),
+    work_rate: isMid ? randAttr(baseAbility + 1) : randAttr(baseAbility),
+    concentration: isDef ? randAttr(baseAbility + 1) : randAttr(baseAbility),
+    decision_making: randAttr(baseAbility),
+    composure: randAttr(baseAbility),
+    reflexes: isGK ? randAttr(baseAbility + 2) : randAttr(baseAbility - 4),
+    handling: isGK ? randAttr(baseAbility + 2) : randAttr(baseAbility - 5),
+    communication: isGK ? randAttr(baseAbility + 1) : randAttr(baseAbility - 3),
+    tackling: isDef ? randAttr(baseAbility + 2) : isMid ? randAttr(baseAbility) : randAttr(baseAbility - 3),
+    marking: isDef ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2),
+    positioning: isDef || isGK ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1),
+    crossing: ['LB', 'RB', 'LW', 'RW'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2),
+    passing: isMid ? randAttr(baseAbility + 2) : randAttr(baseAbility),
+    vision: ['AM', 'CM'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1),
+    dribbling: isAtt || position === 'AM' ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1),
+    control: isMid || isAtt ? randAttr(baseAbility + 1) : randAttr(baseAbility - 1),
+    finishing: isAtt ? randAttr(baseAbility + 3) : isMid ? randAttr(baseAbility - 1) : randAttr(baseAbility - 4),
+    off_the_ball: isAtt ? randAttr(baseAbility + 2) : randAttr(baseAbility - 2),
+    flair: isAtt || position === 'AM' ? randAttr(baseAbility + 1) : randAttr(baseAbility - 2),
+    heading: ['CB', 'ST'].includes(position) ? randAttr(baseAbility + 2) : randAttr(baseAbility - 1),
     current_ability: baseAbility,
     potential_ability: potential,
     value,
     wage,
     contract_end,
-    morale: 12 + Math.floor(Math.random() * 6), // 12-17
-    fitness: 16 + Math.floor(Math.random() * 5), // 16-20
-    form: 10 + Math.floor(Math.random() * 6),    // 10-15
+    morale: 12 + Math.floor(Math.random() * 6),
+    fitness: 16 + Math.floor(Math.random() * 5),
+    form: 10 + Math.floor(Math.random() * 6),
   };
 }
 
-/**
- * Generate a full squad for a team
- */
 export function generateSquad(teamReputation: number, teamId: string, season: number = 2025): GeneratedPlayer[] {
   const squad: GeneratedPlayer[] = [];
-  
   for (const [position, count] of Object.entries(SQUAD_STRUCTURE)) {
     for (let i = 0; i < count; i++) {
       squad.push(generatePlayer(position, teamReputation, teamId, season));
     }
   }
-  
   return squad;
 }
 
 // ============================================
-// FIXTURE GENERATION
-// ============================================
-
-export interface GeneratedFixture {
-  id: string;
-  week: number;
-  match_date: string;
-  match_type: 'league' | 'friendly';
-  home_team_id: string;
-  away_team_id: string;
-  home_team_name: string;
-  away_team_name: string;
-  home_score: number | null;
-  away_score: number | null;
-  played: boolean;
-  events: any[];
-}
-
-/**
- * Generate round-robin fixtures for a league season
- */
-export function generateLeagueFixtures(
-  teams: { id: string; name: string }[],
-  season: number
-): GeneratedFixture[] {
-  const fixtures: GeneratedFixture[] = [];
-  const teamsList = [...teams];
-  
-  // Ensure even number of teams
-  if (teamsList.length % 2 !== 0) {
-    teamsList.push({ id: 'BYE', name: 'BYE' });
-  }
-  
-  const totalTeams = teamsList.length;
-  const totalRounds = (totalTeams - 1) * 2; // Home and away
-  
-  let week = 1;
-  const workingList = [...teamsList];
-  
-  for (let round = 0; round < totalRounds; round++) {
-    const isReturn = round >= (totalTeams - 1);
-    const matchDate = new Date(season, 7, 10 + (week - 1) * 7); // Aug 10 + weeks
-    const dateStr = matchDate.toISOString().split('T')[0];
-    
-    for (let i = 0; i < totalTeams / 2; i++) {
-      let home = workingList[i];
-      let away = workingList[totalTeams - 1 - i];
-      
-      if (home.id === 'BYE' || away.id === 'BYE') continue;
-      if (isReturn) [home, away] = [away, home];
-      
-      fixtures.push({
-        id: `fix_s${season}_w${week}_${i}`,
-        week,
-        match_date: dateStr,
-        match_type: 'league',
-        home_team_id: home.id,
-        away_team_id: away.id,
-        home_team_name: home.name,
-        away_team_name: away.name,
-        home_score: null,
-        away_score: null,
-        played: false,
-        events: [],
-      });
-    }
-    
-    // Rotate teams (keep first fixed)
-    const last = workingList.pop()!;
-    workingList.splice(1, 0, last);
-    week++;
-  }
-  
-  return fixtures;
-}
-
-/**
- * Generate pre-season friendlies for the managed team
- */
-export function generatePreSeasonFriendlies(
-  managedTeamId: string,
-  managedTeamName: string,
-  allTeams: { id: string; name: string }[],
-  season: number
-): GeneratedFixture[] {
-  const friendlies: GeneratedFixture[] = [];
-  const opponents = allTeams.filter(t => t.id !== managedTeamId);
-  const shuffled = [...opponents].sort(() => Math.random() - 0.5);
-  const dates = [`${season}-07-12`, `${season}-07-19`, `${season}-07-26`, `${season}-08-02`];
-  
-  for (let i = 0; i < Math.min(4, shuffled.length); i++) {
-    const isHome = Math.random() > 0.5;
-    friendlies.push({
-      id: `friendly_s${season}_${managedTeamId}_${i}`,
-      week: 0,
-      match_date: dates[i],
-      match_type: 'friendly',
-      home_team_id: isHome ? managedTeamId : shuffled[i].id,
-      away_team_id: isHome ? shuffled[i].id : managedTeamId,
-      home_team_name: isHome ? managedTeamName : shuffled[i].name,
-      away_team_name: isHome ? shuffled[i].name : managedTeamName,
-      home_score: null,
-      away_score: null,
-      played: false,
-      events: [],
-    });
-  }
-  
-  return friendlies;
-}
-
-// ============================================
-// FULL GAME GENERATION
+// GENERATED TEAM
 // ============================================
 
 export interface GeneratedTeam {
@@ -391,40 +261,324 @@ export interface GeneratedTeam {
   staff_costs_weekly: number;
 }
 
+// ============================================
+// LEAGUE FIXTURE GENERATION (Date-based)
+// ============================================
+
+export interface GeneratedFixture {
+  id: string;
+  matchDate: string;           // YYYY-MM-DD
+  competitionId: string;
+  competitionType: CompetitionType;
+  round: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  played: boolean;
+  events: any[];
+}
+
 /**
- * Generate a complete new game with all teams, players, and fixtures
+ * Generate league fixtures with actual dates
+ */
+export function generateLeagueFixturesWithDates(
+  teams: { id: string; name: string }[],
+  season: number,
+  leagueId: string,
+  template: SeasonCalendarTemplate = ENGLISH_CALENDAR
+): GeneratedFixture[] {
+  const fixtures: GeneratedFixture[] = [];
+  const teamsList = [...teams];
+  
+  if (teamsList.length % 2 !== 0) {
+    teamsList.push({ id: 'BYE', name: 'BYE' });
+  }
+  
+  const totalTeams = teamsList.length;
+  const matchesPerRound = totalTeams / 2;
+  const totalRounds = (totalTeams - 1) * 2;
+  
+  // Start date
+  let currentDate = new Date(season, template.seasonStart.month - 1, template.seasonStart.day);
+  const usedDates: string[] = [];
+  
+  // Create round-robin schedule
+  const workingList = [...teamsList];
+  
+  for (let round = 0; round < totalRounds; round++) {
+    const isReturn = round >= (totalTeams - 1);
+    const weekNumber = round + 1;
+    
+    // Find next available Saturday/Sunday
+    currentDate = getNextMatchDate(currentDate, template.leagueMatchDays, usedDates);
+    const dateStr = formatDate(currentDate);
+    usedDates.push(dateStr);
+    
+    for (let i = 0; i < matchesPerRound; i++) {
+      let home = workingList[i];
+      let away = workingList[totalTeams - 1 - i];
+      
+      if (home.id === 'BYE' || away.id === 'BYE') continue;
+      if (isReturn) [home, away] = [away, home];
+      
+      fixtures.push({
+        id: `league_${leagueId}_w${weekNumber}_m${i}`,
+        matchDate: dateStr,
+        competitionId: leagueId,
+        competitionType: 'league',
+        round: `Week ${weekNumber}`,
+        homeTeamId: home.id,
+        homeTeamName: home.name,
+        awayTeamId: away.id,
+        awayTeamName: away.name,
+        homeScore: null,
+        awayScore: null,
+        played: false,
+        events: [],
+      });
+    }
+    
+    // Rotate teams
+    const last = workingList.pop()!;
+    workingList.splice(1, 0, last);
+    
+    // Add gaps for international breaks and holidays
+    if (round === 3 || round === 7 || round === 11) {
+      currentDate = addDays(currentDate, 14); // 2 week break
+    }
+  }
+  
+  // Handle Boxing Day and New Year's Day (special fixtures)
+  if (template.specialFixtures?.boxingDay) {
+    // Find closest fixture to Dec 26 and adjust
+    const boxingDay = `${season}-12-26`;
+    const nearbyFixture = fixtures.find(f => {
+      const fDate = parseDate(f.matchDate);
+      const target = parseDate(boxingDay);
+      const diff = Math.abs(fDate.getTime() - target.getTime()) / (1000 * 60 * 60 * 24);
+      return diff < 5 && !f.played;
+    });
+    if (nearbyFixture) {
+      nearbyFixture.matchDate = boxingDay;
+    }
+  }
+  
+  if (template.specialFixtures?.newYearsDay) {
+    const newYearsDay = `${season + 1}-01-01`;
+    const nearbyFixture = fixtures.find(f => {
+      const fDate = parseDate(f.matchDate);
+      const target = parseDate(newYearsDay);
+      const diff = Math.abs(fDate.getTime() - target.getTime()) / (1000 * 60 * 60 * 24);
+      return diff < 5 && !f.played;
+    });
+    if (nearbyFixture) {
+      nearbyFixture.matchDate = newYearsDay;
+    }
+  }
+  
+  return fixtures;
+}
+
+/**
+ * Generate pre-season friendlies
+ */
+export function generatePreSeasonFriendlies(
+  managedTeamId: string,
+  managedTeamName: string,
+  allTeams: { id: string; name: string }[],
+  season: number
+): GeneratedFixture[] {
+  const friendlies: GeneratedFixture[] = [];
+  const opponents = allTeams.filter(t => t.id !== managedTeamId);
+  const shuffled = [...opponents].sort(() => Math.random() - 0.5);
+  
+  // 4 friendlies in July - early August
+  const dates = [
+    `${season}-07-13`,  // Sat
+    `${season}-07-20`,  // Sat
+    `${season}-07-27`,  // Sat
+    `${season}-08-03`,  // Sat
+  ];
+  
+  for (let i = 0; i < Math.min(4, shuffled.length); i++) {
+    const isHome = Math.random() > 0.5;
+    friendlies.push({
+      id: `friendly_${season}_${managedTeamId}_${i}`,
+      matchDate: dates[i],
+      competitionId: 'friendly',
+      competitionType: 'friendly',
+      round: `Pre-Season ${i + 1}`,
+      homeTeamId: isHome ? managedTeamId : shuffled[i].id,
+      homeTeamName: isHome ? managedTeamName : shuffled[i].name,
+      awayTeamId: isHome ? shuffled[i].id : managedTeamId,
+      awayTeamName: isHome ? shuffled[i].name : managedTeamName,
+      homeScore: null,
+      awayScore: null,
+      played: false,
+      events: [],
+    });
+  }
+  
+  return friendlies;
+}
+
+// ============================================
+// CUP COMPETITION STATE
+// ============================================
+
+export interface CupCompetitionState {
+  id: string;
+  name: string;
+  shortName: string;
+  type: CompetitionType;
+  rounds: CupRound[];
+  currentRound: string;
+  fixtures: GeneratedFixture[];
+  teams: { id: string; name: string; eliminated: boolean }[];
+  drawCompleted: boolean;
+  isActive: boolean;
+}
+
+/**
+ * Initialize FA Cup state (PL teams enter at R3)
+ */
+export function initializeFACup(
+  plTeams: { id: string; name: string }[],
+  season: number
+): CupCompetitionState {
+  // Generate fictional lower league opponents for R1, R2
+  // For simplicity, PL teams enter at R3 with 44 lower league teams
+  const lowerLeagueTeams = generateLowerLeagueTeams(44);
+  
+  // All teams that will be in R3 (20 PL + 44 from earlier rounds)
+  const allTeams = [
+    ...plTeams.map(t => ({ ...t, eliminated: false })),
+    ...lowerLeagueTeams.map(t => ({ ...t, eliminated: false })),
+  ];
+  
+  return {
+    id: `fa_cup_${season}`,
+    name: 'FA Cup',
+    shortName: 'FAC',
+    type: 'fa_cup',
+    rounds: FA_CUP_ROUNDS.slice(2), // Start from R3
+    currentRound: 'R3',
+    fixtures: [],
+    teams: allTeams,
+    drawCompleted: false,
+    isActive: true,
+  };
+}
+
+/**
+ * Initialize League Cup state (PL teams enter at R3)
+ */
+export function initializeLeagueCup(
+  plTeams: { id: string; name: string }[],
+  season: number
+): CupCompetitionState {
+  // Lower league opponents for earlier rounds
+  const lowerLeagueTeams = generateLowerLeagueTeams(12);
+  
+  const allTeams = [
+    ...plTeams.map(t => ({ ...t, eliminated: false })),
+    ...lowerLeagueTeams.map(t => ({ ...t, eliminated: false })),
+  ];
+  
+  return {
+    id: `league_cup_${season}`,
+    name: 'League Cup',
+    shortName: 'LC',
+    type: 'league_cup',
+    rounds: LEAGUE_CUP_ROUNDS.slice(2), // Start from R3
+    currentRound: 'R3',
+    fixtures: [],
+    teams: allTeams,
+    drawCompleted: false,
+    isActive: true,
+  };
+}
+
+/**
+ * Generate fictional lower league team names
+ */
+function generateLowerLeagueTeams(count: number): { id: string; name: string }[] {
+  const prefixes = ['AFC', 'FC', 'United', '', 'Town', 'City', 'Athletic', 'Rovers', 'Wanderers'];
+  const towns = [
+    'Barnet', 'Woking', 'Dorking', 'Aldershot', 'Maidstone', 'Ebbsfleet',
+    'Bromley', 'Sutton', 'Halifax', 'Chesterfield', 'Stockport', 'Wrexham',
+    'Notts County', 'Grimsby', 'Oldham', 'Rochdale', 'Hartlepool', 'Barrow',
+    'Colchester', 'Stevenage', 'Wycombe', 'MK Dons', 'AFC Wimbledon', 'Crawley',
+    'Accrington', 'Morecambe', 'Fleetwood', 'Burton', 'Shrewsbury', 'Cheltenham',
+    'Northampton', 'Mansfield', 'Doncaster', 'Carlisle', 'Bradford', 'Newport',
+    'Tranmere', 'Salford', 'Swindon', 'Port Vale', 'Crewe', 'Gillingham',
+    'Lincoln', 'Cambridge', 'Oxford', 'Peterborough', 'Reading', 'Bristol Rovers',
+  ];
+  
+  const shuffled = [...towns].sort(() => Math.random() - 0.5);
+  const teams: { id: string; name: string }[] = [];
+  
+  for (let i = 0; i < Math.min(count, shuffled.length); i++) {
+    const town = shuffled[i];
+    const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+    const name = prefix ? `${town} ${prefix}` : town;
+    teams.push({
+      id: `lower_${i}_${town.toLowerCase().replace(/\s+/g, '_')}`,
+      name: name.trim(),
+    });
+  }
+  
+  return teams;
+}
+
+// ============================================
+// FULL GAME GENERATION (v2)
+// ============================================
+
+export interface GeneratedGameData {
+  teams: GeneratedTeam[];
+  competitions: {
+    league: {
+      id: string;
+      name: string;
+      standings: LeagueStanding[];
+      fixtures: GeneratedFixture[];
+    };
+    faCup: CupCompetitionState;
+    leagueCup: CupCompetitionState;
+  };
+  events: GameEvent[];
+  transferMarket: any[];
+  calendar: {
+    currentDate: string;
+    seasonStart: string;
+    seasonEnd: string;
+    transferWindows: {
+      summer: { start: string; end: string };
+      winter: { start: string; end: string };
+    };
+  };
+}
+
+/**
+ * Generate a complete new game with event-based calendar
  */
 export function generateNewGame(
   managedTeamId: string,
   saveName: string,
   currencySymbol: string = '£',
-  season: number = 2025
-): {
-  teams: GeneratedTeam[];
-  league: {
-    id: string;
-    name: string;
-    division: number;
-    season: number;
-    current_week: number;
-    teams: string[];
-    table: any[];
-    fixtures: GeneratedFixture[];
-  };
-  transferMarket: any[];
-} {
+  season: number = 2025,
+  calendarTemplate: SeasonCalendarTemplate = ENGLISH_CALENDAR
+): GeneratedGameData {
   // Generate all teams with squads
   const teams: GeneratedTeam[] = TEAM_TEMPLATES.map(template => {
     const squad = generateSquad(template.reputation, template.id, season);
-    
-    // Calculate staff costs
     const youthFacilities = Math.max(5, Math.floor(template.reputation * 0.8));
     const trainingFacilities = Math.max(5, Math.floor(template.reputation * 0.8));
-    const staffCosts = Math.round(
-      ((youthFacilities + trainingFacilities) * 5000 + squad.length * 8000) / 2
-    );
-    
-    // Calculate sponsorship (simplified version)
+    const staffCosts = Math.round(((youthFacilities + trainingFacilities) * 5000 + squad.length * 8000) / 2);
     const sponsorshipMonthly = Math.round(template.reputation * template.reputation * 10000);
     
     return {
@@ -453,34 +607,108 @@ export function generateNewGame(
     };
   });
   
-  // Generate league table
-  const table = teams.map(team => ({
-    team_id: team.id,
-    team_name: team.name,
+  const teamBasics = teams.map(t => ({ id: t.id, name: t.name }));
+  
+  // Generate league standings
+  const standings: LeagueStanding[] = teams.map(team => ({
+    teamId: team.id,
+    teamName: team.name,
     played: 0,
     won: 0,
     drawn: 0,
     lost: 0,
-    goals_for: 0,
-    goals_against: 0,
-    goal_difference: 0,
+    goalsFor: 0,
+    goalsAgainst: 0,
+    goalDifference: 0,
     points: 0,
+    form: [],
   }));
   
-  // Generate fixtures
-  const teamBasics = teams.map(t => ({ id: t.id, name: t.name }));
-  const leagueFixtures = generateLeagueFixtures(teamBasics, season);
+  // Generate league fixtures with dates
+  const leagueId = `premier_league_${season}`;
+  const leagueFixtures = generateLeagueFixturesWithDates(teamBasics, season, leagueId, calendarTemplate);
   
-  // Generate pre-season friendlies for managed team
+  // Generate pre-season friendlies
   const managedTeam = teams.find(t => t.id === managedTeamId);
   const friendlies = managedTeam 
     ? generatePreSeasonFriendlies(managedTeamId, managedTeam.name, teamBasics, season)
     : [];
   
-  // Generate initial transfer market (a few players from each team)
+  // Initialize cups
+  const faCup = initializeFACup(teamBasics, season);
+  const leagueCup = initializeLeagueCup(teamBasics, season);
+  
+  // Generate calendar dates
+  const seasonDates = generateSeasonDates(season, calendarTemplate);
+  
+  // Create events list
+  const events: GameEvent[] = [];
+  
+  // Add pre-season friendlies as events (for managed team only)
+  friendlies.forEach(f => {
+    events.push(createMatchEvent(
+      {
+        id: f.id,
+        match_date: f.matchDate,
+        home_team_id: f.homeTeamId,
+        home_team_name: f.homeTeamName,
+        away_team_id: f.awayTeamId,
+        away_team_name: f.awayTeamName,
+        home_score: f.homeScore,
+        away_score: f.awayScore,
+        played: f.played,
+      },
+      'friendly',
+      f.round
+    ));
+  });
+  
+  // Add league fixtures as events (only managed team's matches)
+  leagueFixtures
+    .filter(f => f.homeTeamId === managedTeamId || f.awayTeamId === managedTeamId)
+    .forEach(f => {
+      events.push(createMatchEvent(
+        {
+          id: f.id,
+          match_date: f.matchDate,
+          home_team_id: f.homeTeamId,
+          home_team_name: f.homeTeamName,
+          away_team_id: f.awayTeamId,
+          away_team_name: f.awayTeamName,
+          home_score: f.homeScore,
+          away_score: f.awayScore,
+          played: f.played,
+        },
+        'league',
+        f.round
+      ));
+    });
+  
+  // Add cup draw events
+  const faCupR3DrawDate = getCupRoundDate('R3', FA_CUP_SCHEDULE, season);
+  events.push(createCupDrawEvent(
+    addDays(parseDate(faCupR3DrawDate), -7).toISOString().split('T')[0], // Draw 1 week before
+    'fa_cup',
+    'R3'
+  ));
+  
+  const leagueCupR3DrawDate = getCupRoundDate('R3', LEAGUE_CUP_SCHEDULE, season);
+  events.push(createCupDrawEvent(
+    addDays(parseDate(leagueCupR3DrawDate), -7).toISOString().split('T')[0],
+    'league_cup',
+    'R3'
+  ));
+  
+  // Add transfer window events
+  events.push(createTransferWindowEvent(seasonDates.summerWindowStart, true));
+  events.push(createTransferWindowEvent(seasonDates.summerWindowEnd, false));
+  events.push(createTransferWindowEvent(seasonDates.winterWindowStart, true));
+  events.push(createTransferWindowEvent(seasonDates.winterWindowEnd, false));
+  
+  // Generate initial transfer market
   const transferMarket: any[] = [];
   teams.forEach(team => {
-    const listableCount = Math.floor(Math.random() * 2); // 0-1 players per team
+    const listableCount = Math.floor(Math.random() * 2);
     const candidates = team.squad
       .filter(p => p.current_ability < 12)
       .sort(() => Math.random() - 0.5);
@@ -499,16 +727,35 @@ export function generateNewGame(
   
   return {
     teams,
-    league: {
-      id: `league_premier_${season}`,
-      name: 'Premier League',
-      division: 1,
-      season,
-      current_week: 0, // 0 = pre-season
-      teams: teams.map(t => t.id),
-      table,
-      fixtures: [...friendlies, ...leagueFixtures],
+    competitions: {
+      league: {
+        id: leagueId,
+        name: 'Premier League',
+        standings,
+        fixtures: leagueFixtures,
+      },
+      faCup,
+      leagueCup,
     },
+    events: sortEvents(events),
     transferMarket,
+    calendar: {
+      currentDate: `${season}-07-01`, // Start at July 1st (pre-season)
+      seasonStart: seasonDates.seasonStart,
+      seasonEnd: seasonDates.seasonEnd,
+      transferWindows: {
+        summer: {
+          start: seasonDates.summerWindowStart,
+          end: seasonDates.summerWindowEnd,
+        },
+        winter: {
+          start: seasonDates.winterWindowStart,
+          end: seasonDates.winterWindowEnd,
+        },
+      },
+    },
   };
 }
+
+// Export utilities
+export { getCompetitionIcon, getCompetitionColor };
