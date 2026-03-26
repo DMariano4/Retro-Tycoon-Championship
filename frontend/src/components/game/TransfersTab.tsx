@@ -9,6 +9,7 @@ import { gameStyles as styles } from './gameStyles';
 export function TransfersTab() {
   const { currentSave, makeTransferOffer, getManagedTeam } = useGame();
   const team = getManagedTeam();
+  const currency = currentSave?.currency_symbol || '£';
   const [searchPlayer, setSearchPlayer] = useState('');
   const [searchClub, setSearchClub] = useState('');
   const [positionFilter, setPositionFilter] = useState<string | null>(null);
@@ -19,9 +20,9 @@ export function TransfersTab() {
   const [feeInputText, setFeeInputText] = useState('0');
   const [wageInputText, setWageInputText] = useState('0');
 
-  const formatWage = (wage: number) => {
-    if (wage >= 1000) return `£${(wage / 1000).toFixed(1)}K`;
-    return `£${wage}`;
+  const formatWageLocal = (wage: number) => {
+    if (wage >= 1000) return `${currency}${(wage / 1000).toFixed(1)}K`;
+    return `${currency}${wage}`;
   };
 
   const handleMakeOffer = async (listing: any) => {
@@ -52,7 +53,7 @@ export function TransfersTab() {
     if (proposedFee > team.budget) {
       Alert.alert(
         'Insufficient Funds',
-        `You don't have enough budget for this transfer.\n\nYour budget: ${formatValue(team.budget)}\nTransfer fee: ${formatValue(proposedFee)}`,
+        `You don't have enough budget for this transfer.\n\nYour budget: ${formatValue(team.budget, currency)}\nTransfer fee: ${formatValue(proposedFee, currency)}`,
         [{ text: 'Revise Offer', style: 'cancel' }]
       );
       return;
@@ -64,7 +65,7 @@ export function TransfersTab() {
     if (result) {
       Alert.alert(
         'Transfer Complete!',
-        `${selectedListing.player.name} has joined your team!\n\nTransfer fee: ${formatValue(proposedFee)}\nWeekly wage: ${formatWage(proposedWage)}`,
+        `${selectedListing.player.name} has joined your team!\n\nTransfer fee: ${formatValue(proposedFee, currency)}\nWeekly wage: ${formatWageLocal(proposedWage)}`,
         [{ text: 'Great!' }]
       );
     } else {
@@ -89,7 +90,7 @@ export function TransfersTab() {
     <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
       <View style={styles.budgetDisplay}>
         <Text style={styles.budgetLabel}>Transfer Budget</Text>
-        <Text style={styles.budgetValue}>{formatValue(currentSave?.budget || 0)}</Text>
+        <Text style={styles.budgetValue}>{formatValue(currentSave?.budget || 0, currency)}</Text>
       </View>
 
       {/* Search Section */}
@@ -177,7 +178,7 @@ export function TransfersTab() {
                 </View>
               </TouchableOpacity>
               <View style={styles.transferAction}>
-                <Text style={styles.transferPrice}>{formatValue(listing.asking_price)}</Text>
+                <Text style={styles.transferPrice}>{formatValue(listing.asking_price, currency)}</Text>
                 <TouchableOpacity 
                   style={styles.offerButton}
                   onPress={() => handleMakeOffer(listing)}
@@ -219,7 +220,7 @@ export function TransfersTab() {
                     {selectedListing.player.position} • {selectedListing.player.age} yrs • {selectedListing.team_name}
                   </Text>
                   <Text style={styles.transferOfferAskingPrice}>
-                    Asking Price: {formatValue(selectedListing.asking_price)}
+                    Asking Price: {formatValue(selectedListing.asking_price, currency)}
                   </Text>
                 </View>
 
@@ -227,7 +228,7 @@ export function TransfersTab() {
                 <View style={styles.transferOfferSection}>
                   <Text style={styles.transferOfferSectionTitle}>TRANSFER FEE</Text>
                   <View style={styles.transferFeeInputContainer}>
-                    <Text style={styles.transferFeePrefix}>£</Text>
+                    <Text style={styles.transferFeePrefix}>{currency}</Text>
                     <TouchableOpacity
                       style={styles.transferFeeButton}
                       onPress={() => {
@@ -284,7 +285,7 @@ export function TransfersTab() {
                 <View style={styles.transferOfferSection}>
                   <Text style={styles.transferOfferSectionTitle}>WEEKLY WAGE</Text>
                   <View style={styles.wageInputContainer}>
-                    <Text style={styles.wageInputPrefix}>£</Text>
+                    <Text style={styles.wageInputPrefix}>{currency}</Text>
                     <TouchableOpacity
                       style={styles.wageButton}
                       onPress={() => {
@@ -340,12 +341,12 @@ export function TransfersTab() {
                   <View style={styles.transferOfferInfo}>
                     <View style={styles.transferOfferInfoRow}>
                       <Text style={styles.transferOfferInfoLabel}>Player's Current Wage:</Text>
-                      <Text style={styles.transferOfferInfoValue}>{formatWage(selectedListing.player.wage)}</Text>
+                      <Text style={styles.transferOfferInfoValue}>{formatWageLocal(selectedListing.player.wage)}</Text>
                     </View>
                     <View style={styles.transferOfferInfoRow}>
                       <Text style={styles.transferOfferInfoLabel}>Your Offer:</Text>
                       <Text style={[styles.transferOfferInfoValue, { fontWeight: '700' }]}>
-                        {formatWage(proposedWage)}
+                        {formatWageLocal(proposedWage)}
                       </Text>
                     </View>
                   </View>

@@ -51,6 +51,7 @@ export default function PlayerProfileScreen() {
 
   const { player, teamName } = findPlayer();
   const managedTeam = getManagedTeam();
+  const currency = currentSave?.currency_symbol || '£';
 
   if (!player) {
     return (
@@ -71,14 +72,14 @@ export default function PlayerProfileScreen() {
   }
 
   const formatValue = (value: number) => {
-    if (value >= 1000000) return `£${(value / 1000000).toFixed(1)}M`;
-    if (value >= 1000) return `£${(value / 1000).toFixed(0)}K`;
-    return `£${value}`;
+    if (value >= 1000000) return `${currency}${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${currency}${(value / 1000).toFixed(0)}K`;
+    return `${currency}${value}`;
   };
 
   const formatWage = (wage: number) => {
-    if (wage >= 1000) return `£${(wage / 1000).toFixed(0)}K/week`;
-    return `£${wage}/week`;
+    if (wage >= 1000) return `${currency}${(wage / 1000).toFixed(0)}K/week`;
+    return `${currency}${wage}/week`;
   };
 
   const getAbilityColor = (value: number) => {

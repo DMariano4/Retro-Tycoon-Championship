@@ -663,7 +663,7 @@ const financeStyles = StyleSheet.create({
   ticketInputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 12,
     marginBottom: 12,
   },
   currencySymbol: {
@@ -680,6 +680,7 @@ const financeStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
+    minWidth: 80,
   },
   ticketButton: {
     backgroundColor: '#4a9eff',
