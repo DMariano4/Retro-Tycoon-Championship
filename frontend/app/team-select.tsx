@@ -1,78 +1,33 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput, ActivityIndicator, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
-import { getBackendUrl } from '../src/utils/api';
-
-const BACKEND_URL = getBackendUrl();
-
-interface TeamOption {
-  id: string;
-  name: string;
-  stadium: string;
-  division: number;
-}
+import { useSaveSlots } from '../src/context/SaveSlotsContext';
+import { TEAM_TEMPLATES, generateNewGame, TeamTemplate } from '../src/utils/gameGenerator';
 
 export default function TeamSelectScreen() {
-  // Use a single state object to avoid React 19 batching issues
+  const { slotId } = useLocalSearchParams<{ slotId: string }>();
+  const { setCurrentSave } = useGame();
+  const { saveToSlot, setActiveSlot } = useSaveSlots();
+  
   const [state, setState] = useState<{
-    teams: TeamOption[];
-    selectedTeam: TeamOption | null;
+    selectedTeam: TeamTemplate | null;
     saveName: string;
-    loading: boolean;
-    error: string | null;
     currency: string;
+    isCreating: boolean;
   }>({
-    teams: [],
     selectedTeam: null,
     saveName: '',
-    loading: true,
-    error: null,
     currency: '£',
+    isCreating: false,
   });
 
-  const { createNewGame, isLoading: gameLoading } = useGame();
+  const { selectedTeam, saveName, currency, isCreating } = state;
+  const targetSlotId = slotId ? parseInt(slotId, 10) : 1;
 
-  useEffect(() => {
-    console.log('Component mounted, fetching teams');
-    fetchTeams();
-  }, []);
-
-  const fetchTeams = () => {
-    console.log('fetchTeams started');
-    setState(prev => ({ ...prev, loading: true, error: null }));
-    
-    const apiUrl = `${BACKEND_URL}/api/teams`;
-    console.log('Fetching teams from:', apiUrl);
-    
-    fetch(apiUrl)
-      .then(response => {
-        console.log('Response status:', response.status);
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json();
-      })
-      .then(data => {
-        console.log('Teams loaded:', data.length);
-        setState(prev => ({
-          ...prev,
-          teams: data,
-          loading: false
-        }));
-        console.log('State updated with teams');
-      })
-      .catch(err => {
-        console.error('Fetch error:', err);
-        setState(prev => ({
-          ...prev,
-          error: err.message || 'Network error',
-          loading: false
-        }));
-      });
-  };
-
-  const setSelectedTeam = (team: TeamOption | null) => {
+  const setSelectedTeam = (team: TeamTemplate | null) => {
     setState(prev => ({ ...prev, selectedTeam: team }));
   };
 
@@ -80,7 +35,9 @@ export default function TeamSelectScreen() {
     setState(prev => ({ ...prev, saveName: name }));
   };
 
-  const { teams, selectedTeam, saveName, loading, error, currency } = state;
+  const setCurrency = (sym: string) => {
+    setState(prev => ({ ...prev, currency: sym }));
+  };
 
   const handleStartGame = async () => {
     if (!selectedTeam) {
@@ -88,144 +45,215 @@ export default function TeamSelectScreen() {
       return;
     }
 
-    const name = saveName.trim() || `${selectedTeam.name} Career`;
-    const success = await createNewGame(selectedTeam.id, name, currency);
-    
-    if (success) {
-      router.replace('/game');
-    } else {
+    setState(prev => ({ ...prev, isCreating: true }));
+
+    try {
+      const name = saveName.trim() || `${selectedTeam.name} Career`;
+      const season = 2025;
+      
+      // Generate game data locally (100% offline)
+      const gameData = generateNewGame(selectedTeam.id, name, currency, season);
+      
+      // Find the managed team
+      const managedTeam = gameData.teams.find(t => t.id === selectedTeam.id);
+      if (!managedTeam) {
+        throw new Error('Failed to generate team data');
+      }
+      
+      // Create the save object structure
+      const saveData = {
+        id: `save_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        name,
+        managed_team_id: selectedTeam.id,
+        managed_team_name: selectedTeam.name,
+        season,
+        currency_symbol: currency,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        
+        // Budget is the managed team's budget
+        budget: managedTeam.budget,
+        
+        // Teams data
+        teams: gameData.teams.map(team => ({
+          ...team,
+          // Ensure player nationalityFlag is included
+          squad: team.squad.map(player => ({
+            ...player,
+            nationalityFlag: player.nationalityFlag,
+          })),
+        })),
+        
+        // League data
+        leagues: [gameData.league],
+        
+        // Transfer market
+        transfer_market: gameData.transferMarket,
+        
+        // Financial tracking
+        finances: {
+          weekly_income: 0,
+          weekly_expenses: 0,
+          season_profit_loss: 0,
+          season_revenue: 0,
+          season_expenses: 0,
+          last_match_revenue: 0,
+          ffp_status: 'green',
+          ffp_tier: 1,
+        },
+        
+        // Sponsor tracking
+        sponsors: [],
+        
+        // FFP state
+        ffp: {
+          tier: 1,
+          status: 'green',
+          consecutive_losses: 0,
+          transfer_embargo: false,
+          wage_cap_reduction: 0,
+        },
+      };
+      
+      // Save to slot
+      const saved = await saveToSlot(targetSlotId, saveData);
+      
+      if (saved) {
+        // Set as current save and navigate
+        setActiveSlot(targetSlotId);
+        setCurrentSave(saveData);
+        router.replace('/game');
+      } else {
+        throw new Error('Failed to save game');
+      }
+    } catch (error) {
+      console.error('Game creation error:', error);
       Alert.alert('Error', 'Failed to create game. Please try again.');
+    } finally {
+      setState(prev => ({ ...prev, isCreating: false }));
     }
   };
 
-  const renderTeam = ({ item }: { item: TeamOption }) => (
-    <TouchableOpacity
-      style={[
-        styles.teamCard,
-        selectedTeam?.id === item.id && styles.teamCardSelected
-      ]}
-      onPress={() => setSelectedTeam(item)}
-    >
-      <View style={styles.teamInfo}>
-        <Text style={styles.teamName}>{item.name}</Text>
-        <Text style={styles.teamStadium}>{item.stadium}</Text>
+  // Sort teams by reputation (best first)
+  const sortedTeams = [...TEAM_TEMPLATES].sort((a, b) => b.reputation - a.reputation);
+
+  // Group teams by tier
+  const topTeams = sortedTeams.filter(t => t.reputation >= 17);
+  const midTeams = sortedTeams.filter(t => t.reputation >= 10 && t.reputation < 17);
+  const lowerTeams = sortedTeams.filter(t => t.reputation < 10);
+
+  const renderTeamSection = (title: string, teams: TeamTemplate[], difficulty: string) => (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>{title}</Text>
+        <Text style={styles.sectionDifficulty}>{difficulty}</Text>
       </View>
-      {selectedTeam?.id === item.id && (
-        <Ionicons name="checkmark-circle" size={24} color="#00ff88" />
-      )}
-    </TouchableOpacity>
+      {teams.map(team => (
+        <TouchableOpacity
+          key={team.id}
+          style={[
+            styles.teamCard,
+            selectedTeam?.id === team.id && styles.teamCardSelected
+          ]}
+          onPress={() => setSelectedTeam(team)}
+        >
+          <View style={[styles.teamColor, { backgroundColor: team.primary_color }]} />
+          <View style={styles.teamInfo}>
+            <Text style={styles.teamName}>{team.name}</Text>
+            <Text style={styles.teamStadium}>{team.stadium}</Text>
+          </View>
+          <View style={styles.teamStats}>
+            <Text style={styles.teamRep}>⭐ {team.reputation}</Text>
+          </View>
+          {selectedTeam?.id === team.id && (
+            <Ionicons name="checkmark-circle" size={24} color="#00ff88" />
+          )}
+        </TouchableOpacity>
+      ))}
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#00ff88" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>SELECT YOUR TEAM</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      <View style={styles.divisionBadge}>
-        <Text style={styles.divisionText}>PREMIER LEAGUE - {loading ? 'LOADING' : `${teams.length} TEAMS`}</Text>
-      </View>
-
-      {loading ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#00ff88" />
-          <Text style={styles.loadingText}>Loading teams...</Text>
-        </View>
-      ) : error ? (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="alert-circle" size={48} color="#ff6b6b" />
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchTeams}>
-            <Text style={styles.retryButtonText}>Retry</Text>
+      <KeyboardAvoidingView 
+        style={styles.keyboardView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#00ff88" />
           </TouchableOpacity>
+          <Text style={styles.headerTitle}>SELECT YOUR TEAM</Text>
+          <View style={{ width: 24 }} />
         </View>
-      ) : teams.length === 0 ? (
-        <View style={styles.loadingContainer}>
-          <Ionicons name="football-outline" size={48} color="#4a6a8a" />
-          <Text style={styles.loadingText}>No teams available</Text>
+
+        <View style={styles.slotIndicator}>
+          <Ionicons name="save-outline" size={14} color="#4a9eff" />
+          <Text style={styles.slotText}>Saving to Slot {targetSlotId}</Text>
         </View>
-      ) : (
+
         <ScrollView 
           style={styles.teamList}
           contentContainerStyle={styles.teamListContent}
           showsVerticalScrollIndicator={false}
         >
-          {teams.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.teamCard,
-                selectedTeam?.id === item.id && styles.teamCardSelected
-              ]}
-              onPress={() => setSelectedTeam(item)}
-            >
-              <View style={styles.teamInfo}>
-                <Text style={styles.teamName}>{item.name}</Text>
-                <Text style={styles.teamStadium}>{item.stadium}</Text>
+          {renderTeamSection('TOP CLUBS', topTeams, 'Easy')}
+          {renderTeamSection('MID-TABLE', midTeams, 'Medium')}
+          {renderTeamSection('UNDERDOGS', lowerTeams, 'Hard')}
+        </ScrollView>
+
+        {selectedTeam && (
+          <View style={styles.footer}>
+            <View style={styles.saveNameContainer}>
+              <Text style={styles.inputLabel}>Save Name:</Text>
+              <TextInput
+                style={styles.saveNameInput}
+                value={saveName}
+                onChangeText={setSaveName}
+                placeholder={`${selectedTeam.name} Career`}
+                placeholderTextColor="#4a6a8a"
+                maxLength={30}
+              />
+            </View>
+
+            <View style={styles.currencySection}>
+              <Text style={styles.inputLabel}>Currency:</Text>
+              <View style={styles.currencyRow}>
+                {['£', '$', '€'].map((sym) => (
+                  <TouchableOpacity
+                    key={sym}
+                    style={[
+                      styles.currencyButton,
+                      currency === sym && styles.currencyButtonActive,
+                    ]}
+                    onPress={() => setCurrency(sym)}
+                  >
+                    <Text style={[
+                      styles.currencyText,
+                      currency === sym && styles.currencyTextActive,
+                    ]}>{sym}</Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-              {selectedTeam?.id === item.id && (
-                <Ionicons name="checkmark-circle" size={24} color="#00ff88" />
+            </View>
+
+            <TouchableOpacity
+              style={[styles.startButton, isCreating && styles.startButtonDisabled]}
+              onPress={handleStartGame}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <ActivityIndicator color="#0a1628" />
+              ) : (
+                <>
+                  <Ionicons name="play" size={20} color="#0a1628" />
+                  <Text style={styles.startButtonText}>START CAREER</Text>
+                </>
               )}
             </TouchableOpacity>
-          ))}
-        </ScrollView>
-      )}
-
-      {selectedTeam && (
-        <View style={styles.footer}>
-          <View style={styles.saveNameContainer}>
-            <Text style={styles.saveNameLabel}>Save Name:</Text>
-            <TextInput
-              style={styles.saveNameInput}
-              value={saveName}
-              onChangeText={setSaveName}
-              placeholder={`${selectedTeam.name} Career`}
-              placeholderTextColor="#4a6a8a"
-            />
           </View>
-
-          {/* Currency Selection */}
-          <View style={styles.currencySection}>
-            <Text style={styles.saveNameLabel}>Currency:</Text>
-            <View style={styles.currencyRow}>
-              {['£', '$', '€'].map((sym) => (
-                <TouchableOpacity
-                  key={sym}
-                  style={[
-                    styles.currencyButton,
-                    currency === sym && styles.currencyButtonActive,
-                  ]}
-                  onPress={() => setState(prev => ({ ...prev, currency: sym }))}
-                >
-                  <Text style={[
-                    styles.currencyText,
-                    currency === sym && styles.currencyTextActive,
-                  ]}>{sym}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity
-            style={styles.startButton}
-            onPress={handleStartGame}
-            disabled={gameLoading}
-          >
-            {gameLoading ? (
-              <ActivityIndicator color="#0a1628" />
-            ) : (
-              <>
-                <Ionicons name="play" size={20} color="#0a1628" />
-                <Text style={styles.startButtonText}>START CAREER</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
+        )}
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -234,6 +262,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#0a1628',
+  },
+  keyboardView: {
+    flex: 1,
   },
   header: {
     flexDirection: 'row',
@@ -249,82 +280,86 @@ const styles = StyleSheet.create({
     color: '#fff',
     letterSpacing: 2,
   },
-  divisionBadge: {
-    backgroundColor: '#1a3a5c',
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
-    marginTop: 16,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  divisionText: {
-    color: '#4a9eff',
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 1,
-  },
-  loadingContainer: {
-    flex: 1,
+  slotIndicator: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 12,
+    gap: 6,
+    paddingVertical: 8,
+    backgroundColor: '#0d2137',
   },
-  loadingText: {
-    color: '#6a8aaa',
-    marginTop: 12,
-    fontSize: 14,
-  },
-  errorText: {
-    color: '#ff6b6b',
-    fontSize: 14,
-    textAlign: 'center',
-    maxWidth: 280,
-  },
-  retryButton: {
-    backgroundColor: '#1a4a6c',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+  slotText: {
+    color: '#4a9eff',
+    fontSize: 12,
+    fontWeight: '600',
   },
   teamList: {
     flex: 1,
   },
   teamListContent: {
     padding: 16,
-    gap: 8,
+    paddingBottom: 32,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  sectionTitle: {
+    color: '#6a8aaa',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  sectionDifficulty: {
+    color: '#4a6a8a',
+    fontSize: 10,
+    fontWeight: '600',
   },
   teamCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#0d2137',
-    padding: 16,
+    padding: 12,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#1a4a6c',
+    marginBottom: 8,
+    gap: 12,
   },
   teamCardSelected: {
     borderColor: '#00ff88',
     backgroundColor: '#0d2a3f',
   },
+  teamColor: {
+    width: 6,
+    height: 40,
+    borderRadius: 3,
+  },
   teamInfo: {
     flex: 1,
   },
   teamName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     color: '#fff',
   },
   teamStadium: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#6a8aaa',
     marginTop: 2,
+  },
+  teamStats: {
+    alignItems: 'flex-end',
+  },
+  teamRep: {
+    color: '#ffd700',
+    fontSize: 12,
+    fontWeight: '600',
   },
   footer: {
     padding: 16,
@@ -333,12 +368,14 @@ const styles = StyleSheet.create({
     backgroundColor: '#0d2137',
   },
   saveNameContainer: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  saveNameLabel: {
+  inputLabel: {
     color: '#6a8aaa',
-    fontSize: 12,
-    marginBottom: 8,
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 6,
+    letterSpacing: 0.5,
   },
   saveNameInput: {
     backgroundColor: '#0a1628',
@@ -349,31 +386,16 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 14,
   },
-  startButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#00ff88',
-    paddingVertical: 16,
-    borderRadius: 8,
-    gap: 8,
-  },
-  startButtonText: {
-    color: '#0a1628',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 1,
-  },
   currencySection: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   currencyRow: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   currencyButton: {
     flex: 1,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 2,
     borderColor: '#1a4a6c',
@@ -385,11 +407,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#1a4a3c',
   },
   currencyText: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '800',
     color: '#6a8aaa',
   },
   currencyTextActive: {
     color: '#00ff88',
+  },
+  startButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00ff88',
+    paddingVertical: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  startButtonDisabled: {
+    opacity: 0.7,
+  },
+  startButtonText: {
+    color: '#0a1628',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 1,
   },
 });

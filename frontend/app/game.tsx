@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
-import { useAuth } from '../src/context/AuthContext';
+import { useSaveSlots } from '../src/context/SaveSlotsContext';
 import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, gameStyles as styles } from '../src/components/game';
 
 type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'finance';
@@ -20,10 +20,11 @@ function TabButton({ icon, label, active, onPress }: { icon: string; label: stri
 
 export default function GameScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
-  const { currentSave, getManagedTeam, getLeague, saveGame, advanceWeek } = useGame();
-  const { user } = useAuth();
+  const { currentSave, getManagedTeam, getLeague, advanceWeek } = useGame();
+  const { activeSlotId, saveToSlot } = useSaveSlots();
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -54,13 +55,49 @@ export default function GameScreen() {
   const managedTeam = getManagedTeam();
   const league = getLeague();
 
-  const handleSave = async (isCloud: boolean) => {
-    const success = await saveGame(isCloud);
-    if (success) {
-      Alert.alert('Saved', isCloud ? 'Game saved to cloud' : 'Game saved locally');
-    } else {
-      Alert.alert('Error', 'Failed to save game');
+  const handleSave = async () => {
+    if (!activeSlotId || !currentSave) {
+      Alert.alert('Error', 'No active save slot');
+      return;
     }
+    
+    setIsSaving(true);
+    try {
+      const success = await saveToSlot(activeSlotId, currentSave);
+      if (success) {
+        Alert.alert('✓ Saved', `Game saved to Slot ${activeSlotId}`);
+      } else {
+        Alert.alert('Error', 'Failed to save game');
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to save game');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleExit = () => {
+    Alert.alert(
+      'Exit Game',
+      'Do you want to save before exiting?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Exit without saving',
+          style: 'destructive',
+          onPress: () => router.replace('/'),
+        },
+        {
+          text: 'Save & Exit',
+          onPress: async () => {
+            if (activeSlotId && currentSave) {
+              await saveToSlot(activeSlotId, currentSave);
+            }
+            router.replace('/');
+          },
+        },
+      ]
+    );
   };
 
   const handleNextWeek = () => {
@@ -115,28 +152,28 @@ export default function GameScreen() {
       <View style={styles.header}>
         <View style={styles.teamInfo}>
           <Text style={styles.teamName}>{managedTeam?.name || 'Unknown'}</Text>
-          <Text style={styles.gameDate}>{currentSave.game_date} | Week {league?.current_week || 1}</Text>
+          <Text style={styles.gameDate}>
+            Season {currentSave.season} | Week {league?.current_week || 'Pre'}
+            {activeSlotId && ` • Slot ${activeSlotId}`}
+          </Text>
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity 
             style={styles.saveButton} 
-            onPress={() => handleSave(false)}
+            onPress={handleSave}
+            disabled={isSaving}
           >
-            <Ionicons name="save-outline" size={20} color="#00ff88" />
+            {isSaving ? (
+              <ActivityIndicator size="small" color="#00ff88" />
+            ) : (
+              <Ionicons name="save-outline" size={20} color="#00ff88" />
+            )}
           </TouchableOpacity>
-          {user && (
-            <TouchableOpacity 
-              style={styles.saveButton} 
-              onPress={() => handleSave(true)}
-            >
-              <Ionicons name="cloud-upload-outline" size={20} color="#4a9eff" />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity 
             style={styles.saveButton} 
-            onPress={() => router.push('/settings')}
+            onPress={handleExit}
           >
-            <Ionicons name="settings-outline" size={20} color="#6a8aaa" />
+            <Ionicons name="exit-outline" size={20} color="#ff6b6b" />
           </TouchableOpacity>
         </View>
       </View>

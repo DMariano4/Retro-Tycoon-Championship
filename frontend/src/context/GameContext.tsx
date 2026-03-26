@@ -1,7 +1,6 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
-import { useAuth } from './AuthContext';
 import Constants from 'expo-constants';
 import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite, MatchInjury } from '../utils/matchEngine';
 import { getBackendUrl } from '../utils/api';
@@ -224,6 +223,7 @@ interface GameContextType {
   currentSave: GameSave | null;
   isLoading: boolean;
   error: string | null;
+  setCurrentSave: (save: GameSave | null) => void;  // For loading from slots
   createNewGame: (teamId: string, saveName: string, currencySymbol?: string) => Promise<boolean>;
   saveGame: (isCloud?: boolean) => Promise<boolean>;
   loadFromLocal: () => Promise<boolean>;
@@ -258,10 +258,14 @@ interface GameContextType {
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export function GameProvider({ children }: { children: ReactNode }) {
-  const [currentSave, setCurrentSave] = useState<GameSave | null>(null);
+  const [currentSave, setCurrentSaveState] = useState<GameSave | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { sessionToken } = useAuth();
+
+  // Wrapper to expose setCurrentSave
+  const setCurrentSave = (save: GameSave | null) => {
+    setCurrentSaveState(save);
+  };
 
   const createNewGame = async (teamId: string, saveName: string, currencySymbol: string = '£'): Promise<boolean> => {
     try {
@@ -1633,6 +1637,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         currentSave,
         isLoading,
         error,
+        setCurrentSave,
         createNewGame,
         saveGame,
         loadFromLocal,

@@ -1,11 +1,11 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { AuthProvider } from '../src/context/AuthContext';
+import { SaveSlotsProvider } from '../src/context/SaveSlotsContext';
 import { GameProvider } from '../src/context/GameContext';
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
+    <SaveSlotsProvider>
       <GameProvider>
         <StatusBar style="light" />
         <Stack
@@ -16,6 +16,6 @@ export default function RootLayout() {
           }}
         />
       </GameProvider>
-    </AuthProvider>
+    </SaveSlotsProvider>
   );
 }
