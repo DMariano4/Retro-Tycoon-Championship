@@ -15,6 +15,7 @@ import csv
 import io
 import json
 import random
+from nationalities import get_random_nationality, generate_player_name
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -60,6 +61,7 @@ class Player(BaseModel):
     name: str
     age: int
     nationality: str
+    nationality_flag: Optional[str] = None  # Emoji flag for display
     position: str  # GK, CB, LB, RB, DM, CM, AM, LW, RW, ST
     preferred_positions: List[str] = []
     # Physical attributes (all positions) - 1-20 scale
@@ -395,15 +397,7 @@ async def logout(request: Request, response: Response):
 
 # ==================== GAME DATA GENERATION ====================
 
-FIRST_NAMES = ["James", "John", "Michael", "David", "Robert", "William", "Thomas", "Daniel", "Paul", "Mark",
-               "Chris", "Steven", "Andrew", "Kevin", "Gary", "Peter", "Jason", "Ryan", "Wayne", "Frank",
-               "Marcus", "Harry", "Jack", "Oliver", "Charlie", "George", "Oscar", "Leo", "Max", "Alfie"]
-
-LAST_NAMES = ["Smith", "Johnson", "Williams", "Brown", "Jones", "Miller", "Davis", "Wilson", "Taylor", "Clark",
-              "Walker", "Hall", "Allen", "Young", "King", "Wright", "Green", "Adams", "Baker", "Hill",
-              "Moore", "Jackson", "Martin", "Lee", "White", "Harris", "Robinson", "Lewis", "Scott", "Wood"]
-
-NATIONALITIES = ["England", "Scotland", "Wales", "Ireland", "France", "Spain", "Germany", "Italy", "Brazil", "Argentina"]
+# Legacy lists no longer needed - using nationalities module instead
 
 PREMIER_LEAGUE_TEAMS = [
     {"name": "London Royals", "short": "LRO", "stadium": "Royal Park", "primary": "#FF0000", "secondary": "#FFFFFF"},
@@ -429,7 +423,11 @@ PREMIER_LEAGUE_TEAMS = [
 ]
 
 def generate_player(position: str, ability_range: tuple = (8, 17)) -> Player:
-    """Generate a random player with position-specific stats (1-20 scale)"""
+    """Generate a random player with position-specific stats (1-20 scale) and diverse nationality"""
+    # Get random nationality using weighted system
+    nationality_data = get_random_nationality()
+    player_name = generate_player_name(nationality_data)
+    
     age = random.randint(17, 35)
     base_ability = random.randint(ability_range[0], ability_range[1])
     
@@ -527,9 +525,10 @@ def generate_player(position: str, ability_range: tuple = (8, 17)) -> Player:
     
     return Player(
         id=f"player_{uuid.uuid4().hex[:8]}",
-        name=f"{random.choice(FIRST_NAMES)} {random.choice(LAST_NAMES)}",
+        name=player_name,
         age=age,
-        nationality=random.choice(NATIONALITIES),
+        nationality=nationality_data["name"],
+        nationality_flag=nationality_data["flag"],
         position=position,
         preferred_positions=[position],
         # Physical

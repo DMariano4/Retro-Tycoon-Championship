@@ -307,7 +307,9 @@ export default function PlayerProfileScreen() {
               </View>
               <Text style={styles.positionFull}>{POSITION_GROUPS[player.position] || player.position}</Text>
             </View>
-            <Text style={styles.playerNationality}>{player.nationality} | {player.age} yrs</Text>
+            <Text style={styles.playerNationality}>
+              {player.nationalityFlag ? `${player.nationalityFlag} ` : ''}{player.nationality} | {player.age} yrs
+            </Text>
           </View>
           <View style={styles.overallRating}>
             <Text style={styles.overallRatingValue}>{Math.round(player.current_ability)}</Text>

@@ -7,6 +7,7 @@ import { simulateMatchEngine, MatchResult, MatchStats, simulateMatchLite, MatchI
 import { getBackendUrl } from '../utils/api';
 import { calculateSponsors, getMonthlySponsorship } from '../utils/sponsors';
 import { initializeFFP, updateFFPState, processSeasonEndFFP, getFFPWarningMessage } from '../utils/ffp';
+import { getRandomNationality, generatePlayerName } from '../utils/nationalities';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -16,6 +17,7 @@ export interface Player {
   name: string;
   age: number;
   nationality: string;
+  nationalityFlag?: string;  // Emoji flag for display
   position: string;  // GK, CB, LB, RB, DM, CM, AM, LW, RW, ST
   preferred_positions: string[];
   // Physical attributes
@@ -1239,12 +1241,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setCurrentSave({ ...currentSave, teams: updatedTeams });
   };
 
-  /** Generate a young replacement player */
+  /** Generate a young replacement player with nationality */
   const generateRegenPlayer = (position: string, teamId: string): Player => {
-    const firstNames = ['James', 'Oliver', 'Harry', 'George', 'Noah', 'Leo', 'Arthur', 'Oscar', 'Charlie', 'Jack', 'Lucas', 'Freddie', 'Alfie', 'Henry', 'Theo', 'Archie', 'Ethan', 'Isaac', 'Jacob', 'Max'];
-    const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Anderson', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Harris', 'Clark', 'Lewis', 'Robinson'];
+    // Get random nationality from weighted system
+    const nationality = getRandomNationality();
+    const name = generatePlayerName(nationality);
     
-    const name = `${firstNames[Math.floor(Math.random() * firstNames.length)]} ${lastNames[Math.floor(Math.random() * lastNames.length)]}`;
     const age = 17 + Math.floor(Math.random() * 3); // 17-19 years old
     const baseAbility = 6 + Math.floor(Math.random() * 5); // 6-10 (young, low ability)
     const potential = 12 + Math.floor(Math.random() * 8); // 12-19 (high potential)
@@ -1253,7 +1255,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
     
     return {
       id: `regen_${teamId}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-      name, age, nationality: 'England', position,
+      name, 
+      age, 
+      nationality: nationality.name,
+      nationalityFlag: nationality.flag,
+      position,
       preferred_positions: [position],
       pace: randAttr(), strength: randAttr(), stamina: randAttr(), agility: randAttr(),
       work_rate: randAttr(), concentration: randAttr(), decision_making: randAttr(), composure: randAttr(),

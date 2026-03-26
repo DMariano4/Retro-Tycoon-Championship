@@ -101,7 +101,9 @@ export function SquadTab({ team, currency }: any) {
                         {player.injury.type} ({player.injury.recoveryWeeks}w)
                       </Text>
                     ) : (
-                      <Text style={styles.playerNat}>{player.nationality}</Text>
+                      <Text style={styles.playerNat}>
+                        {player.nationalityFlag ? `${player.nationalityFlag} ` : ''}{player.nationality}
+                      </Text>
                     )}
                   </View>
                 </View>
