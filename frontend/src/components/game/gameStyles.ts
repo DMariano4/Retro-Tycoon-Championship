@@ -941,4 +941,35 @@ export const gameStyles = StyleSheet.create({
   formationTextActive: {
     color: '#00ff88',
   },
+  // Friendly Scheduler Button styles
+  friendlySchedulerButton: {
+    backgroundColor: '#0d2137',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: '#ffd700',
+  },
+  friendlyButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  friendlyButtonLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  friendlyButtonText: {
+    gap: 4,
+  },
+  friendlyButtonTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#ffd700',
+    letterSpacing: 0.5,
+  },
+  friendlyButtonSubtitle: {
+    fontSize: 12,
+    color: '#6a8aaa',
+  },
 });

@@ -33,6 +33,8 @@ export function DashboardTab({
   upcomingEvents = [],
   currentDate,
   onPlayEvent,
+  friendlySlots = [],
+  onOpenFriendlyScheduler,
 }: DashboardTabProps) {
   const currency = save?.currency_symbol || '£';
   const hasEventSystem = upcomingEvents && upcomingEvents.length > 0;
@@ -144,6 +146,29 @@ export function DashboardTab({
           <Text style={styles.statLabel}>Squad Size</Text>
         </View>
       </View>
+
+      {/* Pre-Season Friendlies Scheduler Button */}
+      {friendlySlots && friendlySlots.length > 0 && onOpenFriendlyScheduler && (
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.friendlySchedulerButton}
+            onPress={onOpenFriendlyScheduler}
+          >
+            <View style={styles.friendlyButtonContent}>
+              <View style={styles.friendlyButtonLeft}>
+                <Ionicons name="football-outline" size={24} color="#ffd700" />
+                <View style={styles.friendlyButtonText}>
+                  <Text style={styles.friendlyButtonTitle}>PRE-SEASON FRIENDLIES</Text>
+                  <Text style={styles.friendlyButtonSubtitle}>
+                    {friendlySlots.filter(s => s.isScheduled).length} / {friendlySlots.length} scheduled
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </View>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Upcoming Events (v2 system) or Next Match (legacy) */}
       {hasEventSystem ? (
