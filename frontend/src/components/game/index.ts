@@ -5,4 +5,5 @@ export { LeagueTab } from './LeagueTab';
 export { TransfersTab } from './TransfersTab';
 export { FinanceTab } from './FinanceTab';
 export { FriendlyScheduler } from './FriendlyScheduler';
+export { CupDrawModal } from './CupDrawModal';
 export { gameStyles } from './gameStyles';

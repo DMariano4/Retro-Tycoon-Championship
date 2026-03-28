@@ -5,8 +5,9 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
 import { useSaveSlots } from '../src/context/SaveSlotsContext';
-import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, FriendlyScheduler, gameStyles as styles } from '../src/components/game';
+import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, FriendlyScheduler, CupDrawModal, gameStyles as styles } from '../src/components/game';
 import { GameEvent } from '../src/utils/calendar';
+import { CupFixture } from '../src/utils/competitions';
 
 type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'finance';
 
@@ -22,6 +23,14 @@ function TabButton({ icon, label, active, onPress }: { icon: string; label: stri
 export default function GameScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [showFriendlyScheduler, setShowFriendlyScheduler] = useState(false);
+  const [showCupDraw, setShowCupDraw] = useState(false);
+  const [cupDrawData, setCupDrawData] = useState<{
+    cupName: string;
+    cupIcon: string;
+    cupColor: string;
+    roundName: string;
+    fixtures: CupFixture[];
+  } | null>(null);
   const { 
     currentSave, 
     getManagedTeam, 
@@ -130,14 +139,26 @@ export default function GameScreen() {
         break;
       
       case 'cup_draw':
-        // Execute the cup draw
+        // Execute the cup draw and show the draw modal
         if (event.competition && event.competitionRound) {
-          executeCupDraw(event.competition, event.competitionRound);
+          const fixtures = executeCupDraw(event.competition, event.competitionRound);
+          
+          // Get cup info for the modal
+          const cupInfo = {
+            fa_cup: { name: 'FA Cup', icon: '🏆', color: '#e41b23' },
+            league_cup: { name: 'EFL Cup', icon: '🏅', color: '#00a650' },
+          }[event.competition] || { name: event.competition, icon: '🏆', color: '#ffd700' };
+          
+          // Set draw data and show modal
+          setCupDrawData({
+            cupName: cupInfo.name,
+            cupIcon: cupInfo.icon,
+            cupColor: cupInfo.color,
+            roundName: event.competitionRound === 'R3' ? 'Third Round' : event.competitionRound,
+            fixtures: fixtures || [],
+          });
+          setShowCupDraw(true);
           processEvent(event);
-          Alert.alert(
-            `${event.title}`,
-            `The ${event.competitionRound} draw has been made. Check your upcoming events for your next match.`
-          );
         }
         break;
       
@@ -270,6 +291,23 @@ export default function GameScreen() {
         visible={showFriendlyScheduler}
         onClose={() => setShowFriendlyScheduler(false)}
       />
+      
+      {/* Cup Draw Modal */}
+      {cupDrawData && (
+        <CupDrawModal
+          visible={showCupDraw}
+          cupName={cupDrawData.cupName}
+          cupIcon={cupDrawData.cupIcon}
+          cupColor={cupDrawData.cupColor}
+          roundName={cupDrawData.roundName}
+          fixtures={cupDrawData.fixtures}
+          managedTeamId={managedTeam?.id || ''}
+          onClose={() => {
+            setShowCupDraw(false);
+            setCupDrawData(null);
+          }}
+        />
+      )}
     </SafeAreaView>
   );
 }
