@@ -35,6 +35,27 @@ import {
   getAvailableTeamsForFriendly,
 } from '../utils/gameGenerator';
 
+// Import extracted utility hooks
+import {
+  calculateAttendance,
+  applyWeeklyFinances,
+  STADIUM_UPGRADE_COST,
+  STADIUM_UPGRADE_AMOUNT,
+  STADIUM_MAX_CAPACITY,
+  FACILITY_UPGRADE_COST,
+  FACILITY_UPGRADE_AMOUNT,
+  FACILITY_MAX_LEVEL,
+} from '../hooks/useFinances';
+import {
+  getInjuredPlayers as getInjuredPlayersUtil,
+  processInjuryRecovery,
+} from '../hooks/useSquadManagement';
+import {
+  isSeasonComplete as isSeasonCompleteUtil,
+  getPrizeMoney,
+  generateRegen,
+} from '../hooks/useSeasonProgression';
+
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
 
@@ -1085,7 +1106,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     if (!currentSave) return [];
     const managedTeam = getManagedTeam();
     if (!managedTeam) return [];
-    return managedTeam.squad.filter(p => p.injury && p.injury.recoveryWeeks > 0);
+    return getInjuredPlayersUtil(managedTeam.squad);
   };
 
   // ============================================
