@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, Dimensions, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Dimensions, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useGame, Player, Team } from '../src/context/GameContext';
+import { useGame, Player } from '../src/context/GameContext';
 import { getSeverityColor } from '../src/utils/formatters';
-import { matchStyles as styles } from '../src/components/match/matchStyles';
 import { 
+  matchStyles as styles,
   selectStartingXI, 
   FORMATION_POSITIONS, 
   FORMATION_REQUIREMENTS, 
@@ -16,109 +16,20 @@ import {
   getEventColor,
   getRatingColor,
   getRatingBgColor,
-} from '../src/components/match/matchHelpers';
+  MiniPitch,
+  WeekSimulationModal,
+  TacticsModal,
+  SubstitutionModal,
+  LineupModal,
+} from '../src/components/match';
 
 const { width } = Dimensions.get('window');
 
 type MatchState = 'pre' | 'live' | 'paused' | 'post';
 type MatchTab = 'pitch' | 'commentary' | 'stats';
 
-// Pitch visualization component
-function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
-  const homePositions = FORMATION_POSITIONS[homeTeam?.formation || '4-4-2'] || FORMATION_POSITIONS['4-4-2'];
-  const awayPositions = FORMATION_POSITIONS[awayTeam?.formation || '4-4-2'] || FORMATION_POSITIONS['4-4-2'];
-  
-  const pitchWidth = Math.min(width - 32, 380);
-  const pitchHeight = pitchWidth * 0.65; // Wider pitch for side-by-side view
-
-  // Map positions to pitch sections to avoid overlap
-  // Home team uses bottom 45% (0-45% from bottom)
-  // Away team uses top 45% (55-100% from bottom) 
-  const homeAdjusted = homePositions.map(pos => ({
-    ...pos,
-    y: pos.y * 0.45 // Scale to bottom 45%
-  }));
-
-  const awayAdjusted = awayPositions.map(pos => ({
-    ...pos,
-    y: 55 + ((100 - pos.y) * 0.45) // Flip and scale to top 45%
-  }));
-
-  return (
-    <View style={[styles.miniPitchContainer, { width: pitchWidth, height: pitchHeight }]}>
-      {/* Pitch background */}
-      <View style={styles.miniPitch}>
-        {/* Center line */}
-        <View style={[styles.centerLine, { top: pitchHeight / 2 }]} />
-        
-        {/* Center circle */}
-        <View style={[styles.centerCircle, { 
-          top: pitchHeight / 2 - 25, 
-          left: pitchWidth / 2 - 25,
-          width: 50,
-          height: 50,
-          borderRadius: 25,
-        }]} />
-        
-        {/* Penalty boxes */}
-        <View style={[styles.penaltyBox, styles.penaltyBoxTop, {
-          width: pitchWidth * 0.5,
-          left: pitchWidth * 0.25,
-          height: 50,
-        }]} />
-        <View style={[styles.penaltyBox, styles.penaltyBoxBottom, {
-          width: pitchWidth * 0.5,
-          left: pitchWidth * 0.25,
-          height: 50,
-        }]} />
-      </View>
-
-      {/* Home team players (bottom) */}
-      {homeAdjusted.map((pos, index) => (
-        <View
-          key={`home-${index}`}
-          style={[
-            styles.miniPlayerDot,
-            styles.homePlayerDot,
-            {
-              left: (pos.x / 100) * pitchWidth - 12,
-              bottom: (pos.y / 100) * pitchHeight - 12,
-            },
-          ]}
-        >
-          <Text style={[styles.miniPlayerLabel, styles.homePlayerLabel]}>{pos.position}</Text>
-        </View>
-      ))}
-
-      {/* Away team players (top) */}
-      {awayAdjusted.map((pos, index) => (
-        <View
-          key={`away-${index}`}
-          style={[
-            styles.miniPlayerDot,
-            styles.awayPlayerDot,
-            {
-              left: (pos.x / 100) * pitchWidth - 12,
-              bottom: (pos.y / 100) * pitchHeight - 12,
-            },
-          ]}
-        >
-          <Text style={[styles.miniPlayerLabel, styles.awayPlayerLabel]}>{pos.position}</Text>
-        </View>
-      ))}
-
-      {/* Ball position indicator (based on last event) */}
-      {lastEvent && (
-        <View style={[styles.ballIndicator, {
-          left: pitchWidth / 2 - 6,
-          top: lastEvent.team === homeTeam?.short_name ? pitchHeight * 0.7 : pitchHeight * 0.3,
-        }]}>
-          <Ionicons name="football" size={12} color="#fff" />
-        </View>
-      )}
-    </View>
-  );
-}
+// Formations available
+const formations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1-4-1', '3-4-3'];
 
 export default function MatchScreen() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
@@ -581,7 +492,6 @@ export default function MatchScreen() {
   const isHome = fixture.home_team_id === managedTeam.id;
   const homeTeam = currentSave?.teams.find(t => t.id === fixture.home_team_id);
   const awayTeam = currentSave?.teams.find(t => t.id === fixture.away_team_id);
-  const formations = ['4-4-2', '4-3-3', '3-5-2', '4-5-1', '5-3-2', '4-2-3-1'];
   const lastEvent = events[currentEventIndex - 1];
 
   return (
@@ -1116,331 +1026,47 @@ export default function MatchScreen() {
       )}
 
       {/* Week Simulation Loading Screen */}
-      <Modal
+      <WeekSimulationModal
         visible={isSimulatingWeek}
-        transparent={true}
-        animationType="fade"
-        statusBarTranslucent={true}
-      >
-        <View style={styles.simLoadingOverlay}>
-          <View style={styles.simLoadingContainer}>
-            {/* Retro screen border */}
-            <View style={styles.simLoadingScreen}>
-              {/* Header */}
-              <View style={styles.simLoadingHeader}>
-                <Ionicons name="football" size={24} color="#00ff88" />
-                <Text style={styles.simLoadingTitle}>SIMULATING MATCHES</Text>
-                <Ionicons name="football" size={24} color="#00ff88" />
-              </View>
-
-              {/* Week info */}
-              <Text style={styles.simLoadingWeek}>
-                Week {getLeague()?.current_week || 0} Results
-              </Text>
-
-              {/* Animated dots */}
-              <View style={styles.simLoadingDots}>
-                <Text style={styles.simLoadingDotsText}>Processing league fixtures . . .</Text>
-              </View>
-
-              {/* Retro progress bar */}
-              <View style={styles.simProgressContainer}>
-                <View style={styles.simProgressTrack}>
-                  <View style={[styles.simProgressFill, { width: '100%' }]} />
-                </View>
-                <Text style={styles.simProgressText}>
-                  {currentSave?.leagues.length || 1} league{(currentSave?.leagues.length || 1) > 1 ? 's' : ''} · ~{(currentSave?.leagues.length || 1) * 9} matches
-                </Text>
-              </View>
-
-              {/* Spinner */}
-              <ActivityIndicator size="large" color="#00ff88" style={{ marginTop: 16 }} />
-
-              {/* Retro footer */}
-              <Text style={styles.simLoadingFooter}>Please wait...</Text>
-            </View>
-          </View>
-        </View>
-      </Modal>
+        currentWeek={getLeague()?.current_week || 0}
+        leagueCount={currentSave?.leagues.length || 1}
+      />
 
       {/* Tactics Modal */}
-      <Modal
+      <TacticsModal
         visible={showTacticsModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowTacticsModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>TACTICS</Text>
-              <TouchableOpacity onPress={() => setShowTacticsModal(false)}>
-                <Ionicons name="close" size={24} color="#6a8aaa" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalSectionTitle}>Formation</Text>
-            <View style={styles.formationGrid}>
-              {formations.map(formation => (
-                <TouchableOpacity
-                  key={formation}
-                  style={[
-                    styles.formationOption,
-                    selectedFormation === formation && styles.formationOptionActive
-                  ]}
-                  onPress={() => handleFormationChange(formation)}
-                >
-                  <Text style={[
-                    styles.formationOptionText,
-                    selectedFormation === formation && styles.formationOptionTextActive
-                  ]}>
-                    {formation}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowTacticsModal(false)}
-            >
-              <Text style={styles.modalCloseButtonText}>APPLY</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+        selectedFormation={selectedFormation}
+        onClose={() => setShowTacticsModal(false)}
+        onFormationChange={handleFormationChange}
+      />
 
       {/* Substitution Modal */}
-      <Modal
+      <SubstitutionModal
         visible={showSubstitutionModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => setShowSubstitutionModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>SUBSTITUTIONS</Text>
-              <TouchableOpacity onPress={() => setShowSubstitutionModal(false)}>
-                <Ionicons name="close" size={24} color="#6a8aaa" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalSectionTitle}>
-              {substitutions.length}/3 substitutions made
-            </Text>
-            
-            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.subsListTitle}>ON PITCH</Text>
-              {currentSquad.map(player => (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={[
-                    styles.subPlayerRow,
-                    selectedPlayerOut === player.id && styles.subPlayerRowSelected
-                  ]}
-                  onPress={() => handleSelectPlayerOut(player.id)}
-                >
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <Text style={styles.subPlayerAbility}>{player.current_ability}</Text>
-                  </View>
-                  {selectedPlayerOut === player.id && (
-                    <Ionicons name="checkmark-circle" size={20} color="#ff6b6b" />
-                  )}
-                </TouchableOpacity>
-              ))}
-              
-              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-              {benchPlayers.map(player => (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={styles.subPlayerRow}
-                  onPress={() => handleMakeSubstitution(player.id)}
-                  disabled={!selectedPlayerOut}
-                >
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={styles.subPlayerPosition}>{player.position}</Text>
-                    <Text style={styles.subPlayerName}>{player.name}</Text>
-                    <View style={styles.subAbility}>
-                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-                    </View>
-                  </View>
-                  {selectedPlayerOut && (
-                    <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+        currentSquad={currentSquad}
+        benchPlayers={benchPlayers}
+        substitutions={substitutions}
+        selectedPlayerOut={selectedPlayerOut}
+        onClose={() => setShowSubstitutionModal(false)}
+        onSelectPlayerOut={handleSelectPlayerOut}
+        onMakeSubstitution={handleMakeSubstitution}
+      />
 
-            <Text style={styles.subsNote}>
-              {selectedPlayerOut 
-                ? 'Tap a bench player to bring them on'
-                : 'Tap a player on the pitch to substitute them off'}
-            </Text>
-
-            <TouchableOpacity 
-              style={styles.modalCloseButton}
-              onPress={() => setShowSubstitutionModal(false)}
-            >
-              <Text style={styles.modalCloseButtonText}>DONE</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Lineup Selection Modal - Enhanced with swap functionality */}
-      <Modal
+      {/* Lineup Selection Modal */}
+      <LineupModal
         visible={showLineupModal}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={() => {
+        currentSquad={currentSquad}
+        benchPlayers={benchPlayers}
+        selectedForSwap={selectedForSwap}
+        swapMode={swapMode}
+        onClose={() => {
           setShowLineupModal(false);
           setSelectedForSwap(null);
           setSwapMode(null);
         }}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>SELECT LINEUP</Text>
-              <TouchableOpacity onPress={() => {
-                setShowLineupModal(false);
-                setSelectedForSwap(null);
-                setSwapMode(null);
-              }}>
-                <Ionicons name="close" size={24} color="#6a8aaa" />
-              </TouchableOpacity>
-            </View>
-            
-            <Text style={styles.modalSectionTitle}>
-              Starting XI: {currentSquad.length}/11 | Bench: {benchPlayers.length}
-            </Text>
-            
-            {selectedForSwap && (
-              <View style={styles.swapIndicator}>
-                <Ionicons name="swap-horizontal" size={16} color="#00ff88" />
-                <Text style={styles.swapIndicatorText}>
-                  Tap another player to swap
-                </Text>
-              </View>
-            )}
-            
-            <ScrollView style={styles.subsList} showsVerticalScrollIndicator={false}>
-              <Text style={styles.subsListTitle}>STARTING XI</Text>
-              {currentSquad.map((player, index) => (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={[
-                    styles.subPlayerRow,
-                    selectedForSwap === player.id && styles.subPlayerRowSelected
-                  ]}
-                  onPress={() => handlePlayerSelect(player.id, true)}
-                >
-                  <View style={styles.lineupNumber}>
-                    <Text style={styles.lineupNumberText}>{index + 1}</Text>
-                  </View>
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={[
-                      styles.subPlayerPosition,
-                      selectedForSwap === player.id && { color: '#00ff88' }
-                    ]}>{player.position}</Text>
-                    <Text style={[
-                      styles.subPlayerName,
-                      selectedForSwap === player.id && { color: '#00ff88' }
-                    ]}>{player.name}</Text>
-                    <View style={[
-                      styles.subAbility,
-                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' }
-                    ]}>
-                      <Text style={styles.subAbilityText}>{player.current_ability}</Text>
-                    </View>
-                  </View>
-                  {selectedForSwap === player.id ? (
-                    <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
-                  ) : selectedForSwap ? (
-                    <Ionicons name="swap-horizontal" size={20} color="#4a9eff" />
-                  ) : (
-                    <Ionicons name="ellipsis-horizontal" size={20} color="#6a8aaa" />
-                  )}
-                </TouchableOpacity>
-              ))}
-              
-              <Text style={[styles.subsListTitle, { marginTop: 16 }]}>BENCH</Text>
-              {benchPlayers.map(player => {
-                const isInjured = player.injury && player.injury.recoveryWeeks > 0;
-                return (
-                <TouchableOpacity 
-                  key={player.id} 
-                  style={[
-                    styles.subPlayerRow,
-                    selectedForSwap === player.id && styles.subPlayerRowSelected,
-                    isInjured && { opacity: 0.5, borderLeftWidth: 3, borderLeftColor: '#ff3b30' }
-                  ]}
-                  onPress={() => {
-                    if (isInjured) {
-                      Alert.alert('Player Injured', `${player.name} is injured (${player.injury?.type}) and unavailable for ${player.injury?.recoveryWeeks} week(s).`);
-                      return;
-                    }
-                    handlePlayerSelect(player.id, false);
-                  }}
-                >
-                  <View style={styles.subPlayerInfo}>
-                    <Text style={[
-                      styles.subPlayerPosition,
-                      selectedForSwap === player.id && { color: '#00ff88' },
-                      isInjured && { color: '#ff6b6b' }
-                    ]}>{player.position}</Text>
-                    <Text style={[
-                      styles.subPlayerName,
-                      selectedForSwap === player.id && { color: '#00ff88' },
-                      isInjured && { color: '#ff6b6b' }
-                    ]}>{player.name}</Text>
-                    {isInjured && (
-                      <Ionicons name="medkit" size={12} color="#ff3b30" style={{ marginLeft: 4, marginRight: 2 }} />
-                    )}
-                    <View style={[
-                      styles.subAbility,
-                      selectedForSwap === player.id && { backgroundColor: '#00ff8840' },
-                      isInjured && { backgroundColor: 'rgba(255, 59, 48, 0.2)' }
-                    ]}>
-                      <Text style={[styles.subAbilityText, isInjured && { color: '#ff6b6b' }]}>
-                        {isInjured ? 'INJ' : player.current_ability}
-                      </Text>
-                    </View>
-                  </View>
-                  {isInjured ? (
-                    <Text style={{ color: '#ff6b6b', fontSize: 10 }}>{player.injury?.recoveryWeeks}w</Text>
-                  ) : selectedForSwap === player.id ? (
-                    <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
-                  ) : selectedForSwap && swapMode === 'starting' ? (
-                    <Ionicons name="arrow-up-circle" size={20} color="#00ff88" />
-                  ) : (
-                    <Ionicons name="ellipsis-horizontal" size={20} color="#6a8aaa" />
-                  )}
-                </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            <Text style={styles.subsNote}>
-              {selectedForSwap 
-                ? 'Tap another player to swap (any player can play any position)'
-                : 'Tap a player to select, then tap another to swap'}
-            </Text>
-
-            <Pressable 
-              style={styles.modalCloseButton}
-              onPress={handleConfirmLineup}
-              {...(Platform.OS === 'web' ? { onClick: handleConfirmLineup } : {})}
-              accessibilityRole="button"
-            >
-              <Text style={styles.modalCloseButtonText}>CONFIRM LINEUP</Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
+        onPlayerSelect={handlePlayerSelect}
+        onConfirmLineup={handleConfirmLineup}
+      />
     </SafeAreaView>
   );
 }
