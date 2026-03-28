@@ -21,6 +21,7 @@ import {
 } from '../utils/calendar';
 import {
   CupCompetitionState,
+  CupFixture,
   generateCupDraw,
   getCupRoundWinners,
   determineCupWinner,
@@ -339,7 +340,7 @@ interface GameContextType {
   getCurrentDate: () => string;
   advanceToNextEvent: () => GameEvent | null;
   processEvent: (event: GameEvent) => void;
-  executeCupDraw: (competition: CompetitionType, round: string) => void;
+  executeCupDraw: (competition: CompetitionType, round: string) => CupFixture[];
   getCupCompetition: (type: CompetitionType) => CupCompetitionState | null;
   // Pre-season friendly system
   getFriendlySlots: () => FriendlySlot[];
@@ -1787,8 +1788,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   /** Execute a cup draw for a specific competition and round */
-  const executeCupDraw = (competition: CompetitionType, round: string): void => {
-    if (!currentSave?.competitions) return;
+  const executeCupDraw = (competition: CompetitionType, round: string): CupFixture[] => {
+    if (!currentSave?.competitions) return [];
 
     const cupState = competition === 'fa_cup' 
       ? currentSave.competitions.faCup 
@@ -1796,7 +1797,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         ? currentSave.competitions.leagueCup
         : null;
 
-    if (!cupState) return;
+    if (!cupState) return [];
 
     // Get teams still in the competition
     const remainingTeams = cupState.teams
@@ -1884,6 +1885,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       events: sortEvents(updatedEvents),
       competitions: updatedCompetitions,
     });
+    
+    // Return fixtures for modal display
+    return fixtures;
   };
 
   /** Get a cup competition state */
