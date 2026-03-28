@@ -90,6 +90,10 @@ export default function TeamSelectScreen() {
         events: gameData.events,
         calendarV2: gameData.calendar,
         
+        // Pre-season friendly system
+        friendlySlots: gameData.friendlySlots,
+        aiFriendlySchedules: gameData.aiFriendlySchedules,
+        
         // Legacy league format for backward compatibility
         leagues: [{
           id: gameData.competitions.league.id,

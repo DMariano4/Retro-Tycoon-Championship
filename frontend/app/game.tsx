@@ -5,7 +5,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
 import { useSaveSlots } from '../src/context/SaveSlotsContext';
-import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, gameStyles as styles } from '../src/components/game';
+import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, FriendlyScheduler, gameStyles as styles } from '../src/components/game';
 
 type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'finance';
 
@@ -20,6 +20,7 @@ function TabButton({ icon, label, active, onPress }: { icon: string; label: stri
 
 export default function GameScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
+  const [showFriendlyScheduler, setShowFriendlyScheduler] = useState(false);
   const { 
     currentSave, 
     getManagedTeam, 
@@ -27,6 +28,7 @@ export default function GameScreen() {
     advanceWeek,
     getUpcomingEvents,
     getCurrentDate,
+    getFriendlySlots,
   } = useGame();
   const { activeSlotId, saveToSlot } = useSaveSlots();
   const [isReady, setIsReady] = useState(false);
@@ -131,6 +133,7 @@ export default function GameScreen() {
     // Get upcoming events for the v2 system
     const upcomingEvents = getUpcomingEvents ? getUpcomingEvents(5) : [];
     const currentDate = getCurrentDate ? getCurrentDate() : undefined;
+    const friendlySlots = getFriendlySlots ? getFriendlySlots() : [];
     
     switch (activeTab) {
       case 'dashboard':
@@ -143,6 +146,8 @@ export default function GameScreen() {
           onNextWeek={handleNextWeek}
           upcomingEvents={upcomingEvents}
           currentDate={currentDate}
+          friendlySlots={friendlySlots}
+          onOpenFriendlyScheduler={() => setShowFriendlyScheduler(true)}
         />;
       case 'squad':
         return <SquadTab team={managedTeam} currency={currentSave?.currency_symbol} />;
@@ -205,6 +210,12 @@ export default function GameScreen() {
         <TabButton icon="cash" label="FINANCE" active={activeTab === 'finance'} onPress={() => setActiveTab('finance')} />
         <TabButton icon="swap-horizontal" label="TRANSFERS" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
       </View>
+      
+      {/* Friendly Scheduler Modal */}
+      <FriendlyScheduler
+        visible={showFriendlyScheduler}
+        onClose={() => setShowFriendlyScheduler(false)}
+      />
     </SafeAreaView>
   );
 }

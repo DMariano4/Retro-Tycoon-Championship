@@ -5,6 +5,7 @@ import { formatValue } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
 import { GameEvent, formatDateDisplay } from '../../utils/calendar';
 import { getCompetitionIcon, getCompetitionColor } from '../../utils/competitions';
+import { FriendlySlot } from '../../utils/gameGenerator';
 
 interface DashboardTabProps {
   team: any;
@@ -17,6 +18,9 @@ interface DashboardTabProps {
   upcomingEvents?: GameEvent[];
   currentDate?: string;
   onPlayEvent?: (event: GameEvent) => void;
+  // Friendly system props
+  friendlySlots?: FriendlySlot[];
+  onOpenFriendlyScheduler?: () => void;
 }
 
 export function DashboardTab({ 

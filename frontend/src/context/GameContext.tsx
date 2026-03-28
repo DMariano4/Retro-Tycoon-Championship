@@ -30,6 +30,10 @@ import {
   getCompetitionIcon,
   getCompetitionColor,
 } from '../utils/competitions';
+import {
+  FriendlySlot,
+  getAvailableTeamsForFriendly,
+} from '../utils/gameGenerator';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -266,6 +270,9 @@ export interface GameSave {
       winter: { start: string; end: string };
     };
   };
+  // Pre-season friendly system
+  friendlySlots?: FriendlySlot[];
+  aiFriendlySchedules?: Record<string, string[]>;
 }
 
 interface GameContextType {
@@ -313,6 +320,11 @@ interface GameContextType {
   processEvent: (event: GameEvent) => void;
   executeCupDraw: (competition: CompetitionType, round: string) => void;
   getCupCompetition: (type: CompetitionType) => CupCompetitionState | null;
+  // Pre-season friendly system
+  getFriendlySlots: () => FriendlySlot[];
+  getAvailableOpponents: (slotId: string) => { id: string; name: string; reputation: number }[];
+  scheduleFriendly: (slotId: string, opponentId: string) => void;
+  cancelFriendly: (slotId: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -1871,6 +1883,138 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // ============================================
+  // PRE-SEASON FRIENDLY SYSTEM
+  // ============================================
+
+  /** Get all friendly slots */
+  const getFriendlySlots = (): FriendlySlot[] => {
+    return currentSave?.friendlySlots || [];
+  };
+
+  /** Get available opponents for a specific friendly slot */
+  const getAvailableOpponents = (slotId: string): { id: string; name: string; reputation: number }[] => {
+    if (!currentSave) return [];
+    
+    const slot = currentSave.friendlySlots?.find(s => s.id === slotId);
+    if (!slot) return [];
+    
+    // Get all teams with reputation
+    const teams = currentSave.teams.map(t => ({
+      id: t.id,
+      name: t.name,
+      reputation: t.reputation || 10,
+    }));
+    
+    // Use the availability checker
+    return getAvailableTeamsForFriendly(
+      slot.date,
+      teams,
+      currentSave.managed_team_id,
+      currentSave.friendlySlots || [],
+      currentSave.aiFriendlySchedules || {}
+    );
+  };
+
+  /** Schedule a friendly match with a specific opponent */
+  const scheduleFriendly = (slotId: string, opponentId: string): void => {
+    if (!currentSave) return;
+    
+    const slot = currentSave.friendlySlots?.find(s => s.id === slotId);
+    if (!slot || slot.isScheduled) return;
+    
+    const opponent = currentSave.teams.find(t => t.id === opponentId);
+    if (!opponent) return;
+    
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return;
+    
+    // Update the friendly slot
+    const updatedSlots = currentSave.friendlySlots?.map(s => 
+      s.id === slotId 
+        ? { ...s, isScheduled: true, opponent: { id: opponent.id, name: opponent.name } }
+        : s
+    ) || [];
+    
+    // Create an event for this friendly
+    const friendlyEvent: GameEvent = {
+      id: `event_friendly_${slotId}`,
+      date: slot.date,
+      type: 'match',
+      competition: 'friendly',
+      priority: 8,
+      title: 'Friendly',
+      description: slot.isHome 
+        ? `${managedTeam.name} vs ${opponent.name}`
+        : `${opponent.name} vs ${managedTeam.name}`,
+      data: {
+        id: `match_${slotId}`,
+        match_date: slot.date,
+        home_team_id: slot.isHome ? managedTeam.id : opponent.id,
+        home_team_name: slot.isHome ? managedTeam.name : opponent.name,
+        away_team_id: slot.isHome ? opponent.id : managedTeam.id,
+        away_team_name: slot.isHome ? opponent.name : managedTeam.name,
+        home_score: null,
+        away_score: null,
+        played: false,
+        match_type: 'friendly',
+      },
+      completed: false,
+    };
+    
+    // Update AI team's schedule (they're now busy on this date)
+    const updatedAISchedules = { ...currentSave.aiFriendlySchedules };
+    if (!updatedAISchedules[opponentId]) {
+      updatedAISchedules[opponentId] = [];
+    }
+    updatedAISchedules[opponentId].push(slot.date);
+    
+    // Add event and update save
+    const updatedEvents = sortEvents([...(currentSave.events || []), friendlyEvent]);
+    
+    setCurrentSave({
+      ...currentSave,
+      friendlySlots: updatedSlots,
+      aiFriendlySchedules: updatedAISchedules,
+      events: updatedEvents,
+    });
+  };
+
+  /** Cancel a scheduled friendly */
+  const cancelFriendly = (slotId: string): void => {
+    if (!currentSave) return;
+    
+    const slot = currentSave.friendlySlots?.find(s => s.id === slotId);
+    if (!slot || !slot.isScheduled) return;
+    
+    // Update the friendly slot
+    const updatedSlots = currentSave.friendlySlots?.map(s => 
+      s.id === slotId 
+        ? { ...s, isScheduled: false, opponent: undefined }
+        : s
+    ) || [];
+    
+    // Remove the event
+    const updatedEvents = (currentSave.events || []).filter(
+      e => e.id !== `event_friendly_${slotId}`
+    );
+    
+    // Remove from AI schedule
+    const updatedAISchedules = { ...currentSave.aiFriendlySchedules };
+    if (slot.opponent && updatedAISchedules[slot.opponent.id]) {
+      updatedAISchedules[slot.opponent.id] = updatedAISchedules[slot.opponent.id].filter(
+        d => d !== slot.date
+      );
+    }
+    
+    setCurrentSave({
+      ...currentSave,
+      friendlySlots: updatedSlots,
+      aiFriendlySchedules: updatedAISchedules,
+      events: updatedEvents,
+    });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -1913,6 +2057,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
         processEvent,
         executeCupDraw,
         getCupCompetition,
+        // Pre-season friendly system
+        getFriendlySlots,
+        getAvailableOpponents,
+        scheduleFriendly,
+        cancelFriendly,
       }}
     >
       {children}

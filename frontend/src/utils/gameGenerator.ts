@@ -442,6 +442,122 @@ export interface CupCompetitionState {
   isActive: boolean;
 }
 
+// ============================================
+// PRE-SEASON FRIENDLY SLOTS (User-Selected)
+// ============================================
+
+export interface FriendlySlot {
+  id: string;
+  date: string;           // YYYY-MM-DD
+  isHome: boolean;        // true = home, false = away
+  isScheduled: boolean;   // Has user selected opponent?
+  opponent?: {
+    id: string;
+    name: string;
+  };
+  matchResult?: {
+    homeScore: number;
+    awayScore: number;
+  };
+}
+
+export interface FriendlyAvailableTeam {
+  id: string;
+  name: string;
+  reputation: number;
+  unavailableDates: string[];  // Dates team is already busy
+}
+
+/**
+ * Generate empty friendly slots for user to fill
+ */
+export function generateFriendlySlots(season: number): FriendlySlot[] {
+  // 4 pre-season friendly slots in July - early August
+  const dates = [
+    `${season}-07-12`,  // Sat
+    `${season}-07-19`,  // Sat
+    `${season}-07-26`,  // Sat
+    `${season}-08-02`,  // Sat
+  ];
+  
+  return dates.map((date, index) => ({
+    id: `friendly_slot_${season}_${index}`,
+    date,
+    isHome: index % 2 === 0,  // Alternate home/away
+    isScheduled: false,
+  }));
+}
+
+/**
+ * Get available teams for a friendly on a specific date
+ * AI teams can't play if they already have a fixture on that date
+ */
+export function getAvailableTeamsForFriendly(
+  date: string,
+  allTeams: { id: string; name: string; reputation: number }[],
+  managedTeamId: string,
+  existingFriendlies: FriendlySlot[],
+  aiScheduledFriendlies: Record<string, string[]>,  // teamId -> dates they're busy
+): FriendlyAvailableTeam[] {
+  const availableTeams: FriendlyAvailableTeam[] = [];
+  
+  for (const team of allTeams) {
+    // Skip managed team
+    if (team.id === managedTeamId) continue;
+    
+    // Check if team is busy on this date
+    const teamBusyDates = aiScheduledFriendlies[team.id] || [];
+    const isAvailable = !teamBusyDates.includes(date);
+    
+    // Check if we already have a friendly with this team
+    const alreadyScheduled = existingFriendlies.some(
+      f => f.isScheduled && f.opponent?.id === team.id
+    );
+    
+    if (isAvailable && !alreadyScheduled) {
+      availableTeams.push({
+        id: team.id,
+        name: team.name,
+        reputation: team.reputation,
+        unavailableDates: teamBusyDates,
+      });
+    }
+  }
+  
+  // Sort by reputation (higher first - more attractive opponents)
+  return availableTeams.sort((a, b) => b.reputation - a.reputation);
+}
+
+/**
+ * Generate AI teams' pre-season schedules (who they're playing against)
+ * This creates realistic availability constraints
+ */
+export function generateAIFriendlySchedules(
+  allTeams: { id: string; name: string }[],
+  managedTeamId: string,
+  season: number
+): Record<string, string[]> {
+  const aiSchedules: Record<string, string[]> = {};
+  const friendlyDates = [
+    `${season}-07-12`,
+    `${season}-07-19`,
+    `${season}-07-26`,
+    `${season}-08-02`,
+  ];
+  
+  // Each AI team plays 2-3 friendlies randomly
+  for (const team of allTeams) {
+    if (team.id === managedTeamId) continue;
+    
+    // Randomly select 2-3 dates this team is busy
+    const busyCount = 2 + Math.floor(Math.random() * 2);
+    const shuffledDates = [...friendlyDates].sort(() => Math.random() - 0.5);
+    aiSchedules[team.id] = shuffledDates.slice(0, busyCount);
+  }
+  
+  return aiSchedules;
+}
+
 /**
  * Initialize FA Cup state (PL teams enter at R3)
  */
@@ -561,6 +677,9 @@ export interface GeneratedGameData {
       winter: { start: string; end: string };
     };
   };
+  // Pre-season friendly system
+  friendlySlots: FriendlySlot[];
+  aiFriendlySchedules: Record<string, string[]>;
 }
 
 /**
@@ -628,11 +747,12 @@ export function generateNewGame(
   const leagueId = `premier_league_${season}`;
   const leagueFixtures = generateLeagueFixturesWithDates(teamBasics, season, leagueId, calendarTemplate);
   
-  // Generate pre-season friendlies
-  const managedTeam = teams.find(t => t.id === managedTeamId);
-  const friendlies = managedTeam 
-    ? generatePreSeasonFriendlies(managedTeamId, managedTeam.name, teamBasics, season)
-    : [];
+  // Generate pre-season friendly slots (user will choose opponents)
+  const friendlySlots = generateFriendlySlots(season);
+  
+  // Generate AI teams' friendly schedules (determines availability)
+  const teamsWithRep = teams.map(t => ({ id: t.id, name: t.name, reputation: t.reputation }));
+  const aiFriendlySchedules = generateAIFriendlySchedules(teamBasics, managedTeamId, season);
   
   // Initialize cups
   const faCup = initializeFACup(teamBasics, season);
@@ -644,24 +764,7 @@ export function generateNewGame(
   // Create events list
   const events: GameEvent[] = [];
   
-  // Add pre-season friendlies as events (for managed team only)
-  friendlies.forEach(f => {
-    events.push(createMatchEvent(
-      {
-        id: f.id,
-        match_date: f.matchDate,
-        home_team_id: f.homeTeamId,
-        home_team_name: f.homeTeamName,
-        away_team_id: f.awayTeamId,
-        away_team_name: f.awayTeamName,
-        home_score: f.homeScore,
-        away_score: f.awayScore,
-        played: f.played,
-      },
-      'friendly',
-      f.round
-    ));
-  });
+  // Note: Friendly events are NOT added here - they'll be added when user schedules them
   
   // Add league fixtures as events (only managed team's matches)
   leagueFixtures
@@ -754,6 +857,8 @@ export function generateNewGame(
         },
       },
     },
+    friendlySlots,
+    aiFriendlySchedules,
   };
 }
 
