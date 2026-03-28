@@ -56,6 +56,11 @@ import {
   getPrizeMoney,
   generateRegen,
 } from '../hooks/useSeasonProgression';
+import {
+  executeAITransfers,
+  updateAIFormations,
+  AITransferAction,
+} from '../utils/aiManager';
 
 const BACKEND_URL = getBackendUrl();
 const LOCAL_SAVE_KEY = 'retro_ct_local_save';
@@ -959,6 +964,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { ...l, current_week: l.current_week + 1 };
     });
 
+    // ============================================
+    // AI MANAGER INTELLIGENCE
+    // ============================================
+    // Process AI transfers when transfer window is open
+    let updatedMarket = [...(currentSave.transfer_market || [])];
+    let aiTransferActions: AITransferAction[] = [];
+    
+    if (currentSave.transfer_window_open) {
+      const aiResult = executeAITransfers(
+        updatedTeams,
+        currentSave.managed_team_id,
+        updatedMarket,
+        true
+      );
+      updatedTeams = aiResult.updatedTeams;
+      updatedMarket = aiResult.updatedMarket;
+      aiTransferActions = aiResult.actions;
+      
+      // Log AI transfer activity (for debugging)
+      if (aiTransferActions.length > 0) {
+        console.log('AI Transfer Activity:', aiTransferActions.map(a => 
+          `${a.teamName} ${a.type}s ${a.player.name} for £${(a.price / 1000000).toFixed(1)}M - ${a.reason}`
+        ));
+      }
+    }
+    
+    // Update AI formations periodically (every few weeks)
+    if (Math.random() > 0.8) {
+      updatedTeams = updateAIFormations(updatedTeams, currentSave.managed_team_id);
+    }
+
     // Advance game date by 7 days
     const currentDate = new Date(currentSave.game_date);
     currentDate.setDate(currentDate.getDate() + 7);
@@ -967,6 +1003,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ...currentSave, 
       leagues: updatedLeagues, 
       teams: updatedTeams,
+      transfer_market: updatedMarket,
       game_date: currentDate.toISOString().split('T')[0]
     });
   };
