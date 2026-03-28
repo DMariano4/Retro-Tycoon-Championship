@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
 import { useSaveSlots } from '../src/context/SaveSlotsContext';
 import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, FriendlyScheduler, gameStyles as styles } from '../src/components/game';
+import { GameEvent } from '../src/utils/calendar';
 
 type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'finance';
 
@@ -29,6 +30,9 @@ export default function GameScreen() {
     getUpcomingEvents,
     getCurrentDate,
     getFriendlySlots,
+    advanceToNextEvent,
+    processEvent,
+    executeCupDraw,
   } = useGame();
   const { activeSlotId, saveToSlot } = useSaveSlots();
   const [isReady, setIsReady] = useState(false);
@@ -113,6 +117,55 @@ export default function GameScreen() {
     router.push('/match');
   };
 
+  // Handle playing an event from the calendar
+  const handlePlayEvent = (event: GameEvent) => {
+    switch (event.type) {
+      case 'match':
+        // Navigate to match screen - the match screen will pick up the correct fixture
+        // We need to pass the event data so match screen knows which fixture to use
+        router.push({
+          pathname: '/match',
+          params: { eventId: event.id }
+        });
+        break;
+      
+      case 'cup_draw':
+        // Execute the cup draw
+        if (event.competition && event.competitionRound) {
+          executeCupDraw(event.competition, event.competitionRound);
+          processEvent(event);
+          Alert.alert(
+            `${event.title}`,
+            `The ${event.competitionRound} draw has been made. Check your upcoming events for your next match.`
+          );
+        }
+        break;
+      
+      case 'transfer_window_open':
+        processEvent(event);
+        Alert.alert(
+          'Transfer Window Opens',
+          'The transfer window is now open! You can buy and sell players.',
+          [{ text: 'OK' }]
+        );
+        break;
+      
+      case 'transfer_window_close':
+        processEvent(event);
+        Alert.alert(
+          'Transfer Window Closes',
+          'The transfer window has closed. No more transfers until the next window.',
+          [{ text: 'OK' }]
+        );
+        break;
+      
+      default:
+        // For other event types, just mark as completed and advance
+        processEvent(event);
+        break;
+    }
+  };
+
   const getUpcomingFixture = () => {
     if (!league || !managedTeam) return null;
     return league.fixtures.find(
@@ -146,6 +199,7 @@ export default function GameScreen() {
           onNextWeek={handleNextWeek}
           upcomingEvents={upcomingEvents}
           currentDate={currentDate}
+          onPlayEvent={handlePlayEvent}
           friendlySlots={friendlySlots}
           onOpenFriendlyScheduler={() => setShowFriendlyScheduler(true)}
         />;

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, Dimensions, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame, Player, Team } from '../src/context/GameContext';
 import { getSeverityColor } from '../src/utils/formatters';
@@ -121,7 +121,8 @@ function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: any) {
 }
 
 export default function MatchScreen() {
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete } = useGame();
+  const { eventId } = useLocalSearchParams<{ eventId?: string }>();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processEvent } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -146,6 +147,7 @@ export default function MatchScreen() {
   const [isSimulatingWeek, setIsSimulatingWeek] = useState(false);
   const [simProgress, setSimProgress] = useState({ current: 0, total: 0, leagueName: '' });
   const [matchInjuries, setMatchInjuries] = useState<any[]>([]);
+  const [currentGameEvent, setCurrentGameEvent] = useState<any>(null);
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -179,9 +181,42 @@ export default function MatchScreen() {
   const managedTeam = getManagedTeam();
   const league = getLeague();
 
-  const fixture = league?.fixtures.find(
-    f => !f.played && (f.home_team_id === managedTeam?.id || f.away_team_id === managedTeam?.id)
-  );
+  // Get fixture from event system or fallback to legacy league fixtures
+  const getFixture = useCallback(() => {
+    // If we have an eventId, find the event and get fixture from event data
+    if (eventId && currentSave?.events) {
+      const event = currentSave.events.find(e => e.id === eventId);
+      if (event?.type === 'match' && event.data) {
+        return event.data;
+      }
+    }
+    
+    // Fallback: Get next event from event system
+    const nextEvent = getNextEvent();
+    if (nextEvent?.type === 'match' && nextEvent.data) {
+      return nextEvent.data;
+    }
+    
+    // Legacy fallback: find fixture from league
+    return league?.fixtures.find(
+      f => !f.played && (f.home_team_id === managedTeam?.id || f.away_team_id === managedTeam?.id)
+    );
+  }, [eventId, currentSave, getNextEvent, league, managedTeam]);
+
+  const fixture = getFixture();
+  
+  // Track current game event for completion
+  useEffect(() => {
+    if (eventId && currentSave?.events) {
+      const event = currentSave.events.find(e => e.id === eventId);
+      setCurrentGameEvent(event);
+    } else {
+      const nextEvent = getNextEvent();
+      if (nextEvent?.type === 'match') {
+        setCurrentGameEvent(nextEvent);
+      }
+    }
+  }, [eventId, currentSave, getNextEvent]);
 
   useEffect(() => {
     if (managedTeam) {
@@ -358,6 +393,11 @@ export default function MatchScreen() {
     // Defer simulation to next tick so loading screen renders
     setTimeout(async () => {
       try {
+        // Mark the current game event as completed (Event-Driven Calendar system)
+        if (currentGameEvent) {
+          processEvent(currentGameEvent);
+        }
+        
         // Simulate all other matches and advance week
         simulateOtherWeekMatches();
         // Save game

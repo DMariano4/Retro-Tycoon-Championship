@@ -104,6 +104,7 @@ export function DashboardTab({
           </View>
         )}
         
+        {/* Play button for matches and cup draws */}
         {isNext && (isMatch || isCupDraw) && (
           <TouchableOpacity 
             style={[styles.playButton, { marginTop: 12 }]} 
@@ -113,6 +114,17 @@ export function DashboardTab({
             <Text style={styles.playButtonText}>
               {isMatch ? 'PLAY MATCH' : 'VIEW DRAW'}
             </Text>
+          </TouchableOpacity>
+        )}
+        
+        {/* Continue button for transfer window events */}
+        {isNext && (event.type === 'transfer_window_open' || event.type === 'transfer_window_close') && (
+          <TouchableOpacity 
+            style={[styles.playButton, { marginTop: 12, backgroundColor: event.type === 'transfer_window_open' ? '#00ff88' : '#ff6b6b' }]} 
+            onPress={() => onPlayEvent ? onPlayEvent(event) : onNextWeek()}
+          >
+            <Ionicons name="arrow-forward" size={16} color="#0a1628" />
+            <Text style={styles.playButtonText}>CONTINUE</Text>
           </TouchableOpacity>
         )}
       </View>
