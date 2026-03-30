@@ -559,6 +559,10 @@ export const gameStyles = StyleSheet.create({
     fontSize: 11,
     color: '#9ab8d8',
   },
+  fixtureTeamButton: {
+    flex: 1,
+    paddingVertical: 4,
+  },
   fixtureScore: {
     paddingHorizontal: 12,
   },
