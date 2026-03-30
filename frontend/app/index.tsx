@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView, Modal, BackHandler } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView, Modal, BackHandler, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,18 +8,26 @@ import { useGame } from '../src/context/GameContext';
 
 const { width, height } = Dimensions.get('window');
 
-type MenuScreen = 'main' | 'saves' | 'about';
+type MenuScreen = 'splash' | 'main' | 'saves' | 'about';
 
 export default function MainMenu() {
   const { slots, config, isLoading: slotsLoading, loadSlotData, deleteSlot, setActiveSlot } = useSaveSlots();
   const { setCurrentSave } = useGame();
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
-  const [currentScreen, setCurrentScreen] = useState<MenuScreen>('main');
+  const [currentScreen, setCurrentScreen] = useState<MenuScreen>('splash');
   const [showExitConfirm, setShowExitConfirm] = useState(false);
+  
+  // Splash screen animation
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // Handle back button on Android
   useEffect(() => {
     const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (currentScreen === 'splash') {
+        return true; // Ignore back during splash
+      }
       if (currentScreen !== 'main') {
         setCurrentScreen('main');
         return true;
@@ -29,6 +37,51 @@ export default function MainMenu() {
     });
     return () => backHandler.remove();
   }, [currentScreen]);
+
+  // Splash screen animation and auto-transition
+  useEffect(() => {
+    // Fade in and scale animation
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 8,
+        tension: 40,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // Pulse animation for loading indicator
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.2,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulse.start();
+
+    // Auto transition to main menu after splash
+    const timer = setTimeout(() => {
+      setCurrentScreen('main');
+    }, 2500);
+
+    return () => {
+      clearTimeout(timer);
+      pulse.stop();
+    };
+  }, []);
 
   const handleSlotPress = async (slot: SaveSlotMeta) => {
     if (slot.isEmpty) {
@@ -181,12 +234,46 @@ export default function MainMenu() {
     );
   };
 
+  // Splash screen shows first, regardless of loading state
+  if (currentScreen === 'splash') {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.splashContainer}>
+          <Animated.View style={[
+            styles.splashContent,
+            {
+              opacity: fadeAnim,
+              transform: [{ scale: scaleAnim }]
+            }
+          ]}>
+            <View style={styles.splashIconContainer}>
+              <Ionicons name="football" size={80} color="#00ff88" />
+            </View>
+            <Text style={styles.splashTitle}>RETRO FOOTBALL</Text>
+            <Text style={styles.splashSubtitle}>CHAMPIONSHIP</Text>
+            <Animated.View style={[
+              styles.splashLoadingContainer,
+              { transform: [{ scale: pulseAnim }] }
+            ]}>
+              <ActivityIndicator size="small" color="#00ff88" />
+              <Text style={styles.splashLoadingText}>Loading...</Text>
+            </Animated.View>
+          </Animated.View>
+          <View style={styles.splashFooter}>
+            <Text style={styles.splashFooterText}>100% OFFLINE GAME</Text>
+            <Text style={styles.splashFooterSubtext}>No internet required</Text>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   if (slotsLoading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00ff88" />
-          <Text style={styles.loadingText}>Loading...</Text>
+          <Text style={styles.loadingText}>Loading saves...</Text>
         </View>
       </SafeAreaView>
     );
@@ -197,6 +284,7 @@ export default function MainMenu() {
     <View style={styles.mainMenuContainer}>
       {/* Logo/Title */}
       <View style={styles.logoContainer}>
+        <Ionicons name="football" size={56} color="#00ff88" />
         <Text style={styles.mainTitle}>RETRO FOOTBALL</Text>
         <Text style={styles.mainSubtitle}>CHAMPIONSHIP</Text>
         <View style={styles.versionBadge}>
@@ -213,7 +301,7 @@ export default function MainMenu() {
           <Ionicons name="play-circle" size={32} color="#0a1628" />
           <View style={styles.menuButtonTextContainer}>
             <Text style={styles.menuButtonTitle}>PLAY GAME</Text>
-            <Text style={styles.menuButtonSubtitle}>New game or continue</Text>
+            <Text style={[styles.menuButtonSubtitle, { color: '#0a4628' }]}>New game or continue</Text>
           </View>
         </TouchableOpacity>
 
@@ -406,10 +494,235 @@ const styles = StyleSheet.create({
     color: '#6a8aaa',
     fontSize: 14,
   },
+  
+  // ============ MAIN MENU STYLES ============
+  mainMenuContainer: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 60,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+  },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 24,
   },
+  mainTitle: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#00ff88',
+    letterSpacing: 3,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0, 255, 136, 0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 20,
+  },
+  mainSubtitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#4a9eff',
+    letterSpacing: 4,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  versionBadge: {
+    backgroundColor: '#1a3a5c',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 20,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#2a5a8c',
+  },
+  versionText: {
+    color: '#6aafff',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  menuButtonsContainer: {
+    gap: 12,
+    marginTop: 'auto',
+    marginBottom: 'auto',
+  },
+  menuButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#0d2137',
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+    gap: 16,
+  },
+  menuButtonPrimary: {
+    backgroundColor: '#00ff88',
+    borderColor: '#00ff88',
+  },
+  menuButtonExit: {
+    borderColor: '#3a2a2a',
+    backgroundColor: '#1a1520',
+  },
+  menuButtonTextContainer: {
+    flex: 1,
+  },
+  menuButtonTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0a1628',
+    letterSpacing: 1,
+  },
+  menuButtonSubtitle: {
+    fontSize: 11,
+    color: '#4a6a8a',
+    marginTop: 2,
+  },
+  mainFooter: {
+    alignItems: 'center',
+    paddingTop: 16,
+  },
+  
+  // ============ ABOUT SCREEN STYLES ============
+  aboutContainer: {
+    flex: 1,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  aboutContent: {
+    paddingVertical: 20,
+    alignItems: 'center',
+  },
+  aboutTitle: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: '#00ff88',
+    textAlign: 'center',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  aboutVersion: {
+    fontSize: 14,
+    color: '#4a9eff',
+    marginBottom: 24,
+  },
+  aboutSection: {
+    width: '100%',
+    marginBottom: 20,
+    backgroundColor: '#0d2137',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  aboutSectionTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4a9eff',
+    letterSpacing: 2,
+    marginBottom: 10,
+  },
+  aboutText: {
+    fontSize: 14,
+    color: '#8aa8c8',
+    lineHeight: 22,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginBottom: 12,
+  },
+  backButtonText: {
+    color: '#00ff88',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  
+  // ============ SAVE SLOTS SCREEN STYLES ============
+  saveSlotsHeader: {
+    width: '100%',
+    marginBottom: 16,
+  },
+  instructionsBox: {
+    width: '100%',
+    maxWidth: 400,
+    marginTop: 20,
+    backgroundColor: '#0d2137',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  instructionsTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#ffd700',
+    marginBottom: 8,
+    letterSpacing: 1,
+  },
+  instructionsText: {
+    fontSize: 12,
+    color: '#6a8aaa',
+    lineHeight: 20,
+  },
+  
+  // ============ EXIT MODAL STYLES ============
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#0d2137',
+    borderRadius: 16,
+    padding: 24,
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#1a4a6c',
+    width: '100%',
+    maxWidth: 320,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#fff',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#6a8aaa',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  modalButtonCancel: {
+    backgroundColor: '#1a4a6c',
+  },
+  modalButtonConfirm: {
+    backgroundColor: '#2a1a20',
+    borderWidth: 1,
+    borderColor: '#ff6b6b',
+  },
+  modalButtonText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  
+  // ============ LEGACY STYLES (kept for save slots) ============
   title: {
     fontSize: 36,
     fontWeight: '900',
@@ -425,20 +738,6 @@ const styles = StyleSheet.create({
     color: '#4a9eff',
     letterSpacing: 3,
     marginTop: 2,
-  },
-  versionBadge: {
-    backgroundColor: '#1a3a5c',
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: 4,
-    marginTop: 12,
-    borderWidth: 1,
-    borderColor: '#2a5a8c',
-  },
-  versionText: {
-    color: '#6aafff',
-    fontSize: 11,
-    fontWeight: '600',
   },
   slotsContainer: {
     width: '100%',
@@ -602,5 +901,63 @@ const styles = StyleSheet.create({
     color: '#3a5a7a',
     fontSize: 11,
     fontWeight: '600',
+  },
+  
+  // ============ SPLASH SCREEN STYLES ============
+  splashContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#0a1628',
+    padding: 24,
+  },
+  splashContent: {
+    alignItems: 'center',
+    marginBottom: 60,
+  },
+  splashIconContainer: {
+    marginBottom: 24,
+  },
+  splashTitle: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#00ff88',
+    letterSpacing: 3,
+    textAlign: 'center',
+  },
+  splashSubtitle: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#4a9eff',
+    letterSpacing: 4,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  splashLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 40,
+    gap: 12,
+  },
+  splashLoadingText: {
+    color: '#6a8aaa',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  splashFooter: {
+    position: 'absolute',
+    bottom: 60,
+    alignItems: 'center',
+  },
+  splashFooterText: {
+    color: '#00ff88',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 2,
+  },
+  splashFooterSubtext: {
+    color: '#4a6a8a',
+    fontSize: 11,
+    marginTop: 4,
   },
 });

@@ -549,44 +549,90 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const league = getLeague();
     if (!league) return null;
 
-    const fixture = league.fixtures.find(f => f.id === fixtureId);
-    if (!fixture || fixture.played) return null;
+    // Search for fixture in multiple sources:
+    // 1. League fixtures
+    let fixture = league.fixtures.find(f => f.id === fixtureId);
+    let fixtureSource: 'league' | 'friendly' | 'cup' = 'league';
+    
+    // 2. Check in events system (for friendlies and cups)
+    if (!fixture && currentSave.events) {
+      const matchEvent = currentSave.events.find(
+        e => e.type === 'match' && e.data?.id === fixtureId
+      );
+      if (matchEvent?.data) {
+        fixture = matchEvent.data;
+        fixtureSource = fixture.match_type === 'friendly' ? 'friendly' : 'cup';
+      }
+    }
+    
+    // 3. Check in aiFriendlySchedules (user pre-season friendlies)
+    if (!fixture && currentSave.aiFriendlySchedules) {
+      for (const schedule of Object.values(currentSave.aiFriendlySchedules)) {
+        const found = (schedule as any[]).find((f: any) => f.id === fixtureId);
+        if (found) {
+          fixture = found;
+          fixtureSource = 'friendly';
+          break;
+        }
+      }
+    }
+    
+    if (!fixture || fixture.played) {
+      console.log('simulateMatch: No valid fixture found for ID:', fixtureId);
+      return null;
+    }
 
     const homeTeam = currentSave.teams.find(t => t.id === fixture.home_team_id);
     const awayTeam = currentSave.teams.find(t => t.id === fixture.away_team_id);
 
-    if (!homeTeam || !awayTeam) return null;
+    if (!homeTeam || !awayTeam) {
+      console.log('simulateMatch: Teams not found', { 
+        homeId: fixture.home_team_id, 
+        awayId: fixture.away_team_id 
+      });
+      return null;
+    }
 
     // Use the new CM01/02-inspired match engine
     const matchResult: MatchResult = simulateMatchEngine(homeTeam, awayTeam);
 
-    // Update fixture with match result
-    const updatedLeagues = currentSave.leagues.map(l => {
-      if (l.id !== league.id) return l;
+    // Update fixture with match result based on source
+    let updatedLeagues = currentSave.leagues;
+    let updatedEvents = currentSave.events || [];
+    let updatedFriendlySchedules = currentSave.aiFriendlySchedules || {};
+    
+    if (fixtureSource === 'league') {
+      // Update league fixtures
+      updatedLeagues = currentSave.leagues.map(l => {
+        if (l.id !== league.id) return l;
 
-      const updatedFixtures = l.fixtures.map(f => {
-        if (f.id !== fixtureId) return f;
-        return {
-          ...f,
-          home_score: matchResult.homeScore,
-          away_score: matchResult.awayScore,
-          played: true,
-          events: matchResult.events
-        };
+        const updatedFixtures = l.fixtures.map(f => {
+          if (f.id !== fixtureId) return f;
+          return {
+            ...f,
+            home_score: matchResult.homeScore,
+            away_score: matchResult.awayScore,
+            played: true,
+            events: matchResult.events
+          };
+        });
+
+        // Update table for league matches
+        const updatedTable = updateLeagueTable(
+          l.table, 
+          fixture.home_team_id, 
+          fixture.away_team_id, 
+          matchResult.homeScore, 
+          matchResult.awayScore
+        );
+
+        return { ...l, fixtures: updatedFixtures, table: updatedTable };
       });
-
-      // Update table only for league matches (not friendlies)
-      const isFriendly = fixture.match_type === 'friendly';
-      const updatedTable = isFriendly ? l.table : updateLeagueTable(
-        l.table, 
-        fixture.home_team_id, 
-        fixture.away_team_id, 
-        matchResult.homeScore, 
-        matchResult.awayScore
-      );
-
-      return { ...l, fixtures: updatedFixtures, table: updatedTable };
-    });
+    } else {
+      // For friendlies and cups, just mark the event as completed
+      // (The event will be marked via processEvent in match.tsx)
+      console.log('Match result for', fixtureSource, ':', matchResult.homeScore, '-', matchResult.awayScore);
+    }
 
     // Update player form based on match performance
     let updatedTeams = currentSave.teams.map(team => {
