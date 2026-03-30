@@ -164,8 +164,9 @@ export default function MatchScreen() {
       if (currentMinute >= nextEvent.minute) {
         const homeTeam = currentSave?.teams.find(t => t.id === fixture?.home_team_id);
         
-        // Update scores
-        if (nextEvent.type === 'GOAL') {
+        // Update scores - handle all goal types
+        const isGoalEvent = ['GOAL', 'PENALTY_GOAL', 'OWN_GOAL'].includes(nextEvent.type);
+        if (isGoalEvent) {
           if (nextEvent.team === homeTeam?.short_name) {
             setHomeScore(prev => prev + 1);
           } else {
@@ -178,14 +179,14 @@ export default function MatchScreen() {
           const isHome = nextEvent.team === homeTeam?.short_name;
           const newStats = { ...prev };
           
-          if (nextEvent.type === 'GOAL' || nextEvent.type === 'CHANCE') {
+          if (isGoalEvent || nextEvent.type === 'CHANCE') {
             newStats.shots = {
               home: isHome ? prev.shots.home + 1 : prev.shots.home,
               away: !isHome ? prev.shots.away + 1 : prev.shots.away,
             };
           }
           
-          if (nextEvent.type === 'GOAL' || nextEvent.type === 'SAVE') {
+          if (isGoalEvent || nextEvent.type === 'SAVE') {
             newStats.shotsOnTarget = {
               home: isHome ? prev.shotsOnTarget.home + 1 : prev.shotsOnTarget.home,
               away: !isHome ? prev.shotsOnTarget.away + 1 : prev.shotsOnTarget.away,
@@ -620,16 +621,42 @@ export default function MatchScreen() {
       {/* Live Match Controls Bar - Always visible during play */}
       {matchState === 'live' && (
         <View style={styles.liveControlBar}>
+          {/* Left side - Pause button */}
           <TouchableOpacity 
             style={styles.liveControlButton}
             onPress={handlePause}
           >
-            <Ionicons name="pause" size={18} color="#fff" />
+            <Ionicons name="pause" size={16} color="#fff" />
             <Text style={styles.liveControlText}>PAUSE</Text>
           </TouchableOpacity>
           
+          {/* Center - Tactics & Subs (auto-pause when pressed) */}
+          <View style={styles.liveQuickActions}>
+            <TouchableOpacity 
+              style={styles.liveQuickButton}
+              onPress={() => {
+                handlePause();
+                setShowTacticsModal(true);
+              }}
+            >
+              <Ionicons name="clipboard-outline" size={16} color="#4a9eff" />
+              <Text style={[styles.liveControlText, { color: '#4a9eff' }]}>TACTICS</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.liveQuickButton}
+              onPress={() => {
+                handlePause();
+                setShowSubstitutionModal(true);
+              }}
+            >
+              <Ionicons name="swap-horizontal" size={16} color="#00ff88" />
+              <Text style={[styles.liveControlText, { color: '#00ff88' }]}>SUBS</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Right side - Speed control */}
           <View style={styles.liveSpeedControl}>
-            <Text style={styles.liveSpeedLabel}>Speed:</Text>
             {[1, 2, 4].map(s => (
               <TouchableOpacity
                 key={s}
@@ -642,29 +669,6 @@ export default function MatchScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          
-          <TouchableOpacity 
-            style={[styles.liveControlButton, styles.liveMenuButton]}
-            onPress={() => {
-              handlePause();
-              // Small delay to let pause take effect
-              setTimeout(() => {
-                Alert.alert(
-                  '⚽ Match Menu',
-                  'What would you like to do?',
-                  [
-                    { text: 'Change Tactics', onPress: () => setShowTacticsModal(true) },
-                    { text: 'Make Substitution', onPress: () => setShowSubstitutionModal(true) },
-                    { text: 'Resume Match', onPress: handleResume },
-                    { text: 'Cancel', style: 'cancel' }
-                  ]
-                );
-              }, 100);
-            }}
-          >
-            <Ionicons name="menu" size={18} color="#00ff88" />
-            <Text style={[styles.liveControlText, { color: '#00ff88' }]}>MENU</Text>
-          </TouchableOpacity>
         </View>
       )}
 

@@ -990,10 +990,10 @@ export const matchStyles = StyleSheet.create({
   liveControlButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 4,
     backgroundColor: '#1a4a6c',
     paddingVertical: 6,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     borderRadius: 6,
   },
   liveMenuButton: {
@@ -1003,16 +1003,32 @@ export const matchStyles = StyleSheet.create({
   },
   liveControlText: {
     color: '#fff',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
-  liveSpeedControl: {
+  liveQuickActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flex: 1,
     justifyContent: 'center',
+  },
+  liveQuickButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#0d2137',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#1a4a6c',
+  },
+  liveSpeedControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
   },
   liveSpeedLabel: {
     color: '#6a8aaa',
@@ -1021,7 +1037,7 @@ export const matchStyles = StyleSheet.create({
   },
   liveSpeedButton: {
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 8,
     borderRadius: 4,
     backgroundColor: '#1a3a5c',
   },
@@ -1030,7 +1046,7 @@ export const matchStyles = StyleSheet.create({
   },
   liveSpeedText: {
     color: '#6a8aaa',
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
   },
   liveSpeedTextActive: {
