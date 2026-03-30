@@ -14,6 +14,19 @@
  * - Tactical Matchups (formation counters)
  * - Key Player Moments (star player clutch bonus)
  * - Substitution Impact (fresh legs boost)
+ * 
+ * Phase 3 Features:
+ * - Injury System with recovery time
+ * 
+ * Phase 4 Features (NEW):
+ * - Stamina/Fatigue System (players tire, subs matter)
+ * - Red Cards & Second Yellows (playing with 10 men)
+ * - Penalty Kicks (fouls in box)
+ * - Half-Time AI Adjustments (AI reacts to scoreline)
+ * - Injury Time (stoppage time at end of halves)
+ * - Weather Effects (rain, wind affect play)
+ * - Own Goals (rare defensive mishaps)
+ * - In-Match Morale (confidence shifts)
  */
 
 import { Player, Team } from '../context/GameContext';
@@ -42,12 +55,13 @@ export interface TeamRatings {
 }
 
 export interface MatchEvent {
-  type: 'GOAL' | 'CHANCE' | 'SAVE' | 'YELLOW_CARD' | 'RED_CARD' | 'FOUL' | 'CORNER' | 'OFFSIDE' | 'INJURY';
+  type: 'GOAL' | 'PENALTY_GOAL' | 'PENALTY_MISS' | 'OWN_GOAL' | 'CHANCE' | 'SAVE' | 'YELLOW_CARD' | 'RED_CARD' | 'SECOND_YELLOW' | 'FOUL' | 'CORNER' | 'OFFSIDE' | 'INJURY' | 'HALF_TIME' | 'FULL_TIME' | 'SUBSTITUTION';
   minute: number;
   team: string;
   player: string;
   assistPlayer?: string;
   description: string;
+  isStoppageTime?: boolean;
 }
 
 export interface MatchInjury {
@@ -60,6 +74,16 @@ export interface MatchInjury {
   minute: number;
 }
 
+// Phase 4: Weather type
+export type WeatherCondition = 'clear' | 'cloudy' | 'rainy' | 'windy' | 'stormy';
+
+export interface MatchWeather {
+  condition: WeatherCondition;
+  passingModifier: number;    // Affects passing accuracy
+  longBallModifier: number;   // Affects long passes/crosses
+  description: string;
+}
+
 export interface MatchResult {
   homeScore: number;
   awayScore: number;
@@ -68,6 +92,9 @@ export interface MatchResult {
   playerRatings: { [playerId: string]: number };
   momentum: MomentumHistory;
   injuries: MatchInjury[];
+  weather: MatchWeather;
+  redCards: { home: string[]; away: string[] };
+  stoppageTime: { firstHalf: number; secondHalf: number };
 }
 
 export interface MatchStats {
@@ -77,7 +104,9 @@ export interface MatchStats {
   corners: { home: number; away: number };
   fouls: { home: number; away: number };
   yellowCards: { home: number; away: number };
+  redCards: { home: number; away: number };
   offsides: { home: number; away: number };
+  penalties: { home: number; away: number };
 }
 
 // Phase 2: New interfaces
@@ -225,6 +254,153 @@ const POSITION_WEIGHTS = {
 };
 
 // ============================================
+// PHASE 4: NEW CONSTANTS
+// ============================================
+
+// Stamina/Fatigue System
+const STAMINA_CONFIG = {
+  decayRatePerMinute: 0.8,      // Stamina lost per minute (base)
+  tempoMultiplier: {            // How tempo affects stamina drain
+    'slow': 0.7,
+    'normal': 1.0,
+    'fast': 1.4,
+  },
+  closingDownMultiplier: {      // How pressing affects stamina
+    'never': 0.7,
+    'sometimes': 1.0,
+    'always': 1.3,
+  },
+  fatigueThreshold: 50,         // Below this, performance drops
+  severeThreshold: 25,          // Below this, major performance drop
+  performancePenalty: {
+    mild: 0.05,                 // 5% penalty when fatigued
+    severe: 0.15,               // 15% penalty when severely fatigued
+  },
+  subBoost: 30,                 // Stamina boost for fresh sub
+};
+
+// Red Card System
+const RED_CARD_CONFIG = {
+  straightRedProb: 0.005,       // 0.5% chance of straight red per foul
+  seriousFoulProb: 0.02,        // 2% chance foul is "serious" (higher red chance)
+  seriousFoulRedProb: 0.25,     // 25% of serious fouls result in red
+  manDownPenalty: {
+    attack: 0.20,               // 20% reduction when down a man
+    midfield: 0.15,
+    defense: 0.10,
+  },
+  twoMenDownPenalty: {          // Rare but possible
+    attack: 0.45,
+    midfield: 0.35,
+    defense: 0.25,
+  },
+};
+
+// Penalty System
+const PENALTY_CONFIG = {
+  boxFoulProb: 0.08,            // 8% of fouls happen in box
+  conversionRate: 0.76,         // 76% historical conversion rate
+  gkSaveBonus: 0.015,           // Per GK attribute point above 10
+  takerComposureBonus: 0.01,    // Per composure point above 10
+  pressureMissBonus: 0.05,      // Extra miss chance in high-pressure moments
+};
+
+// Weather System
+const WEATHER_CONFIG: Record<WeatherCondition, MatchWeather> = {
+  'clear': {
+    condition: 'clear',
+    passingModifier: 1.0,
+    longBallModifier: 1.0,
+    description: 'Perfect conditions',
+  },
+  'cloudy': {
+    condition: 'cloudy',
+    passingModifier: 1.0,
+    longBallModifier: 0.98,
+    description: 'Overcast skies',
+  },
+  'rainy': {
+    condition: 'rainy',
+    passingModifier: 0.92,
+    longBallModifier: 0.88,
+    description: 'Rain affecting the pitch',
+  },
+  'windy': {
+    condition: 'windy',
+    passingModifier: 0.95,
+    longBallModifier: 0.82,
+    description: 'Strong winds swirling',
+  },
+  'stormy': {
+    condition: 'stormy',
+    passingModifier: 0.85,
+    longBallModifier: 0.75,
+    description: 'Heavy rain and wind',
+  },
+};
+
+// Weather probability distribution
+const WEATHER_PROBABILITIES: { condition: WeatherCondition; weight: number }[] = [
+  { condition: 'clear', weight: 40 },
+  { condition: 'cloudy', weight: 30 },
+  { condition: 'rainy', weight: 15 },
+  { condition: 'windy', weight: 10 },
+  { condition: 'stormy', weight: 5 },
+];
+
+// Own Goal System
+const OWN_GOAL_CONFIG = {
+  baseProb: 0.015,              // 1.5% chance per defensive action under pressure
+  pressureMultiplier: 1.5,      // Increases when team is under pressure
+  weatherMultiplier: 1.3,       // Higher in bad weather
+};
+
+// In-Match Morale System
+const MORALE_CONFIG = {
+  baseValue: 50,
+  goalBoost: 20,
+  concededDrop: 15,
+  redCardDrop: 10,
+  penaltyMissedDrop: 12,
+  maxValue: 100,
+  minValue: 10,
+  effectOnPerformance: 0.002,   // Per point deviation from 50
+};
+
+// Stoppage Time Config
+const STOPPAGE_TIME_CONFIG = {
+  baseFirstHalf: 1,
+  baseSecondHalf: 2,
+  perGoal: 0.5,
+  perInjury: 1.5,
+  perRedCard: 1.0,
+  perSubstitution: 0.3,
+  perPenalty: 1.0,
+  maxFirstHalf: 5,
+  maxSecondHalf: 8,
+};
+
+// Half-Time AI Adjustments
+const HALFTIME_AI_CONFIG = {
+  losingByOneOrMore: {
+    mentalityChange: 1,         // Increase mentality by 1
+    tempoChange: 'fast',
+  },
+  losingByThreeOrMore: {
+    mentalityChange: 2,         // Go all-out attack
+    tempoChange: 'fast',
+  },
+  winningByOne: {
+    mentalityChange: -1,        // Slightly more defensive
+    tempoChange: null,
+  },
+  winningByThreeOrMore: {
+    mentalityChange: -2,        // Protect the lead
+    tempoChange: 'slow',
+  },
+};
+
+// ============================================
 // UTILITY FUNCTIONS
 // ============================================
 
@@ -243,6 +419,316 @@ function poissonRandom(lambda: number): number {
   } while (p > L);
   
   return k - 1;
+}
+
+// ============================================
+// PHASE 4: HELPER FUNCTIONS
+// ============================================
+
+/**
+ * Generate random weather for the match
+ */
+function generateWeather(): MatchWeather {
+  const totalWeight = WEATHER_PROBABILITIES.reduce((sum, w) => sum + w.weight, 0);
+  let roll = Math.random() * totalWeight;
+  
+  for (const weatherProb of WEATHER_PROBABILITIES) {
+    roll -= weatherProb.weight;
+    if (roll <= 0) {
+      return WEATHER_CONFIG[weatherProb.condition];
+    }
+  }
+  return WEATHER_CONFIG['clear'];
+}
+
+/**
+ * Calculate stamina drain for a player based on tactics and time played
+ */
+function calculateStaminaDrain(
+  baseStamina: number,
+  minutesPlayed: number,
+  tempo: string,
+  closingDown: string
+): number {
+  const tempoMult = STAMINA_CONFIG.tempoMultiplier[tempo as keyof typeof STAMINA_CONFIG.tempoMultiplier] || 1.0;
+  const pressMult = STAMINA_CONFIG.closingDownMultiplier[closingDown as keyof typeof STAMINA_CONFIG.closingDownMultiplier] || 1.0;
+  
+  const drain = minutesPlayed * STAMINA_CONFIG.decayRatePerMinute * tempoMult * pressMult;
+  // Higher base stamina = slower drain
+  const staminaProtection = Math.max(0.5, baseStamina / 20);
+  
+  return Math.max(0, 100 - (drain / staminaProtection));
+}
+
+/**
+ * Apply fatigue penalty to team ratings
+ */
+function applyFatiguePenalty(
+  ratings: TeamRatings,
+  averageStamina: number
+): TeamRatings {
+  let penalty = 0;
+  
+  if (averageStamina < STAMINA_CONFIG.severeThreshold) {
+    penalty = STAMINA_CONFIG.performancePenalty.severe;
+  } else if (averageStamina < STAMINA_CONFIG.fatigueThreshold) {
+    penalty = STAMINA_CONFIG.performancePenalty.mild;
+  }
+  
+  return {
+    attack: ratings.attack * (1 - penalty),
+    midfield: ratings.midfield * (1 - penalty),
+    defense: ratings.defense * (1 - penalty),
+    goalkeeper: ratings.goalkeeper, // GK doesn't fatigue as much
+    overall: ratings.overall * (1 - penalty),
+  };
+}
+
+/**
+ * Apply red card penalty to team ratings
+ */
+function applyRedCardPenalty(
+  ratings: TeamRatings,
+  redCardsCount: number
+): TeamRatings {
+  if (redCardsCount === 0) return ratings;
+  
+  const penalty = redCardsCount === 1 
+    ? RED_CARD_CONFIG.manDownPenalty 
+    : RED_CARD_CONFIG.twoMenDownPenalty;
+  
+  return {
+    attack: ratings.attack * (1 - penalty.attack),
+    midfield: ratings.midfield * (1 - penalty.midfield),
+    defense: ratings.defense * (1 - penalty.defense),
+    goalkeeper: ratings.goalkeeper,
+    overall: ratings.overall * (1 - (penalty.attack + penalty.midfield + penalty.defense) / 3),
+  };
+}
+
+/**
+ * Apply weather effects to team ratings
+ */
+function applyWeatherEffects(
+  ratings: TeamRatings,
+  weather: MatchWeather,
+  passingStyle: string
+): TeamRatings {
+  // Direct passing affected more by bad weather
+  const passingPenalty = passingStyle === 'direct' 
+    ? (1 - weather.longBallModifier) * 1.5 
+    : (1 - weather.passingModifier);
+  
+  return {
+    attack: ratings.attack * (1 - passingPenalty * 0.5),
+    midfield: ratings.midfield * weather.passingModifier,
+    defense: ratings.defense, // Defense less affected
+    goalkeeper: ratings.goalkeeper,
+    overall: ratings.overall * (1 - passingPenalty * 0.3),
+  };
+}
+
+/**
+ * Apply morale effects to team ratings
+ */
+function applyMoraleEffects(
+  ratings: TeamRatings,
+  morale: number
+): TeamRatings {
+  const deviation = morale - MORALE_CONFIG.baseValue;
+  const effect = deviation * MORALE_CONFIG.effectOnPerformance;
+  
+  return {
+    attack: ratings.attack * (1 + effect),
+    midfield: ratings.midfield * (1 + effect * 0.8),
+    defense: ratings.defense * (1 + effect * 0.6),
+    goalkeeper: ratings.goalkeeper * (1 + effect * 0.4),
+    overall: ratings.overall * (1 + effect * 0.7),
+  };
+}
+
+/**
+ * Check if a penalty should be awarded
+ */
+function shouldAwardPenalty(foulMinute: number, isDefendingTeamPressing: boolean): boolean {
+  // Higher chance of box foul when attacking aggressively
+  const boxFoulChance = isDefendingTeamPressing 
+    ? PENALTY_CONFIG.boxFoulProb * 1.3 
+    : PENALTY_CONFIG.boxFoulProb;
+  
+  return Math.random() < boxFoulChance;
+}
+
+/**
+ * Simulate penalty kick
+ */
+function simulatePenalty(
+  taker: Player,
+  goalkeeper: Player,
+  isHighPressure: boolean
+): { scored: boolean; description: string } {
+  let conversionRate = PENALTY_CONFIG.conversionRate;
+  
+  // Taker composure bonus (if they have composure attribute)
+  const composure = (taker as any).composure || taker.finishing || 12;
+  conversionRate += (composure - 10) * PENALTY_CONFIG.takerComposureBonus;
+  
+  // GK save ability
+  const gkAbility = goalkeeper.shot_stopping || 12;
+  conversionRate -= (gkAbility - 10) * PENALTY_CONFIG.gkSaveBonus;
+  
+  // High pressure penalty (late goal, crucial moment)
+  if (isHighPressure) {
+    conversionRate -= PENALTY_CONFIG.pressureMissBonus;
+  }
+  
+  const scored = Math.random() < conversionRate;
+  
+  const scoredDescriptions = [
+    `${taker.name} sends the keeper the wrong way. GOAL!`,
+    `${taker.name} coolly slots home the penalty!`,
+    `No mistake from ${taker.name}! Clinical from the spot!`,
+    `${taker.name} buries it into the corner! Penalty converted!`,
+  ];
+  
+  const missedDescriptions = [
+    `${taker.name} misses! The keeper guessed right!`,
+    `${taker.name} blazes it over the bar! Penalty missed!`,
+    `Brilliant save! ${goalkeeper.name} dives the right way!`,
+    `${taker.name} hits the post! So close to scoring!`,
+  ];
+  
+  return {
+    scored,
+    description: scored 
+      ? scoredDescriptions[Math.floor(Math.random() * scoredDescriptions.length)]
+      : missedDescriptions[Math.floor(Math.random() * missedDescriptions.length)],
+  };
+}
+
+/**
+ * Check for own goal on defensive action
+ */
+function checkOwnGoal(
+  weather: MatchWeather,
+  teamUnderPressure: boolean
+): { ownGoal: boolean; description: string } {
+  let probability = OWN_GOAL_CONFIG.baseProb;
+  
+  if (teamUnderPressure) {
+    probability *= OWN_GOAL_CONFIG.pressureMultiplier;
+  }
+  
+  if (weather.condition === 'rainy' || weather.condition === 'stormy') {
+    probability *= OWN_GOAL_CONFIG.weatherMultiplier;
+  }
+  
+  const ownGoal = Math.random() < probability;
+  
+  const descriptions = [
+    (player: string) => `Disaster! ${player} turns the ball into his own net!`,
+    (player: string) => `Own goal! ${player} can't believe it!`,
+    (player: string) => `Calamity! ${player}'s clearance ends up in the goal!`,
+    (player: string) => `${player} slices it past his own goalkeeper! Own goal!`,
+  ];
+  
+  return {
+    ownGoal,
+    description: descriptions[Math.floor(Math.random() * descriptions.length)](''),
+  };
+}
+
+/**
+ * Calculate stoppage time for a half
+ */
+function calculateStoppageTime(
+  halfEvents: MatchEvent[],
+  isSecondHalf: boolean
+): number {
+  const base = isSecondHalf 
+    ? STOPPAGE_TIME_CONFIG.baseSecondHalf 
+    : STOPPAGE_TIME_CONFIG.baseFirstHalf;
+  
+  let additional = 0;
+  
+  for (const event of halfEvents) {
+    switch (event.type) {
+      case 'GOAL':
+      case 'PENALTY_GOAL':
+      case 'OWN_GOAL':
+        additional += STOPPAGE_TIME_CONFIG.perGoal;
+        break;
+      case 'INJURY':
+        additional += STOPPAGE_TIME_CONFIG.perInjury;
+        break;
+      case 'RED_CARD':
+      case 'SECOND_YELLOW':
+        additional += STOPPAGE_TIME_CONFIG.perRedCard;
+        break;
+      case 'PENALTY_MISS':
+        additional += STOPPAGE_TIME_CONFIG.perPenalty;
+        break;
+      case 'SUBSTITUTION':
+        additional += STOPPAGE_TIME_CONFIG.perSubstitution;
+        break;
+    }
+  }
+  
+  const maxTime = isSecondHalf 
+    ? STOPPAGE_TIME_CONFIG.maxSecondHalf 
+    : STOPPAGE_TIME_CONFIG.maxFirstHalf;
+  
+  return Math.min(Math.floor(base + additional), maxTime);
+}
+
+/**
+ * Apply half-time AI adjustments to tactics
+ */
+function applyHalftimeAdjustments(
+  tactics: TeamTactics,
+  goalDifference: number,
+  isWinning: boolean
+): TeamTactics {
+  const adjusted = { ...tactics };
+  
+  if (isWinning) {
+    if (goalDifference >= 3) {
+      adjusted.mentality = Math.max(1, tactics.mentality + HALFTIME_AI_CONFIG.winningByThreeOrMore.mentalityChange);
+      if (HALFTIME_AI_CONFIG.winningByThreeOrMore.tempoChange) {
+        adjusted.tempo = HALFTIME_AI_CONFIG.winningByThreeOrMore.tempoChange;
+      }
+    } else if (goalDifference >= 1) {
+      adjusted.mentality = Math.max(1, tactics.mentality + HALFTIME_AI_CONFIG.winningByOne.mentalityChange);
+    }
+  } else {
+    if (goalDifference <= -3) {
+      adjusted.mentality = Math.min(5, tactics.mentality - HALFTIME_AI_CONFIG.losingByThreeOrMore.mentalityChange);
+      if (HALFTIME_AI_CONFIG.losingByThreeOrMore.tempoChange) {
+        adjusted.tempo = HALFTIME_AI_CONFIG.losingByThreeOrMore.tempoChange;
+      }
+    } else if (goalDifference <= -1) {
+      adjusted.mentality = Math.min(5, tactics.mentality - HALFTIME_AI_CONFIG.losingByOneOrMore.mentalityChange);
+      if (HALFTIME_AI_CONFIG.losingByOneOrMore.tempoChange) {
+        adjusted.tempo = HALFTIME_AI_CONFIG.losingByOneOrMore.tempoChange;
+      }
+    }
+  }
+  
+  return adjusted;
+}
+
+/**
+ * Select best penalty taker from team
+ */
+function selectPenaltyTaker(team: Team, excludedIds: string[] = []): Player {
+  const startingXI = getStartingXI(team).filter(p => !excludedIds.includes(p.id));
+  
+  // Sort by finishing + composure-like attributes
+  return startingXI.reduce((best, player) => {
+    const score = player.finishing + (player.technique || 10) + ((player as any).composure || 12);
+    const bestScore = best.finishing + (best.technique || 10) + ((best as any).composure || 12);
+    return score > bestScore ? player : best;
+  }, startingXI[0]);
 }
 
 /**
@@ -1097,8 +1583,24 @@ export function simulateMatchEngine(
   awaySubstitutionMinute?: number
 ): MatchResult {
   // Get tactics
-  const homeTactics = getTeamTactics(homeTeam);
-  const awayTactics = getTeamTactics(awayTeam);
+  let homeTactics = getTeamTactics(homeTeam);
+  let awayTactics = getTeamTactics(awayTeam);
+  
+  // Phase 4: Generate weather
+  const weather = generateWeather();
+  
+  // Phase 4: Initialize morale
+  let homeMorale = MORALE_CONFIG.baseValue;
+  let awayMorale = MORALE_CONFIG.baseValue;
+  
+  // Phase 4: Track red cards and player yellows
+  const homeRedCards: string[] = [];
+  const awayRedCards: string[] = [];
+  const playerYellowCards: Map<string, number> = new Map();
+  
+  // Phase 4: Track penalties
+  let homePenalties = 0;
+  let awayPenalties = 0;
   
   // Calculate base ratings
   let homeRatings = calculateTeamRatings(homeTeam);
@@ -1107,6 +1609,10 @@ export function simulateMatchEngine(
   // Apply form and fitness
   homeRatings = applyFormAndFitness(homeRatings, homeTeam);
   awayRatings = applyFormAndFitness(awayRatings, awayTeam);
+  
+  // Phase 4: Apply weather effects
+  homeRatings = applyWeatherEffects(homeRatings, weather, homeTactics.passingStyle);
+  awayRatings = applyWeatherEffects(awayRatings, weather, awayTactics.passingStyle);
   
   // Phase 2: Apply tactical matchup bonuses
   const homeTacticalBonus = calculateTacticalMatchup(homeTactics.formation, awayTactics.formation);
@@ -1140,21 +1646,21 @@ export function simulateMatchEngine(
     awayRatings = applySubstitutionImpact(awayRatings, awaySubstitutionMinute);
   }
   
-  // Calculate base expected goals
+  // Calculate base expected goals for first half
   let homeXG = calculateExpectedGoals(homeTeam, awayTeam, homeRatings, awayRatings, true);
   let awayXG = calculateExpectedGoals(awayTeam, homeTeam, awayRatings, homeRatings, false);
   
-  // Generate goal events with Phase 2 enhancements
+  // Generate events
   const events: MatchEvent[] = [];
   const usedMinutes = new Set<number>();
   const momentumTimeline: { minute: number; homeValue: number; awayValue: number }[] = [];
   
   // Helper to get unique minute
-  const getUniqueMinute = (): number => {
+  const getUniqueMinute = (minMinute: number = 1, maxMinute: number = 90): number => {
     let minute: number;
     let attempts = 0;
     do {
-      minute = Math.floor(Math.random() * 90) + 1;
+      minute = Math.floor(minMinute + Math.random() * (maxMinute - minMinute));
       attempts++;
     } while (usedMinutes.has(minute) && attempts < 100);
     usedMinutes.add(minute);
@@ -1165,94 +1671,268 @@ export function simulateMatchEngine(
   const homeStarPlayer = getStarPlayer(homeTeam);
   const awayStarPlayer = getStarPlayer(awayTeam);
   
-  // Generate actual goals using Poisson distribution
-  // Phase 2: Adjust for momentum throughout match
-  const homeGoals = poissonRandom(homeXG);
-  const awayGoals = poissonRandom(awayXG);
+  // Get goalkeepers for penalty simulation
+  const homeGK = getStartingXI(homeTeam).find(p => p.position === 'GK') || getStartingXI(homeTeam)[0];
+  const awayGK = getStartingXI(awayTeam).find(p => p.position === 'GK') || getStartingXI(awayTeam)[0];
   
-  // Generate goal minutes first, then assign to teams
-  const allGoalMinutes: { minute: number; isHome: boolean }[] = [];
-  let homeGoalsAssigned = 0;
-  let awayGoalsAssigned = 0;
+  // Generate first half goals using Poisson distribution
+  const firstHalfHomeXG = homeXG * 0.45; // Slightly less action in first half
+  const firstHalfAwayXG = awayXG * 0.45;
   
-  for (let i = 0; i < homeGoals + awayGoals; i++) {
-    const minute = getUniqueMinute();
-    // Distribute goals based on total counts
-    const isHome = homeGoalsAssigned < homeGoals && 
-      (awayGoalsAssigned >= awayGoals || Math.random() < 0.5);
-    
-    allGoalMinutes.push({ minute, isHome });
-    if (isHome) homeGoalsAssigned++;
-    else awayGoalsAssigned++;
-  }
+  let homeGoals = poissonRandom(firstHalfHomeXG);
+  let awayGoals = poissonRandom(firstHalfAwayXG);
   
-  // Sort by minute
-  allGoalMinutes.sort((a, b) => a.minute - b.minute);
-  
-  // Generate goal events with key moment bonuses
-  for (const goalInfo of allGoalMinutes) {
-    const team = goalInfo.isHome ? homeTeam : awayTeam;
-    const starPlayer = goalInfo.isHome ? homeStarPlayer : awayStarPlayer;
-    
-    // Phase 2: Key moment check - star player more likely to score
-    const keyMoment = isKeyMoment(goalInfo.minute);
-    let scorer: Player;
-    
-    if (keyMoment.isKey && Math.random() < 0.3 + keyMoment.bonus) {
-      // Star player scores in key moment
-      scorer = starPlayer;
-    } else {
-      scorer = selectScorer(team);
-    }
-    
-    const assister = selectAssister(team, scorer);
-    
-    // Enhanced goal description for key moments
-    let description = generateGoalDescription(scorer, assister, goalInfo.minute);
-    if (keyMoment.isKey && scorer.id === starPlayer.id) {
-      description = `⭐ KEY MOMENT! ${description}`;
-    }
+  // Generate first half goal events
+  for (let i = 0; i < homeGoals; i++) {
+    const minute = getUniqueMinute(1, 45);
+    const scorer = Math.random() < 0.3 ? homeStarPlayer : selectScorer(homeTeam);
+    const assister = selectAssister(homeTeam, scorer);
     
     events.push({
       type: 'GOAL',
-      minute: goalInfo.minute,
-      team: team.short_name,
+      minute,
+      team: homeTeam.short_name,
+      player: scorer.name,
+      assistPlayer: assister?.name,
+      description: generateGoalDescription(scorer, assister, minute),
+    });
+    
+    // Update morale
+    homeMorale = Math.min(MORALE_CONFIG.maxValue, homeMorale + MORALE_CONFIG.goalBoost);
+    awayMorale = Math.max(MORALE_CONFIG.minValue, awayMorale - MORALE_CONFIG.concededDrop);
+  }
+  
+  for (let i = 0; i < awayGoals; i++) {
+    const minute = getUniqueMinute(1, 45);
+    const scorer = Math.random() < 0.3 ? awayStarPlayer : selectScorer(awayTeam);
+    const assister = selectAssister(awayTeam, scorer);
+    
+    events.push({
+      type: 'GOAL',
+      minute,
+      team: awayTeam.short_name,
+      player: scorer.name,
+      assistPlayer: assister?.name,
+      description: generateGoalDescription(scorer, assister, minute),
+    });
+    
+    awayMorale = Math.min(MORALE_CONFIG.maxValue, awayMorale + MORALE_CONFIG.goalBoost);
+    homeMorale = Math.max(MORALE_CONFIG.minValue, homeMorale - MORALE_CONFIG.concededDrop);
+  }
+  
+  // Phase 4: Check for own goal in first half (rare)
+  if (Math.random() < OWN_GOAL_CONFIG.baseProb * (weather.condition === 'rainy' ? 1.3 : 1)) {
+    const isHomeOwnGoal = Math.random() < 0.5;
+    const team = isHomeOwnGoal ? homeTeam : awayTeam;
+    const defenders = getStartingXI(team).filter(p => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(p.position));
+    const unluckyPlayer = defenders[Math.floor(Math.random() * defenders.length)] || getStartingXI(team)[1];
+    
+    const minute = getUniqueMinute(10, 45);
+    events.push({
+      type: 'OWN_GOAL',
+      minute,
+      team: isHomeOwnGoal ? awayTeam.short_name : homeTeam.short_name, // Team that benefits
+      player: unluckyPlayer.name,
+      description: `Own goal! ${unluckyPlayer.name} turns it into his own net!`,
+    });
+    
+    if (isHomeOwnGoal) {
+      awayGoals++;
+      awayMorale += 10;
+      homeMorale -= 15;
+    } else {
+      homeGoals++;
+      homeMorale += 10;
+      awayMorale -= 15;
+    }
+  }
+  
+  // Add half-time event
+  events.push({
+    type: 'HALF_TIME',
+    minute: 45,
+    team: '',
+    player: '',
+    description: `Half Time: ${homeTeam.short_name} ${homeGoals} - ${awayGoals} ${awayTeam.short_name}`,
+  });
+  
+  // Phase 4: AI Half-time adjustments (for away team, simulating AI behavior)
+  const awayGoalDiff = awayGoals - homeGoals;
+  awayTactics = applyHalftimeAdjustments(awayTactics, awayGoalDiff, awayGoalDiff > 0);
+  
+  // Phase 4: Apply fatigue for second half (simplified - 45 mins played)
+  const homeAvgStamina = calculateStaminaDrain(14, 45, homeTactics.tempo, homeTactics.closingDown);
+  const awayAvgStamina = calculateStaminaDrain(14, 45, awayTactics.tempo, awayTactics.closingDown);
+  
+  homeRatings = applyFatiguePenalty(homeRatings, homeAvgStamina);
+  awayRatings = applyFatiguePenalty(awayRatings, awayAvgStamina);
+  
+  // Phase 4: Apply morale effects
+  homeRatings = applyMoraleEffects(homeRatings, homeMorale);
+  awayRatings = applyMoraleEffects(awayRatings, awayMorale);
+  
+  // Recalculate xG for second half
+  const secondHalfHomeXG = calculateExpectedGoals(homeTeam, awayTeam, homeRatings, awayRatings, true) * 0.55;
+  const secondHalfAwayXG = calculateExpectedGoals(awayTeam, homeTeam, awayRatings, homeRatings, false) * 0.55;
+  
+  // Generate second half goals
+  const secondHalfHomeGoals = poissonRandom(secondHalfHomeXG);
+  const secondHalfAwayGoals = poissonRandom(secondHalfAwayXG);
+  
+  for (let i = 0; i < secondHalfHomeGoals; i++) {
+    const minute = getUniqueMinute(46, 90);
+    const keyMoment = isKeyMoment(minute);
+    const scorer = keyMoment.isKey && Math.random() < 0.4 ? homeStarPlayer : selectScorer(homeTeam);
+    const assister = selectAssister(homeTeam, scorer);
+    
+    let description = generateGoalDescription(scorer, assister, minute);
+    if (keyMoment.isKey) description = `⭐ ${description}`;
+    
+    events.push({
+      type: 'GOAL',
+      minute,
+      team: homeTeam.short_name,
       player: scorer.name,
       assistPlayer: assister?.name,
       description,
     });
+    homeGoals++;
   }
   
-  // Calculate match stats
+  for (let i = 0; i < secondHalfAwayGoals; i++) {
+    const minute = getUniqueMinute(46, 90);
+    const keyMoment = isKeyMoment(minute);
+    const scorer = keyMoment.isKey && Math.random() < 0.4 ? awayStarPlayer : selectScorer(awayTeam);
+    const assister = selectAssister(awayTeam, scorer);
+    
+    let description = generateGoalDescription(scorer, assister, minute);
+    if (keyMoment.isKey) description = `⭐ ${description}`;
+    
+    events.push({
+      type: 'GOAL',
+      minute,
+      team: awayTeam.short_name,
+      player: scorer.name,
+      assistPlayer: assister?.name,
+      description,
+    });
+    awayGoals++;
+  }
+  
+  // Phase 4: Generate penalties (chance based on fouls and box activity)
   const homeTacklingMod = TACKLING_MODIFIERS[homeTactics.tackling] || TACKLING_MODIFIERS['normal'];
   const awayTacklingMod = TACKLING_MODIFIERS[awayTactics.tackling] || TACKLING_MODIFIERS['normal'];
   
-  // Possession based on midfield battle and tactics
+  // Home team attacking, away defends - check for penalty
+  if (shouldAwardPenalty(0, awayTactics.closingDown === 'always')) {
+    const taker = selectPenaltyTaker(homeTeam);
+    const penResult = simulatePenalty(taker, awayGK, homeGoals === awayGoals);
+    const minute = getUniqueMinute(20, 88);
+    
+    events.push({
+      type: penResult.scored ? 'PENALTY_GOAL' : 'PENALTY_MISS',
+      minute,
+      team: homeTeam.short_name,
+      player: taker.name,
+      description: `⚽ PENALTY! ${penResult.description}`,
+    });
+    
+    if (penResult.scored) {
+      homeGoals++;
+      homePenalties++;
+    } else {
+      homeMorale = Math.max(MORALE_CONFIG.minValue, homeMorale - MORALE_CONFIG.penaltyMissedDrop);
+    }
+  }
+  
+  // Away team penalty chance
+  if (shouldAwardPenalty(0, homeTactics.closingDown === 'always')) {
+    const taker = selectPenaltyTaker(awayTeam);
+    const penResult = simulatePenalty(taker, homeGK, homeGoals === awayGoals);
+    const minute = getUniqueMinute(20, 88);
+    
+    events.push({
+      type: penResult.scored ? 'PENALTY_GOAL' : 'PENALTY_MISS',
+      minute,
+      team: awayTeam.short_name,
+      player: taker.name,
+      description: `⚽ PENALTY! ${penResult.description}`,
+    });
+    
+    if (penResult.scored) {
+      awayGoals++;
+      awayPenalties++;
+    } else {
+      awayMorale = Math.max(MORALE_CONFIG.minValue, awayMorale - MORALE_CONFIG.penaltyMissedDrop);
+    }
+  }
+  
+  // Calculate match stats
   const midfieldDiff = homeRatings.midfield - awayRatings.midfield;
   const basePossession = 50 + (midfieldDiff * 2);
   const homePossession = Math.max(30, Math.min(70, basePossession));
   
-  // Shots based on xG and possession (ensure shots >= goals)
   const homeShots = Math.max(homeGoals + 1, Math.floor(homeXG * 4 + Math.random() * 4));
   const awayShots = Math.max(awayGoals + 1, Math.floor(awayXG * 4 + Math.random() * 4));
   
   const homeShotsOnTarget = Math.max(homeGoals, homeGoals + Math.floor((homeShots - homeGoals) * 0.35));
   const awayShotsOnTarget = Math.max(awayGoals, awayGoals + Math.floor((awayShots - awayGoals) * 0.35));
   
-  // Corners based on attacking play
   const homeCorners = Math.floor(2 + Math.random() * 4 + (homeTactics.mentality - 3));
   const awayCorners = Math.floor(2 + Math.random() * 4 + (awayTactics.mentality - 3));
   
-  // Fouls
   const homeFouls = Math.floor((6 + Math.random() * 6) * homeTacklingMod.fouls);
   const awayFouls = Math.floor((6 + Math.random() * 6) * awayTacklingMod.fouls);
   
-  // Generate other events (chances, saves, fouls, cards)
+  // Generate other events (chances, saves, fouls, cards) with Phase 4 red card logic
   const otherEvents = generateOtherEvents(
     homeTeam, awayTeam, 
     homeTactics, awayTactics,
     homeShots, awayShots
   );
+  
+  // Phase 4: Process cards for red card logic
+  for (const event of otherEvents) {
+    if (event.type === 'YELLOW_CARD') {
+      const cardCount = (playerYellowCards.get(event.player) || 0) + 1;
+      playerYellowCards.set(event.player, cardCount);
+      
+      if (cardCount >= 2) {
+        // Second yellow = red
+        event.type = 'SECOND_YELLOW';
+        event.description = `🟥 SECOND YELLOW! ${event.player} is sent off!`;
+        
+        if (event.team === homeTeam.short_name) {
+          homeRedCards.push(event.player);
+          homeMorale -= MORALE_CONFIG.redCardDrop;
+        } else {
+          awayRedCards.push(event.player);
+          awayMorale -= MORALE_CONFIG.redCardDrop;
+        }
+      }
+    }
+    
+    // Check for straight red on serious fouls
+    if (event.type === 'FOUL' && Math.random() < RED_CARD_CONFIG.straightRedProb * (
+      homeTactics.tackling === 'hard' || awayTactics.tackling === 'hard' ? 2 : 1
+    )) {
+      events.push({
+        type: 'RED_CARD',
+        minute: event.minute,
+        team: event.team,
+        player: event.player,
+        description: `🟥 STRAIGHT RED! ${event.player} is sent off for a dangerous tackle!`,
+      });
+      
+      if (event.team === homeTeam.short_name) {
+        homeRedCards.push(event.player);
+        homeMorale -= MORALE_CONFIG.redCardDrop;
+      } else {
+        awayRedCards.push(event.player);
+        awayMorale -= MORALE_CONFIG.redCardDrop;
+      }
+    }
+  }
   
   events.push(...otherEvents);
 
@@ -1264,10 +1944,65 @@ export function simulateMatchEngine(
   );
   events.push(...injuryEvents);
   
+  // Phase 4: Calculate stoppage time
+  const firstHalfEvents = events.filter(e => e.minute <= 45);
+  const secondHalfEvents = events.filter(e => e.minute > 45 && e.minute <= 90);
+  
+  const firstHalfStoppage = calculateStoppageTime(firstHalfEvents, false);
+  const secondHalfStoppage = calculateStoppageTime(secondHalfEvents, true);
+  
+  // Add stoppage time goals (rare but dramatic)
+  if (firstHalfStoppage > 0 && Math.random() < 0.15) {
+    const isHome = Math.random() < 0.5;
+    const team = isHome ? homeTeam : awayTeam;
+    const scorer = selectScorer(team);
+    const minute = 45;
+    
+    events.push({
+      type: 'GOAL',
+      minute,
+      team: team.short_name,
+      player: scorer.name,
+      description: `⏱️ STOPPAGE TIME! ${scorer.name} scores just before the break!`,
+      isStoppageTime: true,
+    });
+    
+    if (isHome) homeGoals++;
+    else awayGoals++;
+  }
+  
+  if (secondHalfStoppage > 0 && Math.random() < 0.20) {
+    const isHome = Math.random() < 0.5;
+    const team = isHome ? homeTeam : awayTeam;
+    const scorer = isHome ? homeStarPlayer : awayStarPlayer; // Star player more likely in dying moments
+    const minute = 90;
+    
+    events.push({
+      type: 'GOAL',
+      minute,
+      team: team.short_name,
+      player: scorer.name,
+      description: `⏱️ LAST GASP! ${scorer.name} scores in the ${90 + Math.floor(Math.random() * secondHalfStoppage) + 1}th minute!`,
+      isStoppageTime: true,
+    });
+    
+    if (isHome) homeGoals++;
+    else awayGoals++;
+  }
+  
+  // Add full time event
+  events.push({
+    type: 'FULL_TIME',
+    minute: 90,
+    team: '',
+    player: '',
+    description: `Full Time: ${homeTeam.short_name} ${homeGoals} - ${awayGoals} ${awayTeam.short_name}`,
+  });
+  
   // Sort all events by minute
   events.sort((a, b) => a.minute - b.minute);
   
-  // Yellow cards count
+  // Count cards
   const homeYellows = events.filter(e => e.type === 'YELLOW_CARD' && e.team === homeTeam.short_name).length;
   const awayYellows = events.filter(e => e.type === 'YELLOW_CARD' && e.team === awayTeam.short_name).length;
   
@@ -1278,10 +2013,12 @@ export function simulateMatchEngine(
     corners: { home: homeCorners, away: awayCorners },
     fouls: { home: homeFouls, away: awayFouls },
     yellowCards: { home: homeYellows, away: awayYellows },
+    redCards: { home: homeRedCards.length, away: awayRedCards.length },
     offsides: { 
       home: Math.floor(Math.random() * 4), 
       away: Math.floor(Math.random() * 4) 
     },
+    penalties: { home: homePenalties, away: awayPenalties },
   };
   
   // Phase 2: Generate momentum timeline
@@ -1315,7 +2052,11 @@ export function simulateMatchEngine(
     homeScore: homeGoals,
     awayScore: awayGoals,
     events,
-    stats,
+    stats: {
+      ...stats,
+      redCards: { home: homeRedCards.length, away: awayRedCards.length },
+      penalties: { home: homePenalties, away: awayPenalties },
+    },
     playerRatings,
     momentum: {
       timeline: momentumTimeline,
@@ -1323,6 +2064,9 @@ export function simulateMatchEngine(
       finalAway: finalMomentum.away,
     },
     injuries: matchInjuries,
+    weather,
+    redCards: { home: homeRedCards, away: awayRedCards },
+    stoppageTime: { firstHalf: firstHalfStoppage, secondHalf: secondHalfStoppage },
   };
 }
 
