@@ -29,8 +29,8 @@ export default function ScoutingScreen() {
       .filter(t => t.id !== currentSave.managed_team_id)
       .sort((a, b) => {
         // Sort by overall rating (calculated from squad)
-        const aRating = a.squad.reduce((sum, p) => sum + p.overall, 0) / a.squad.length;
-        const bRating = b.squad.reduce((sum, p) => sum + p.overall, 0) / b.squad.length;
+        const aRating = getTeamRating(a);
+        const bRating = getTeamRating(b);
         return bRating - aRating;
       });
   }, [currentSave]);
@@ -46,13 +46,17 @@ export default function ScoutingScreen() {
 
   // Get team's average rating
   const getTeamRating = (team: Team): number => {
-    if (team.squad.length === 0) return 0;
-    return Math.round(team.squad.reduce((sum, p) => sum + p.overall, 0) / team.squad.length);
+    if (!team.squad || team.squad.length === 0) return 0;
+    const validPlayers = team.squad.filter(p => p && typeof p.overall === 'number');
+    if (validPlayers.length === 0) return 50;
+    return Math.round(validPlayers.reduce((sum, p) => sum + p.overall, 0) / validPlayers.length);
   };
 
   // Get player market value estimate
   const getPlayerValue = (player: Player): number => {
-    const baseValue = player.overall * 50000;
+    if (!player) return 0;
+    const overall = player.overall || 50; // Default to 50 if undefined
+    const baseValue = overall * 50000;
     const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
     const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
     return Math.round(baseValue * ageMultiplier * positionMultiplier);
