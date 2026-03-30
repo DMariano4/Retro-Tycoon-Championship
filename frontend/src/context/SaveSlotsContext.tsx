@@ -44,6 +44,7 @@ interface SaveSlotsContextType {
   loadSlotData: (slotId: number) => Promise<any | null>;
   saveToSlot: (slotId: number, saveData: any) => Promise<boolean>;
   deleteSlot: (slotId: number) => Promise<boolean>;
+  clearAllSlots: () => Promise<boolean>;
   setActiveSlot: (slotId: number | null) => void;
   refreshSlots: () => Promise<void>;
   
@@ -246,6 +247,32 @@ export function SaveSlotsProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Clear all save slots
+   */
+  const clearAllSlots = async (): Promise<boolean> => {
+    try {
+      // Remove all slot data
+      for (let i = 1; i <= config.totalSlots; i++) {
+        const key = `${SAVE_SLOTS_KEY}_slot_${i}`;
+        await AsyncStorage.removeItem(key);
+      }
+      
+      // Reset all slots to empty
+      const newSlots = slots.map(slot => createEmptySlot(slot.slotId));
+      setSlots(newSlots);
+      await AsyncStorage.setItem(SAVE_SLOTS_KEY, JSON.stringify(newSlots));
+      
+      // Clear active slot
+      setActiveSlotId(null);
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to clear all slots:', error);
+      return false;
+    }
+  };
+
+  /**
    * Set the currently active slot
    */
   const setActiveSlot = (slotId: number | null) => {
@@ -292,6 +319,7 @@ export function SaveSlotsProvider({ children }: { children: ReactNode }) {
         loadSlotData,
         saveToSlot,
         deleteSlot,
+        clearAllSlots,
         setActiveSlot,
         refreshSlots,
         upgradeToPremium,

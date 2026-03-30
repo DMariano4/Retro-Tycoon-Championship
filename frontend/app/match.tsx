@@ -240,8 +240,22 @@ export default function MatchScreen() {
   }
 
   const handleStartMatch = async () => {
-    if (!fixture) return;
-    const result = await simulateMatch(fixture.id, speed);
+    if (!fixture) {
+      console.log('No fixture found!');
+      Alert.alert('Error', 'No match fixture found. Please go back and try again.');
+      return;
+    }
+    
+    // Get the fixture ID - handle both 'id' and other potential field names
+    const fixtureId = fixture.id || fixture.fixture_id;
+    if (!fixtureId) {
+      console.log('No fixture ID found!', fixture);
+      Alert.alert('Error', 'Match fixture is missing ID. Please go back and try again.');
+      return;
+    }
+    
+    console.log('Starting match with fixture:', fixtureId);
+    const result = await simulateMatch(fixtureId, speed);
     if (result) {
       setEvents(result.events);
       setMatchState('live');

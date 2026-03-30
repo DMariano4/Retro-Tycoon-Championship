@@ -1,17 +1,34 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView, Modal, BackHandler } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSaveSlots, SaveSlotMeta } from '../src/context/SaveSlotsContext';
 import { useGame } from '../src/context/GameContext';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
+
+type MenuScreen = 'main' | 'saves' | 'about';
 
 export default function MainMenu() {
   const { slots, config, isLoading: slotsLoading, loadSlotData, deleteSlot, setActiveSlot } = useSaveSlots();
   const { setCurrentSave } = useGame();
   const [loadingSlot, setLoadingSlot] = useState<number | null>(null);
+  const [currentScreen, setCurrentScreen] = useState<MenuScreen>('main');
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+
+  // Handle back button on Android
+  useEffect(() => {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (currentScreen !== 'main') {
+        setCurrentScreen('main');
+        return true;
+      }
+      setShowExitConfirm(true);
+      return true;
+    });
+    return () => backHandler.remove();
+  }, [currentScreen]);
 
   const handleSlotPress = async (slot: SaveSlotMeta) => {
     if (slot.isEmpty) {
@@ -169,57 +186,199 @@ export default function MainMenu() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#00ff88" />
-          <Text style={styles.loadingText}>Loading saves...</Text>
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Logo/Title */}
-        <View style={styles.logoContainer}>
-          <Text style={styles.title}>RETRO FOOTBALL</Text>
-          <Text style={styles.subtitle}>CHAMPIONSHIP</Text>
-          <View style={styles.versionBadge}>
-            <Text style={styles.versionText}>v1.0 • OFFLINE</Text>
+  // Main Menu Screen
+  const renderMainMenu = () => (
+    <View style={styles.mainMenuContainer}>
+      {/* Logo/Title */}
+      <View style={styles.logoContainer}>
+        <Text style={styles.mainTitle}>RETRO FOOTBALL</Text>
+        <Text style={styles.mainSubtitle}>CHAMPIONSHIP</Text>
+        <View style={styles.versionBadge}>
+          <Text style={styles.versionText}>v1.0 • 100% OFFLINE</Text>
+        </View>
+      </View>
+
+      {/* Main Menu Buttons */}
+      <View style={styles.menuButtonsContainer}>
+        <TouchableOpacity 
+          style={[styles.menuButton, styles.menuButtonPrimary]}
+          onPress={() => setCurrentScreen('saves')}
+        >
+          <Ionicons name="play-circle" size={32} color="#0a1628" />
+          <View style={styles.menuButtonTextContainer}>
+            <Text style={styles.menuButtonTitle}>PLAY GAME</Text>
+            <Text style={styles.menuButtonSubtitle}>New game or continue</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => router.push('/settings')}
+        >
+          <Ionicons name="settings-outline" size={28} color="#00ff88" />
+          <View style={styles.menuButtonTextContainer}>
+            <Text style={[styles.menuButtonTitle, { color: '#ffffff' }]}>SETTINGS</Text>
+            <Text style={styles.menuButtonSubtitle}>Game options</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={styles.menuButton}
+          onPress={() => setCurrentScreen('about')}
+        >
+          <Ionicons name="information-circle-outline" size={28} color="#4a9eff" />
+          <View style={styles.menuButtonTextContainer}>
+            <Text style={[styles.menuButtonTitle, { color: '#ffffff' }]}>ABOUT</Text>
+            <Text style={styles.menuButtonSubtitle}>Credits & info</Text>
+          </View>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.menuButton, styles.menuButtonExit]}
+          onPress={() => setShowExitConfirm(true)}
+        >
+          <Ionicons name="exit-outline" size={28} color="#ff6b6b" />
+          <View style={styles.menuButtonTextContainer}>
+            <Text style={[styles.menuButtonTitle, { color: '#ff6b6b' }]}>EXIT</Text>
+            <Text style={styles.menuButtonSubtitle}>Close application</Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Footer */}
+      <View style={styles.mainFooter}>
+        <Text style={styles.footerText}>⚽ Inspired by CM 01/02 & Elifoot 98</Text>
+      </View>
+    </View>
+  );
+
+  // About Screen
+  const renderAboutScreen = () => (
+    <ScrollView style={styles.aboutContainer}>
+      <TouchableOpacity style={styles.backButton} onPress={() => setCurrentScreen('main')}>
+        <Ionicons name="arrow-back" size={24} color="#00ff88" />
+        <Text style={styles.backButtonText}>Back</Text>
+      </TouchableOpacity>
+
+      <View style={styles.aboutContent}>
+        <Text style={styles.aboutTitle}>RETRO FOOTBALL{'\n'}CHAMPIONSHIP</Text>
+        <Text style={styles.aboutVersion}>Version 1.0.0</Text>
+
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutSectionTitle}>ABOUT THE GAME</Text>
+          <Text style={styles.aboutText}>
+            A classic football management simulation inspired by the golden era of 
+            football manager games from the early 2000s.
+          </Text>
+        </View>
+
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutSectionTitle}>FEATURES</Text>
+          <Text style={styles.aboutText}>
+            • Manage your club through multiple seasons{'\n'}
+            • Real-time match simulation with commentary{'\n'}
+            • Transfer market with AI managers{'\n'}
+            • Financial management & FFP{'\n'}
+            • Cup competitions from 17 European nations{'\n'}
+            • 100% offline - no internet required{'\n'}
+            • 3 save slots for different careers
+          </Text>
+        </View>
+
+        <View style={styles.aboutSection}>
+          <Text style={styles.aboutSectionTitle}>CREDITS</Text>
+          <Text style={styles.aboutText}>
+            Built with React Native & Expo{'\n'}
+            Match engine: Custom Poisson simulation{'\n'}
+            Player names: Procedurally generated
+          </Text>
+        </View>
+      </View>
+    </ScrollView>
+  );
+
+  // Save Slots Screen
+  const renderSaveSlotsScreen = () => (
+    <ScrollView 
+      style={styles.scrollView}
+      contentContainerStyle={styles.scrollContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Back Button & Title */}
+      <View style={styles.saveSlotsHeader}>
+        <TouchableOpacity style={styles.backButton} onPress={() => setCurrentScreen('main')}>
+          <Ionicons name="arrow-back" size={24} color="#00ff88" />
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
+        <Text style={styles.slotsTitle}>SELECT SAVE SLOT</Text>
+      </View>
+
+      {/* Save Slots */}
+      <View style={styles.slotsContainer}>
+        {slots.map(slot => renderSlot(slot))}
+        
+        {/* Premium Upgrade Prompt */}
+        {!config.hasPremium && (
+          <View style={styles.premiumPrompt}>
+            <Ionicons name="lock-closed" size={16} color="#ffd700" />
+            <Text style={styles.premiumText}>
+              Unlock {10 - config.totalSlots} more slots • Coming soon
+            </Text>
+          </View>
+        )}
+      </View>
+
+      {/* Instructions */}
+      <View style={styles.instructionsBox}>
+        <Text style={styles.instructionsTitle}>💡 TIPS</Text>
+        <Text style={styles.instructionsText}>
+          • Tap empty slot to start new career{'\n'}
+          • Tap filled slot to continue{'\n'}
+          • Long press to delete a save
+        </Text>
+      </View>
+    </ScrollView>
+  );
+
+  // Exit Confirmation Modal
+  const renderExitModal = () => (
+    <Modal visible={showExitConfirm} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Ionicons name="exit-outline" size={48} color="#ff6b6b" />
+          <Text style={styles.modalTitle}>EXIT GAME?</Text>
+          <Text style={styles.modalText}>Are you sure you want to close the application?</Text>
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalButtonCancel]}
+              onPress={() => setShowExitConfirm(false)}
+            >
+              <Text style={styles.modalButtonText}>CANCEL</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.modalButton, styles.modalButtonConfirm]}
+              onPress={() => BackHandler.exitApp()}
+            >
+              <Text style={[styles.modalButtonText, { color: '#ff6b6b' }]}>EXIT</Text>
+            </TouchableOpacity>
           </View>
         </View>
+      </View>
+    </Modal>
+  );
 
-        {/* Save Slots */}
-        <View style={styles.slotsContainer}>
-          <Text style={styles.slotsTitle}>SAVE SLOTS</Text>
-          
-          {slots.map(slot => renderSlot(slot))}
-          
-          {/* Premium Upgrade Prompt */}
-          {!config.hasPremium && (
-            <View style={styles.premiumPrompt}>
-              <Ionicons name="lock-closed" size={16} color="#ffd700" />
-              <Text style={styles.premiumText}>
-                Unlock {10 - config.totalSlots} more slots • Coming soon
-              </Text>
-            </View>
-          )}
-        </View>
-
-        {/* Footer */}
-        <View style={styles.footer}>
-          <TouchableOpacity 
-            style={styles.settingsButton}
-            onPress={() => router.push('/settings')}
-          >
-            <Ionicons name="settings-outline" size={20} color="#6a8aaa" />
-            <Text style={styles.settingsText}>Settings</Text>
-          </TouchableOpacity>
-          <Text style={styles.footerText}>Early 2000s Classics Inspired</Text>
-        </View>
-      </ScrollView>
+  return (
+    <SafeAreaView style={styles.container}>
+      {currentScreen === 'main' && renderMainMenu()}
+      {currentScreen === 'saves' && renderSaveSlotsScreen()}
+      {currentScreen === 'about' && renderAboutScreen()}
+      {renderExitModal()}
     </SafeAreaView>
   );
 }

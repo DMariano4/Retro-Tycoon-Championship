@@ -3,33 +3,28 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuth } from '../src/context/AuthContext';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSaveSlots } from '../src/context/SaveSlotsContext';
 
 export default function SettingsScreen() {
-  const { user, logout } = useAuth();
+  const { clearAllSlots } = useSaveSlots();
 
-  const handleClearLocalSave = () => {
+  const handleClearAllSaves = () => {
     Alert.alert(
-      'Clear Local Save',
-      'Are you sure you want to delete your local save? This cannot be undone.',
+      'Clear All Saves',
+      'Are you sure you want to delete ALL save slots? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Delete',
+          text: 'Delete All',
           style: 'destructive',
           onPress: async () => {
-            await AsyncStorage.removeItem('retro_fm_local_save');
-            Alert.alert('Success', 'Local save deleted');
+            await clearAllSlots();
+            Alert.alert('Success', 'All saves deleted');
           }
         }
       ]
     );
-  };
-
-  const handleLogout = async () => {
-    await logout();
-    Alert.alert('Logged Out', 'You have been signed out');
   };
 
   return (
@@ -43,42 +38,14 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>ACCOUNT</Text>
-          {user ? (
-            <View style={styles.accountCard}>
-              <View style={styles.accountInfo}>
-                <Text style={styles.accountName}>{user.name}</Text>
-                <Text style={styles.accountEmail}>{user.email}</Text>
-              </View>
-              <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                <Text style={styles.logoutButtonText}>Sign Out</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <TouchableOpacity
-              style={styles.settingItem}
-              onPress={() => router.push('/login')}
-            >
-              <Ionicons name="log-in-outline" size={24} color="#4a9eff" />
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingTitle}>Sign In</Text>
-                <Text style={styles.settingSubtitle}>Enable cloud saves</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
-            </TouchableOpacity>
-          )}
-        </View>
-
         {/* Game Data Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>GAME DATA</Text>
-          <TouchableOpacity style={styles.settingItem} onPress={handleClearLocalSave}>
+          <TouchableOpacity style={styles.settingItem} onPress={handleClearAllSaves}>
             <Ionicons name="trash-outline" size={24} color="#ff6b6b" />
             <View style={styles.settingInfo}>
-              <Text style={[styles.settingTitle, { color: '#ff6b6b' }]}>Clear Local Save</Text>
-              <Text style={styles.settingSubtitle}>Delete save from this device</Text>
+              <Text style={[styles.settingTitle, { color: '#ff6b6b' }]}>Clear All Saves</Text>
+              <Text style={styles.settingSubtitle}>Delete all save slots</Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -87,7 +54,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>ABOUT</Text>
           <View style={styles.aboutCard}>
-            <Text style={styles.aboutTitle}>RETRO CHAMPIONSHIP TYCOON</Text>
+            <Text style={styles.aboutTitle}>RETRO FOOTBALL CHAMPIONSHIP</Text>
             <Text style={styles.aboutVersion}>Version 1.0.0</Text>
             <Text style={styles.aboutDescription}>
               A classic football management simulation inspired by CM 01/02 and Elifoot 98.
