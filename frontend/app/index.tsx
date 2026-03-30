@@ -184,8 +184,9 @@ export default function MainMenu() {
               <TouchableOpacity 
                 style={styles.deleteButton}
                 onPress={() => handleSlotDelete(slot)}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
-                <Ionicons name="trash-outline" size={18} color="#ff6b6b" />
+                <Ionicons name="trash-outline" size={20} color="#ff6b6b" />
               </TouchableOpacity>
             </View>
             
@@ -783,7 +784,11 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   deleteButton: {
-    padding: 4,
+    padding: 10,
+    backgroundColor: 'rgba(255, 107, 107, 0.15)',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 107, 107, 0.3)',
   },
   emptyText: {
     color: '#4a6a8a',
