@@ -974,5 +974,67 @@ export const matchStyles = StyleSheet.create({
     letterSpacing: 2,
     textTransform: 'uppercase',
   },
+  
+  // Live Match Control Bar
+  liveControlBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#0d2137',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a4a6c',
+    gap: 8,
+  },
+  liveControlButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#1a4a6c',
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+  },
+  liveMenuButton: {
+    backgroundColor: '#0d2137',
+    borderWidth: 1,
+    borderColor: '#00ff88',
+  },
+  liveControlText: {
+    color: '#fff',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 1,
+  },
+  liveSpeedControl: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flex: 1,
+    justifyContent: 'center',
+  },
+  liveSpeedLabel: {
+    color: '#6a8aaa',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  liveSpeedButton: {
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 4,
+    backgroundColor: '#1a3a5c',
+  },
+  liveSpeedButtonActive: {
+    backgroundColor: '#00ff88',
+  },
+  liveSpeedText: {
+    color: '#6a8aaa',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  liveSpeedTextActive: {
+    color: '#0a1628',
+  },
 });
 

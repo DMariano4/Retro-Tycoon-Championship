@@ -578,6 +578,7 @@ function generateGoalDescription(scorer: Player, assister: Player | null, minute
 
 /**
  * Generate other match events (chances, saves, fouls, cards)
+ * Improved: More realistic event distribution throughout the match
  */
 function generateOtherEvents(
   homeTeam: Team,
@@ -589,15 +590,18 @@ function generateOtherEvents(
 ): MatchEvent[] {
   const events: MatchEvent[] = [];
   
-  // Generate chances (shots that didn't result in goals)
-  const homeChances = Math.max(0, homeShots - Math.floor(Math.random() * 3));
-  const awayChances = Math.max(0, awayShots - Math.floor(Math.random() * 3));
+  // Calculate realistic number of notable chances (not every shot is commentary-worthy)
+  // Real matches have ~3-5 clear cut chances per team, not shots = chances
+  const homeChances = Math.min(homeShots - 1, Math.floor(2 + Math.random() * 3));
+  const awayChances = Math.min(awayShots - 1, Math.floor(2 + Math.random() * 3));
   
   const chanceDescriptions = [
     (name: string) => `${name} with a good chance but it goes wide!`,
     (name: string) => `${name} fires over the bar!`,
     (name: string) => `Close! ${name}'s shot just misses the target!`,
     (name: string) => `${name} couldn't keep his shot down!`,
+    (name: string) => `${name} tests the keeper from distance!`,
+    (name: string) => `Good position for ${name} but the shot is wayward!`,
   ];
   
   const saveDescriptions = [
@@ -605,13 +609,26 @@ function generateOtherEvents(
     (name: string) => `The keeper pulls off a stunning save from ${name}!`,
     (name: string) => `${name}'s effort is well saved!`,
     (name: string) => `Fantastic reflexes to keep out ${name}'s shot!`,
+    (name: string) => `Strong hands from the keeper to stop ${name}!`,
   ];
   
-  // Add home chances
+  // Distribute chances across match periods for realism
+  // More action in 2nd half typically
+  const getRealisticMinute = (preferredHalf: 'first' | 'second' | 'any'): number => {
+    if (preferredHalf === 'first') {
+      return Math.floor(5 + Math.random() * 40); // 5-45
+    } else if (preferredHalf === 'second') {
+      return Math.floor(50 + Math.random() * 40); // 50-90
+    }
+    return Math.floor(5 + Math.random() * 85); // 5-90
+  };
+  
+  // Add home chances - distribute across the match
   for (let i = 0; i < homeChances; i++) {
-    const minute = Math.floor(Math.random() * 90) + 1;
+    const preferredHalf = i < homeChances / 2 ? 'first' : 'second';
+    const minute = getRealisticMinute(preferredHalf);
     const player = selectScorer(homeTeam);
-    const isSave = Math.random() > 0.5;
+    const isSave = Math.random() > 0.45; // Slightly favor saves (good goalkeeping)
     
     events.push({
       type: isSave ? 'SAVE' : 'CHANCE',
@@ -626,9 +643,10 @@ function generateOtherEvents(
   
   // Add away chances
   for (let i = 0; i < awayChances; i++) {
-    const minute = Math.floor(Math.random() * 90) + 1;
+    const preferredHalf = i < awayChances / 2 ? 'first' : 'second';
+    const minute = getRealisticMinute(preferredHalf);
     const player = selectScorer(awayTeam);
-    const isSave = Math.random() > 0.5;
+    const isSave = Math.random() > 0.45;
     
     events.push({
       type: isSave ? 'SAVE' : 'CHANCE',
@@ -654,10 +672,11 @@ function generateOtherEvents(
     (name: string) => `${name} commits a tactical foul.`,
   ];
   
-  // Add fouls (shown as events) - weighted by tackling intensity
-  const totalFouls = Math.floor((homeFouls + awayFouls) * 0.4); // Show ~40% as events
+  // Add fouls (shown as events) - only show ~20% of fouls as notable commentary
+  // Most fouls don't need commentary
+  const totalFoulEvents = Math.floor((homeFouls + awayFouls) * 0.2);
   const homeFoulWeight = homeFouls / (homeFouls + awayFouls || 1);
-  for (let i = 0; i < totalFouls; i++) {
+  for (let i = 0; i < totalFoulEvents; i++) {
     const isHome = Math.random() < homeFoulWeight;
     const team = isHome ? homeTeam : awayTeam;
     const startingXI = getStartingXI(team);
@@ -665,7 +684,7 @@ function generateOtherEvents(
     
     events.push({
       type: 'FOUL',
-      minute: Math.floor(Math.random() * 90) + 1,
+      minute: Math.floor(5 + Math.random() * 85), // 5-90
       team: team.short_name,
       player: player.name,
       description: foulDescriptions[Math.floor(Math.random() * foulDescriptions.length)](player.name),

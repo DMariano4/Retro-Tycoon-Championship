@@ -617,6 +617,57 @@ export default function MatchScreen() {
         </View>
       )}
 
+      {/* Live Match Controls Bar - Always visible during play */}
+      {matchState === 'live' && (
+        <View style={styles.liveControlBar}>
+          <TouchableOpacity 
+            style={styles.liveControlButton}
+            onPress={handlePause}
+          >
+            <Ionicons name="pause" size={18} color="#fff" />
+            <Text style={styles.liveControlText}>PAUSE</Text>
+          </TouchableOpacity>
+          
+          <View style={styles.liveSpeedControl}>
+            <Text style={styles.liveSpeedLabel}>Speed:</Text>
+            {[1, 2, 4].map(s => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.liveSpeedButton, speed === s && styles.liveSpeedButtonActive]}
+                onPress={() => setSpeed(s)}
+              >
+                <Text style={[styles.liveSpeedText, speed === s && styles.liveSpeedTextActive]}>
+                  {s}x
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          <TouchableOpacity 
+            style={[styles.liveControlButton, styles.liveMenuButton]}
+            onPress={() => {
+              handlePause();
+              // Small delay to let pause take effect
+              setTimeout(() => {
+                Alert.alert(
+                  '⚽ Match Menu',
+                  'What would you like to do?',
+                  [
+                    { text: 'Change Tactics', onPress: () => setShowTacticsModal(true) },
+                    { text: 'Make Substitution', onPress: () => setShowSubstitutionModal(true) },
+                    { text: 'Resume Match', onPress: handleResume },
+                    { text: 'Cancel', style: 'cancel' }
+                  ]
+                );
+              }, 100);
+            }}
+          >
+            <Ionicons name="menu" size={18} color="#00ff88" />
+            <Text style={[styles.liveControlText, { color: '#00ff88' }]}>MENU</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Speed Controls (pre-match) */}
       {matchState === 'pre' && (
         <View style={styles.speedControls}>
