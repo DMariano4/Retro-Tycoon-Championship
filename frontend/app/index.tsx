@@ -1,12 +1,10 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, Alert, ActivityIndicator, ScrollView, Modal, BackHandler, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, Modal, BackHandler, Animated } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSaveSlots, SaveSlotMeta } from '../src/context/SaveSlotsContext';
 import { useGame } from '../src/context/GameContext';
-
-const { width, height } = Dimensions.get('window');
 
 type MenuScreen = 'splash' | 'main' | 'saves' | 'about';
 
@@ -81,7 +79,8 @@ export default function MainMenu() {
       clearTimeout(timer);
       pulse.stop();
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Refs are stable, no need to include them
 
   const handleSlotPress = async (slot: SaveSlotMeta) => {
     if (slot.isEmpty) {
@@ -103,7 +102,7 @@ export default function MainMenu() {
         } else {
           Alert.alert('Error', 'Failed to load save data');
         }
-      } catch (error) {
+      } catch {
         Alert.alert('Error', 'Failed to load game');
       } finally {
         setLoadingSlot(null);
@@ -513,9 +512,8 @@ const styles = StyleSheet.create({
     color: '#00ff88',
     letterSpacing: 3,
     textAlign: 'center',
-    textShadowColor: 'rgba(0, 255, 136, 0.5)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 20,
+    // Combined textShadow for cross-platform compatibility
+    textShadow: '0 0 20px rgba(0, 255, 136, 0.5)',
   },
   mainSubtitle: {
     fontSize: 22,
@@ -728,9 +726,8 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#00ff88',
     letterSpacing: 4,
-    textShadowColor: '#00ff88',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    // Combined textShadow for cross-platform compatibility
+    textShadow: '0 0 10px #00ff88',
   },
   subtitle: {
     fontSize: 16,
