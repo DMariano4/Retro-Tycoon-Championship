@@ -33,7 +33,7 @@ const formations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1
 
 export default function MatchScreen() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processEvent } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processEvent, processCupMatchResult } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -322,6 +322,11 @@ export default function MatchScreen() {
         // Mark the current game event as completed (Event-Driven Calendar system)
         if (currentGameEvent) {
           processEvent(currentGameEvent);
+        }
+        
+        // P1: Process cup match result if this is a cup match
+        if (fixture?.match_type === 'cup' && fixture?.cupId) {
+          processCupMatchResult(fixture.cupId, fixture.id, homeScore, awayScore);
         }
         
         // Simulate all other matches and advance week

@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import { formatValue } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
 import { GameEvent, formatDateDisplay } from '../../utils/calendar';
@@ -181,6 +182,27 @@ export function DashboardTab({
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Scouting Button - Always visible */}
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={[styles.friendlySchedulerButton, { borderColor: '#4a9eff' }]}
+          onPress={() => router.push('/scouting')}
+        >
+          <View style={styles.friendlyButtonContent}>
+            <View style={styles.friendlyButtonLeft}>
+              <Ionicons name="search" size={24} color="#4a9eff" />
+              <View style={styles.friendlyButtonText}>
+                <Text style={[styles.friendlyButtonTitle, { color: '#4a9eff' }]}>SCOUTING</Text>
+                <Text style={styles.friendlyButtonSubtitle}>
+                  Browse teams & make transfer bids
+                </Text>
+              </View>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+          </View>
+        </TouchableOpacity>
+      </View>
 
       {/* Upcoming Events (v2 system) or Next Match (legacy) */}
       {hasEventSystem ? (

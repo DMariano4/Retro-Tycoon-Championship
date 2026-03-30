@@ -352,6 +352,12 @@ interface GameContextType {
   getAvailableOpponents: (slotId: string) => { id: string; name: string; reputation: number }[];
   scheduleFriendly: (slotId: string, opponentId: string) => void;
   cancelFriendly: (slotId: string) => void;
+  
+  // P1: Scouting & Unlisted Player Bids
+  makeUnlistedBid: (playerId: string, teamId: string, bidAmount: number) => Promise<{ accepted: boolean; reason?: string }>;
+  
+  // P1: Cup Match Result Processing
+  processCupMatchResult: (cupId: string, fixtureId: string, homeScore: number, awayScore: number) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -2123,6 +2129,224 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // ============================================
+  // P1: UNLISTED PLAYER BIDS
+  // ============================================
+  
+  /**
+   * Make a transfer bid for a player NOT on the transfer market
+   * AI decides based on player value, team needs, and bid amount
+   */
+  const makeUnlistedBid = async (
+    playerId: string, 
+    teamId: string, 
+    bidAmount: number
+  ): Promise<{ accepted: boolean; reason?: string }> => {
+    if (!currentSave) return { accepted: false, reason: 'No active game' };
+    
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return { accepted: false, reason: 'No managed team' };
+    
+    // Find the selling team and player
+    const sellingTeam = currentSave.teams.find(t => t.id === teamId);
+    if (!sellingTeam) return { accepted: false, reason: 'Team not found' };
+    
+    const player = sellingTeam.squad.find(p => p.id === playerId);
+    if (!player) return { accepted: false, reason: 'Player not found' };
+    
+    // Check if we can afford it
+    if (bidAmount > currentSave.budget) {
+      return { accepted: false, reason: 'Insufficient funds' };
+    }
+    
+    // Calculate player's market value
+    const baseValue = player.overall * 50000;
+    const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
+    const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
+    const estimatedValue = Math.round(baseValue * ageMultiplier * positionMultiplier);
+    
+    // AI Decision Logic:
+    // 1. Is the bid high enough? (>= 110% of value for unlisted players)
+    // 2. Is the player a key player? (top 3 in squad by overall)
+    // 3. Does the team have depth in this position?
+    
+    const bidPercentage = bidAmount / estimatedValue;
+    const sortedSquad = [...sellingTeam.squad].sort((a, b) => b.overall - a.overall);
+    const isKeyPlayer = sortedSquad.slice(0, 3).some(p => p.id === playerId);
+    const samePositionPlayers = sellingTeam.squad.filter(p => p.position === player.position);
+    const hasDepth = samePositionPlayers.length >= 2;
+    
+    // Minimum bid threshold (higher for unlisted players)
+    let minimumThreshold = 1.1; // 110% of estimated value
+    
+    if (isKeyPlayer) {
+      minimumThreshold = 1.5; // 150% for key players
+    }
+    
+    if (!hasDepth) {
+      minimumThreshold += 0.3; // +30% if no backup
+    }
+    
+    // Add some randomness (AI mood)
+    const aiMood = 0.9 + Math.random() * 0.2; // 0.9 to 1.1
+    minimumThreshold *= aiMood;
+    
+    if (bidPercentage < minimumThreshold) {
+      const neededBid = Math.round(estimatedValue * minimumThreshold);
+      if (isKeyPlayer) {
+        return { 
+          accepted: false, 
+          reason: `${sellingTeam.name} rejected: "${player.name} is a key player. We'd need at least £${(neededBid / 1000000).toFixed(1)}M to consider selling."` 
+        };
+      }
+      return { 
+        accepted: false, 
+        reason: `${sellingTeam.name} rejected: "Your bid is too low. We value ${player.name} at around £${(neededBid / 1000000).toFixed(1)}M."` 
+      };
+    }
+    
+    // Bid accepted! Transfer the player
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id === currentSave.managed_team_id) {
+        return {
+          ...team,
+          squad: [...team.squad, player]
+        };
+      }
+      if (team.id === teamId) {
+        return {
+          ...team,
+          squad: team.squad.filter(p => p.id !== playerId)
+        };
+      }
+      return team;
+    });
+    
+    setCurrentSave({
+      ...currentSave,
+      teams: updatedTeams,
+      budget: currentSave.budget - bidAmount,
+    });
+    
+    return { accepted: true };
+  };
+
+  // ============================================
+  // P1: CUP MATCH RESULT PROCESSING
+  // ============================================
+  
+  /**
+   * Process a cup match result and update the cup state
+   */
+  const processCupMatchResult = (
+    cupId: string,
+    fixtureId: string,
+    homeScore: number,
+    awayScore: number
+  ): void => {
+    if (!currentSave || !currentSave.cupCompetitions) return;
+    
+    const cupIndex = currentSave.cupCompetitions.findIndex(c => c.cupId === cupId);
+    if (cupIndex < 0) return;
+    
+    const cup = currentSave.cupCompetitions[cupIndex];
+    const fixtures = cup.fixturesByRound[cup.currentRound] || [];
+    const fixtureIndex = fixtures.findIndex(f => f.id === fixtureId);
+    
+    if (fixtureIndex < 0) return;
+    
+    const fixture = fixtures[fixtureIndex];
+    
+    // Determine winner (simple: whoever scores more)
+    let winnerId: string;
+    if (homeScore > awayScore) {
+      winnerId = fixture.homeTeamId;
+    } else if (awayScore > homeScore) {
+      winnerId = fixture.awayTeamId;
+    } else {
+      // Draw in cup - decide on penalties (random)
+      winnerId = Math.random() > 0.5 ? fixture.homeTeamId : fixture.awayTeamId;
+    }
+    
+    // Update fixture
+    const updatedFixture = {
+      ...fixture,
+      homeScore,
+      awayScore,
+      played: true,
+      winnerId,
+    };
+    
+    const updatedFixtures = [...fixtures];
+    updatedFixtures[fixtureIndex] = updatedFixture;
+    
+    // Update cup state
+    let updatedCup = {
+      ...cup,
+      fixturesByRound: {
+        ...cup.fixturesByRound,
+        [cup.currentRound]: updatedFixtures,
+      },
+    };
+    
+    // Check if managed team was eliminated
+    const managedTeamId = currentSave.managed_team_id;
+    if ((fixture.homeTeamId === managedTeamId || fixture.awayTeamId === managedTeamId) 
+        && winnerId !== managedTeamId) {
+      updatedCup.isEliminated = true;
+      updatedCup.eliminatedRound = cup.currentRound;
+    }
+    
+    // Check if all fixtures in round are complete
+    const allPlayed = updatedFixtures.every(f => f.played);
+    if (allPlayed) {
+      // Get winners and advance to next round
+      const winners = updatedFixtures
+        .filter(f => f.winnerId)
+        .map(f => {
+          const id = f.winnerId!;
+          const name = id === f.homeTeamId ? f.homeTeamName : f.awayTeamName;
+          return { id, name };
+        });
+      
+      // Find next round (simple progression)
+      const roundOrder = ['R1', 'R2', 'R3', 'R4', 'R5', 'QF', 'SF', 'F'];
+      const currentIndex = roundOrder.indexOf(cup.currentRound);
+      const nextRound = roundOrder[currentIndex + 1];
+      
+      if (nextRound && winners.length > 1) {
+        updatedCup.currentRound = nextRound;
+        updatedCup.remainingTeams = winners;
+      } else if (winners.length === 1) {
+        // Cup is complete
+        updatedCup.isActive = false;
+        updatedCup.winner = winners[0];
+        
+        // Award prize money to managed team if they won
+        if (winners[0].id === managedTeamId) {
+          const prizeMoney = 2000000; // £2M for winning
+          setCurrentSave({
+            ...currentSave,
+            budget: currentSave.budget + prizeMoney,
+            cupCompetitions: currentSave.cupCompetitions.map((c, i) => 
+              i === cupIndex ? updatedCup : c
+            ),
+          });
+          return;
+        }
+      }
+    }
+    
+    // Update the cup in state
+    const updatedCups = [...currentSave.cupCompetitions];
+    updatedCups[cupIndex] = updatedCup;
+    
+    setCurrentSave({
+      ...currentSave,
+      cupCompetitions: updatedCups,
+    });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -2170,6 +2394,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
         getAvailableOpponents,
         scheduleFriendly,
         cancelFriendly,
+        // P1: Scouting & Transfers
+        makeUnlistedBid,
+        processCupMatchResult,
       }}
     >
       {children}
