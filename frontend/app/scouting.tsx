@@ -21,6 +21,31 @@ export default function ScoutingScreen() {
   const [bidAmount, setBidAmount] = useState('');
 
   const managedTeam = getManagedTeam();
+
+  // Get team's average rating - defined first so it can be used in useMemo
+  const getTeamRating = (team: Team): number => {
+    if (!team?.squad || team.squad.length === 0) return 0;
+    const validPlayers = team.squad.filter(p => p && typeof p.overall === 'number');
+    if (validPlayers.length === 0) return 50;
+    return Math.round(validPlayers.reduce((sum, p) => sum + p.overall, 0) / validPlayers.length);
+  };
+
+  // Get player market value estimate
+  const getPlayerValue = (player: Player): number => {
+    if (!player) return 0;
+    const overall = player.overall || 50;
+    const baseValue = overall * 50000;
+    const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
+    const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
+    return Math.round(baseValue * ageMultiplier * positionMultiplier);
+  };
+
+  // Format currency
+  const formatMoney = (amount: number): string => {
+    if (amount >= 1000000) return `£${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `£${(amount / 1000).toFixed(0)}K`;
+    return `£${amount}`;
+  };
   
   // Get all teams except managed team
   const otherTeams = useMemo(() => {
@@ -43,31 +68,6 @@ export default function ScoutingScreen() {
       t.short_name.toLowerCase().includes(searchQuery.toLowerCase())
     );
   }, [otherTeams, searchQuery]);
-
-  // Get team's average rating
-  const getTeamRating = (team: Team): number => {
-    if (!team.squad || team.squad.length === 0) return 0;
-    const validPlayers = team.squad.filter(p => p && typeof p.overall === 'number');
-    if (validPlayers.length === 0) return 50;
-    return Math.round(validPlayers.reduce((sum, p) => sum + p.overall, 0) / validPlayers.length);
-  };
-
-  // Get player market value estimate
-  const getPlayerValue = (player: Player): number => {
-    if (!player) return 0;
-    const overall = player.overall || 50; // Default to 50 if undefined
-    const baseValue = overall * 50000;
-    const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
-    const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
-    return Math.round(baseValue * ageMultiplier * positionMultiplier);
-  };
-
-  // Format currency
-  const formatMoney = (amount: number): string => {
-    if (amount >= 1000000) return `£${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `£${(amount / 1000).toFixed(0)}K`;
-    return `£${amount}`;
-  };
 
   // Handle making a bid for an unlisted player
   const handleMakeBid = async () => {
