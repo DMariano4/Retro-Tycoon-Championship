@@ -57,17 +57,29 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
     }
 
     setIsSubmitting(true);
-    const result = await makeUnlistedBid(player.id, team.id, amount);
-    setIsSubmitting(false);
+    
+    try {
+      const result = await makeUnlistedBid(player.id, team.id, amount);
+      setIsSubmitting(false);
 
-    if (result.accepted) {
-      Alert.alert('🎉 Bid Accepted!', `${team.name} have accepted your bid for ${player.name}!`);
-      setShowBidModal(false);
-      setBidAmount('');
-      onClose();
-      onBidSuccess?.();
-    } else {
-      Alert.alert('Bid Rejected', result.reason || `${team.name} have rejected your bid.`);
+      if (result && result.accepted) {
+        Alert.alert(
+          '🎉 Transfer Complete!', 
+          `${player.name} has joined your squad for ${formatMoney(amount)}!`,
+          [{ text: 'OK', onPress: () => {
+            setShowBidModal(false);
+            setBidAmount('');
+            onClose();
+            onBidSuccess?.();
+          }}]
+        );
+      } else {
+        Alert.alert('Bid Rejected', result?.reason || `${team.name} have rejected your bid.`);
+      }
+    } catch (error) {
+      setIsSubmitting(false);
+      console.error('Transfer error:', error);
+      Alert.alert('Error', 'Something went wrong with the transfer. Please try again.');
     }
   };
 

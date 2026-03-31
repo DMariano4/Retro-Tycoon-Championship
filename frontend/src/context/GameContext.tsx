@@ -2222,13 +2222,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return team;
     });
     
-    setCurrentSave({
+    const updatedSave = {
       ...currentSave,
       teams: updatedTeams,
       budget: currentSave.budget - bidAmount,
-    });
+    };
     
-    return { accepted: true };
+    // Update state
+    setCurrentSave(updatedSave);
+    
+    // Persist to AsyncStorage
+    try {
+      await AsyncStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(updatedSave));
+    } catch (e) {
+      console.error('Failed to save transfer:', e);
+    }
+    
+    return { accepted: true, playerName: player.name };
   };
 
   // ============================================
