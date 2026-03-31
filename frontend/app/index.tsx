@@ -341,7 +341,7 @@ export default function MainMenu() {
 
       {/* Footer */}
       <View style={styles.mainFooter}>
-        <Text style={styles.footerText}>⚽ Inspired by CM 01/02 & Elifoot 98</Text>
+        <Text style={styles.footerText}>Inspired by Retro football management games from early 2000's</Text>
       </View>
     </View>
   );

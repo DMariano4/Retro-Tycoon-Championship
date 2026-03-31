@@ -20,21 +20,25 @@ export function TeamProfileModal({ visible, team, onClose }: TeamProfileModalPro
   const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null);
   const [showPlayerModal, setShowPlayerModal] = useState(false);
 
-  if (!team) return null;
+  // Position group helper - defined outside useMemo so it can be used in filteredSquad
+  const getPositionGroup = (position: string): string => {
+    if (position === 'GK') return 'GK';
+    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(position)) return 'DEF';
+    if (['CM', 'DM', 'AM', 'LM', 'RM'].includes(position)) return 'MID';
+    return 'ATT';
+  };
 
-  const isOwnTeam = team.id === currentSave?.managed_team_id;
-
-  // Get team's average rating
+  // Get team's average rating - safe for null team
   const teamRating = useMemo(() => {
-    if (!team.squad || team.squad.length === 0) return 0;
+    if (!team?.squad || team.squad.length === 0) return 0;
     const validPlayers = team.squad.filter(p => p && typeof p.overall === 'number');
     if (validPlayers.length === 0) return 50;
     return Math.round(validPlayers.reduce((sum, p) => sum + p.overall, 0) / validPlayers.length);
-  }, [team]);
+  }, [team?.squad]);
 
-  // Get league position
+  // Get league position - safe for null team
   const leaguePosition = useMemo(() => {
-    if (!currentSave) return null;
+    if (!currentSave || !team) return null;
     for (const league of currentSave.leagues) {
       const position = league.table.findIndex(t => t.team_id === team.id);
       if (position >= 0) {
@@ -44,22 +48,21 @@ export function TeamProfileModal({ visible, team, onClose }: TeamProfileModalPro
     return null;
   }, [currentSave, team]);
 
-  // Position groups for filtering
-  const positionGroups = ['all', 'GK', 'DEF', 'MID', 'ATT'];
-  const getPositionGroup = (position: string): string => {
-    if (position === 'GK') return 'GK';
-    if (['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(position)) return 'DEF';
-    if (['CM', 'DM', 'AM', 'LM', 'RM'].includes(position)) return 'MID';
-    return 'ATT';
-  };
-
-  // Filter and sort squad
+  // Filter and sort squad - safe for null team
   const filteredSquad = useMemo(() => {
-    if (!team.squad) return [];
+    if (!team?.squad) return [];
     return team.squad
       .filter(p => p && (filterPosition === 'all' || getPositionGroup(p.position) === filterPosition))
       .sort((a, b) => (b.overall || 0) - (a.overall || 0));
-  }, [team, filterPosition]);
+  }, [team?.squad, filterPosition]);
+
+  // Position groups for filtering
+  const positionGroups = ['all', 'GK', 'DEF', 'MID', 'ATT'];
+
+  // Early return AFTER all hooks
+  if (!team) return null;
+
+  const isOwnTeam = team.id === currentSave?.managed_team_id;
 
   // Format currency
   const formatMoney = (amount: number): string => {
