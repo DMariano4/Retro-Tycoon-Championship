@@ -205,7 +205,7 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
               <Text style={styles.bidSubtitle}>Make an offer for {player.name}</Text>
 
               <View style={styles.bidInputContainer}>
-                <Text style={styles.bidInputPrefix}>£</Text>
+                <Text style={styles.bidInputPrefix}>{currency}</Text>
                 <TextInput
                   style={styles.bidInput}
                   value={bidAmount}
