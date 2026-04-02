@@ -827,33 +827,36 @@ export default function MatchScreen() {
             {activeTab === 'pitch' && (
               <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.pitchViewContainer}>
-                  <MiniPitch 
-                    formation={selectedFormation}
-                    homeTeam={homeTeam}
-                    awayTeam={awayTeam}
-                    lastEvent={lastEvent}
-                  />
-                  
-                  {/* Latest Event Display */}
-                  {lastEvent && (
-                    <View style={styles.latestEventCard}>
-                      <View style={[
-                        styles.latestEventIcon,
-                        { backgroundColor: `${getEventColor(lastEvent.type)}20` }
-                      ]}>
-                        <Ionicons 
-                          name={getEventIcon(lastEvent.type) as any} 
-                          size={20} 
-                          color={getEventColor(lastEvent.type)} 
-                        />
+                  {/* Container to match pitch and commentary width */}
+                  <View style={{ width: Math.min(width - 32, 360) * 0.75, alignSelf: 'center' }}>
+                    <MiniPitch 
+                      formation={selectedFormation}
+                      homeTeam={homeTeam}
+                      awayTeam={awayTeam}
+                      lastEvent={lastEvent}
+                    />
+                    
+                    {/* Latest Event Display */}
+                    {lastEvent && (
+                      <View style={styles.latestEventCard}>
+                        <View style={[
+                          styles.latestEventIcon,
+                          { backgroundColor: `${getEventColor(lastEvent.type)}20` }
+                        ]}>
+                          <Ionicons 
+                            name={getEventIcon(lastEvent.type) as any} 
+                            size={16} 
+                            color={getEventColor(lastEvent.type)} 
+                          />
+                        </View>
+                        <View style={styles.latestEventContent}>
+                          <Text style={styles.latestEventMinute}>{lastEvent.minute}'</Text>
+                          <Text style={styles.latestEventTeam}>{lastEvent.team}</Text>
+                          <Text style={styles.latestEventDescription} numberOfLines={2}>{lastEvent.description}</Text>
+                        </View>
                       </View>
-                      <View style={styles.latestEventContent}>
-                        <Text style={styles.latestEventMinute}>{lastEvent.minute}'</Text>
-                        <Text style={styles.latestEventTeam}>{lastEvent.team}</Text>
-                        <Text style={styles.latestEventDescription}>{lastEvent.description}</Text>
-                      </View>
-                    </View>
-                  )}
+                    )}
+                  </View>
                 </View>
               </ScrollView>
             )}
