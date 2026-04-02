@@ -17,16 +17,41 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
     scheduleFriendly, 
     cancelFriendly,
     getManagedTeam,
+    getLeague,
+    currentSave,
   } = useGame();
   
   const [selectedSlot, setSelectedSlot] = useState<FriendlySlot | null>(null);
   
   const slots = getFriendlySlots();
   const managedTeam = getManagedTeam();
+  const league = getLeague();
+  
+  // Check if league has started (any league match played)
+  const leagueHasStarted = league?.fixtures?.some(f => f.played && f.match_type !== 'friendly') || false;
   
   const handleSelectSlot = (slot: FriendlySlot) => {
+    // Block scheduling if league has started
+    if (leagueHasStarted && !slot.isScheduled) {
+      Alert.alert(
+        'Pre-Season Over',
+        'The league has started. You can no longer schedule new friendlies.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+    
     if (slot.isScheduled) {
-      // Show cancel option
+      // Show cancel option (only if league hasn't started)
+      if (leagueHasStarted) {
+        Alert.alert(
+          'Cannot Cancel',
+          'The league has started. Scheduled friendlies cannot be cancelled.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+      
       Alert.alert(
         'Cancel Friendly?',
         `Cancel the friendly against ${slot.opponent?.name}?`,
@@ -114,7 +139,9 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
           </View>
           
           <Text style={styles.subtitle}>
-            Schedule up to 4 friendly matches before the season starts
+            {leagueHasStarted 
+              ? 'Pre-season is over. No more friendlies can be scheduled.'
+              : 'Schedule up to 4 friendly matches before the season starts'}
           </Text>
           
           {/* Slots List or Opponent Selection */}

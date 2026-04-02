@@ -98,18 +98,20 @@ export function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: MiniPitc
   const pitchWidth = Math.min(width - 32, 360);
   const pitchHeight = pitchWidth * 1.4; // More vertical space for proper football pitch proportions
 
-  // Home team plays in bottom half (y: 0-50%)
+  // Home team plays in bottom half (y: 50-100%)
+  // GK (y:2) should be at ~95%, Strikers (y:80) should be at ~55%
   const homeAdjusted = homePositions.map(pos => ({
     ...pos,
-    // Scale y from 0-100 to 52-98% of pitch height (bottom half)
-    y: 52 + (pos.y / 100) * 46
+    // Scale y from 0-100 to 95-55% (inverted - GK at bottom, strikers at center)
+    y: 95 - (pos.y / 100) * 40
   }));
 
-  // Away team plays in top half (y: 50-100%), mirror their positions
+  // Away team plays in top half (y: 0-50%)
+  // GK (y:2) should be at ~5%, Strikers (y:80) should be at ~45%
   const awayAdjusted = awayPositions.map(pos => ({
     ...pos,
-    // Scale and invert y from 0-100 to 2-48% of pitch height (top half)
-    y: 2 + ((100 - pos.y) / 100) * 46
+    // Scale y from 0-100 to 5-45% (GK at top, strikers at center)
+    y: 5 + (pos.y / 100) * 40
   }));
 
   // Determine ball position based on last event

@@ -943,18 +943,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
     console.log('simulateOtherWeekMatches: Current game date:', currentGameDate);
     console.log('simulateOtherWeekMatches: Number of leagues:', updatedLeagues.length);
 
-    // Find the user's match that was just played to get the match date
+    // Find the user's match that was JUST played (most recent) to get the match date
+    // We need the fixture that was just marked as played in the alreadyUpdatedLeagues
     let matchDate = currentGameDate;
+    
+    // Find the most recently played user match by checking which one was just marked as played
+    // The fixture that was just played will have the current match date
     for (const league of updatedLeagues) {
-      const userPlayedMatch = league.fixtures.find(f => 
-        f.played && 
-        (f.home_team_id === managedTeamId || f.away_team_id === managedTeamId)
-      );
-      // Get the most recently played match's date
-      if (userPlayedMatch?.match_date) {
-        matchDate = userPlayedMatch.match_date;
-        console.log('simulateOtherWeekMatches: Found user match date:', matchDate);
-        break;
+      // Get all played matches involving the managed team, sorted by week (most recent first)
+      const userPlayedMatches = league.fixtures
+        .filter(f => f.played && (f.home_team_id === managedTeamId || f.away_team_id === managedTeamId))
+        .sort((a, b) => (b.week || 0) - (a.week || 0));
+      
+      if (userPlayedMatches.length > 0) {
+        // The first one (highest week) is the most recent
+        const mostRecentMatch = userPlayedMatches[0];
+        if (mostRecentMatch.match_date) {
+          matchDate = mostRecentMatch.match_date;
+          console.log('simulateOtherWeekMatches: Most recent user match date:', matchDate, 'week:', mostRecentMatch.week);
+          break;
+        }
       }
     }
 
