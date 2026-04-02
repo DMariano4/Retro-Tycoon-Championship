@@ -286,7 +286,7 @@ export default function GameScreen() {
         <TabButton icon="trophy" label="LEAGUE" active={activeTab === 'league'} onPress={() => setActiveTab('league')} />
         <TabButton icon="calendar" label="SCHED" active={activeTab === 'schedule'} onPress={() => setActiveTab('schedule')} />
         <TabButton icon="cash" label="FINANCE" active={activeTab === 'finance'} onPress={() => setActiveTab('finance')} />
-        <TabButton icon="swap-horizontal" label="TRADE" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
+        <TabButton icon="swap-horizontal" label="MARKET" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
       </View>
       
       {/* Friendly Scheduler Modal */}
