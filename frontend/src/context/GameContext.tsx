@@ -2160,18 +2160,153 @@ export function GameProvider({ children }: { children: ReactNode }) {
     const nextEvent = getNextEventFn();
     if (!nextEvent || !currentSave) return null;
 
-    // Update the current date to the event date
-    const updatedSave = {
-      ...currentSave,
-      game_date: nextEvent.date,
-      calendarV2: currentSave.calendarV2 ? {
-        ...currentSave.calendarV2,
-        currentDate: nextEvent.date,
-      } : undefined,
-    };
+    const currentDate = currentSave.game_date;
+    const nextDate = nextEvent.date;
+    
+    // Simulate all AI matches between current date and next event date
+    const simulationResult = simulateAIMatchesUpToDate(nextDate);
+    
+    // Use the simulation result if available, otherwise just update date
+    if (simulationResult) {
+      const updatedSave = {
+        ...currentSave,
+        leagues: simulationResult.leagues,
+        teams: simulationResult.teams,
+        game_date: nextDate,
+        calendarV2: currentSave.calendarV2 ? {
+          ...currentSave.calendarV2,
+          currentDate: nextDate,
+        } : undefined,
+      };
+      setCurrentSave(updatedSave);
+    } else {
+      // No simulation needed (no AI matches), just update the date
+      const updatedSave = {
+        ...currentSave,
+        game_date: nextDate,
+        calendarV2: currentSave.calendarV2 ? {
+          ...currentSave.calendarV2,
+          currentDate: nextDate,
+        } : undefined,
+      };
+      setCurrentSave(updatedSave);
+    }
 
-    setCurrentSave(updatedSave);
     return nextEvent;
+  };
+
+  /**
+   * Simulate all AI-vs-AI matches up to a given date
+   * This is called when advancing time, NOT when user finishes a match
+   */
+  const simulateAIMatchesUpToDate = (targetDate: string): { leagues: League[]; teams: Team[] } | null => {
+    if (!currentSave) return null;
+    
+    const managedTeamId = currentSave.managed_team_id;
+    let updatedLeagues = [...currentSave.leagues];
+    let updatedTeams = [...currentSave.teams];
+    let totalSimulated = 0;
+    
+    console.log(`simulateAIMatchesUpToDate: Simulating AI matches up to ${targetDate}`);
+    
+    for (let leagueIndex = 0; leagueIndex < updatedLeagues.length; leagueIndex++) {
+      const league = updatedLeagues[leagueIndex];
+      
+      // Find all unplayed AI-vs-AI fixtures up to and including the target date
+      const aiFixtures = league.fixtures.filter(f => {
+        // Must not be played yet
+        if (f.played) return false;
+        // Must not involve the managed team (user plays those manually)
+        if (f.home_team_id === managedTeamId || f.away_team_id === managedTeamId) return false;
+        // Must be on or before the target date
+        if (!f.match_date) return false;
+        return f.match_date <= targetDate;
+      });
+      
+      if (aiFixtures.length === 0) continue;
+      
+      console.log(`simulateAIMatchesUpToDate: League ${league.name} - ${aiFixtures.length} AI fixtures to simulate`);
+      
+      for (const fixture of aiFixtures) {
+        const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
+        const awayTeam = updatedTeams.find(t => t.id === fixture.away_team_id);
+        
+        if (!homeTeam || !awayTeam) {
+          console.warn(`simulateAIMatchesUpToDate: Missing team for fixture ${fixture.id}`);
+          continue;
+        }
+        
+        // Simulate the match
+        const liteResult = simulateMatchLite(homeTeam, awayTeam);
+        totalSimulated++;
+        
+        // Update fixture with result
+        const fixtureIndex = league.fixtures.findIndex(f => f.id === fixture.id);
+        if (fixtureIndex !== -1) {
+          updatedLeagues[leagueIndex].fixtures[fixtureIndex] = {
+            ...fixture,
+            home_score: liteResult.homeScore,
+            away_score: liteResult.awayScore,
+            played: true,
+          };
+        }
+        
+        // Update league table
+        updatedLeagues[leagueIndex].table = updateLeagueTable(
+          updatedLeagues[leagueIndex].table,
+          fixture.home_team_id,
+          fixture.away_team_id,
+          liteResult.homeScore,
+          liteResult.awayScore
+        );
+        
+        // Update team stats
+        const homeTeamIndex = updatedTeams.findIndex(t => t.id === homeTeam.id);
+        const awayTeamIndex = updatedTeams.findIndex(t => t.id === awayTeam.id);
+        
+        if (homeTeamIndex !== -1) {
+          const currentSeason = updatedTeams[homeTeamIndex].seasonStats || { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0 };
+          const won = liteResult.homeScore > liteResult.awayScore;
+          const drawn = liteResult.homeScore === liteResult.awayScore;
+          updatedTeams[homeTeamIndex] = {
+            ...updatedTeams[homeTeamIndex],
+            seasonStats: {
+              ...currentSeason,
+              played: currentSeason.played + 1,
+              won: currentSeason.won + (won ? 1 : 0),
+              drawn: currentSeason.drawn + (drawn ? 1 : 0),
+              lost: currentSeason.lost + (!won && !drawn ? 1 : 0),
+              goalsFor: currentSeason.goalsFor + liteResult.homeScore,
+              goalsAgainst: currentSeason.goalsAgainst + liteResult.awayScore,
+            },
+          };
+        }
+        
+        if (awayTeamIndex !== -1) {
+          const currentSeason = updatedTeams[awayTeamIndex].seasonStats || { played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0 };
+          const won = liteResult.awayScore > liteResult.homeScore;
+          const drawn = liteResult.awayScore === liteResult.homeScore;
+          updatedTeams[awayTeamIndex] = {
+            ...updatedTeams[awayTeamIndex],
+            seasonStats: {
+              ...currentSeason,
+              played: currentSeason.played + 1,
+              won: currentSeason.won + (won ? 1 : 0),
+              drawn: currentSeason.drawn + (drawn ? 1 : 0),
+              lost: currentSeason.lost + (!won && !drawn ? 1 : 0),
+              goalsFor: currentSeason.goalsFor + liteResult.awayScore,
+              goalsAgainst: currentSeason.goalsAgainst + liteResult.homeScore,
+            },
+          };
+        }
+      }
+    }
+    
+    console.log(`simulateAIMatchesUpToDate: Total AI matches simulated: ${totalSimulated}`);
+    
+    if (totalSimulated === 0) return null;
+    
+    return { leagues: updatedLeagues, teams: updatedTeams };
   };
 
   /** Process an event (mark as completed) */

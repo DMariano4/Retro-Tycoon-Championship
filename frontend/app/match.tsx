@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Dimensions, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -34,7 +35,7 @@ const formations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1
 
 export default function MatchScreen() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, finalizeWeekSimulation, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processCupMatchResult } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, saveGame, updateFormation, isSeasonComplete, getNextEvent, processCupMatchResult } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -359,64 +360,64 @@ export default function MatchScreen() {
   };
 
   const handleFinish = async () => {
-    // Show loading screen first
-    const league = getLeague();
-    const isLeagueMatch = fixture?.match_type === 'league' || !fixture?.match_type;
     const isFriendly = fixture?.match_type === 'friendly';
+    const isCup = fixture?.match_type === 'cup';
     
-    // Only show simulation progress for league matches
-    if (isLeagueMatch) {
-      const totalLeagues = currentSave?.leagues.length || 1;
-      // Each league has ~9-10 AI matches per week
-      const estimatedMatches = totalLeagues * 9;
-      setSimProgress({ current: 0, total: estimatedMatches, leagueName: league?.name || 'League' });
-    }
+    // Show brief loading state
     setIsSimulatingWeek(true);
 
-    // Defer simulation to next tick so loading screen renders
+    // Defer to next tick so loading screen renders
     setTimeout(async () => {
       try {
-        // P1: Process cup match result if this is a cup match
-        if (fixture?.match_type === 'cup' && fixture?.cupId) {
+        // Process cup match result if this is a cup match
+        if (isCup && fixture?.cupId) {
           processCupMatchResult(fixture.cupId, fixture.id, homeScore, awayScore);
         }
         
-        // Only simulate AI league matches if this was a league match
-        // Friendlies should NOT trigger AI league match simulation
-        if (isLeagueMatch) {
-          // Simulate all other matches and get the result
-          // Pass the already-updated state from simulateMatch to avoid timing issues
-          let simResult;
-          if (matchResultState) {
-            simResult = simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
-          } else {
-            // Fallback - call without parameters (may have timing issues)
-            console.warn('matchResultState not available, calling simulateOtherWeekMatches without state');
-            simResult = simulateOtherWeekMatches();
-          }
+        // Mark the current event as completed and save the game state
+        // AI matches are NO LONGER simulated here - they're simulated when
+        // the user advances to the next event via advanceToNextEvent()
+        const eventIdToComplete = currentGameEvent?.id;
+        
+        // Use the match result state (with updated player stats, etc.)
+        const finalLeagues = matchResultState?.updatedLeagues || currentSave?.leagues || [];
+        const finalTeams = matchResultState?.updatedTeams || currentSave?.teams || [];
+        
+        // Just mark the event complete and save - no AI simulation
+        if (eventIdToComplete && currentSave) {
+          const updatedEvents = (currentSave.events || []).map(e => 
+            e.id === eventIdToComplete ? { ...e, completed: true } : e
+          );
           
-          // Apply the simulation results and save
-          // Also mark the current game event as completed
-          if (simResult) {
-            const eventIdToComplete = currentGameEvent?.id;
-            finalizeWeekSimulation(simResult.leagues, simResult.teams, simResult.gameDate, eventIdToComplete);
-          } else {
-            console.error('simulateOtherWeekMatches returned null');
-          }
-        } else if (isFriendly) {
-          // For friendlies, just mark the event as completed and save
-          console.log('Friendly match completed - skipping AI league simulation');
-          const eventIdToComplete = currentGameEvent?.id;
-          if (eventIdToComplete) {
-            // Just mark the friendly event as completed without simulating league matches
-            finalizeWeekSimulation(
-              matchResultState?.updatedLeagues || currentSave?.leagues || [],
-              matchResultState?.updatedTeams || currentSave?.teams || [],
-              currentSave?.game_date || '',
-              eventIdToComplete
-            );
-          }
+          const updatedSave = {
+            ...currentSave,
+            leagues: finalLeagues,
+            teams: finalTeams,
+            events: updatedEvents,
+            updated_at: new Date().toISOString(),
+          };
+          
+          // Save immediately
+          await AsyncStorage.setItem('retro_football_local_save', JSON.stringify(updatedSave));
+          console.log('Match completed - event marked as done, AI matches will be simulated on calendar advance');
         }
+        
+      } catch (e) {
+        console.error('Error finishing match:', e);
+      }
+      
+      // Brief delay so the user sees the completion state
+      setTimeout(() => {
+        setIsSimulatingWeek(false);
+        // Check if season is complete
+        if (isSeasonComplete()) {
+          router.replace('/season-end');
+        } else {
+          router.replace('/game');
+        }
+      }, 500);
+    }, 200);
+  };
       } catch (e) {
         console.error('Error simulating week:', e);
       }
