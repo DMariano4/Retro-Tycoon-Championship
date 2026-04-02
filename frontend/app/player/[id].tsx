@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame, Player } from '../../src/context/GameContext';
+import { PlayerCareerStatsModal } from '../../src/components/shared/PlayerCareerStatsModal';
 
 // Position groupings for display
 const POSITION_GROUPS: Record<string, string> = {
@@ -32,6 +33,7 @@ export default function PlayerProfileScreen() {
   const [showActionsMenu, setShowActionsMenu] = useState(false);
   const [showFormHistory, setShowFormHistory] = useState(false);
   const [showContractModal, setShowContractModal] = useState(false);
+  const [showCareerStats, setShowCareerStats] = useState(false);
   const [contractYear, setContractYear] = useState(2026);
   const [contractMonth, setContractMonth] = useState(6);
   const [proposedWage, setProposedWage] = useState(0);
@@ -553,6 +555,21 @@ export default function PlayerProfileScreen() {
               style={styles.actionItem}
               onPress={() => {
                 setShowActionsMenu(false);
+                setShowCareerStats(true);
+              }}
+            >
+              <Ionicons name="stats-chart" size={24} color="#4a9eff" />
+              <View style={styles.actionItemInfo}>
+                <Text style={styles.actionItemTitle}>Career Statistics</Text>
+                <Text style={styles.actionItemSubtitle}>View stats by season</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.actionItem}
+              onPress={() => {
+                setShowActionsMenu(false);
                 Alert.alert('Coming Soon', 'Player training feature will be added in future update.');
               }}
             >
@@ -742,6 +759,13 @@ export default function PlayerProfileScreen() {
           </View>
         </TouchableOpacity>
       </Modal>
+
+      {/* Career Stats Modal */}
+      <PlayerCareerStatsModal
+        visible={showCareerStats}
+        player={player}
+        onClose={() => setShowCareerStats(false)}
+      />
     </SafeAreaView>
   );
 }
