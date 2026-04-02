@@ -361,10 +361,16 @@ export default function MatchScreen() {
   const handleFinish = async () => {
     // Show loading screen first
     const league = getLeague();
-    const totalLeagues = currentSave?.leagues.length || 1;
-    // Each league has ~9-10 AI matches per week
-    const estimatedMatches = totalLeagues * 9;
-    setSimProgress({ current: 0, total: estimatedMatches, leagueName: league?.name || 'League' });
+    const isLeagueMatch = fixture?.match_type === 'league' || !fixture?.match_type;
+    const isFriendly = fixture?.match_type === 'friendly';
+    
+    // Only show simulation progress for league matches
+    if (isLeagueMatch) {
+      const totalLeagues = currentSave?.leagues.length || 1;
+      // Each league has ~9-10 AI matches per week
+      const estimatedMatches = totalLeagues * 9;
+      setSimProgress({ current: 0, total: estimatedMatches, leagueName: league?.name || 'League' });
+    }
     setIsSimulatingWeek(true);
 
     // Defer simulation to next tick so loading screen renders
@@ -375,24 +381,41 @@ export default function MatchScreen() {
           processCupMatchResult(fixture.cupId, fixture.id, homeScore, awayScore);
         }
         
-        // Simulate all other matches and get the result
-        // Pass the already-updated state from simulateMatch to avoid timing issues
-        let simResult;
-        if (matchResultState) {
-          simResult = simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
-        } else {
-          // Fallback - call without parameters (may have timing issues)
-          console.warn('matchResultState not available, calling simulateOtherWeekMatches without state');
-          simResult = simulateOtherWeekMatches();
-        }
-        
-        // Apply the simulation results and save
-        // Also mark the current game event as completed
-        if (simResult) {
+        // Only simulate AI league matches if this was a league match
+        // Friendlies should NOT trigger AI league match simulation
+        if (isLeagueMatch) {
+          // Simulate all other matches and get the result
+          // Pass the already-updated state from simulateMatch to avoid timing issues
+          let simResult;
+          if (matchResultState) {
+            simResult = simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
+          } else {
+            // Fallback - call without parameters (may have timing issues)
+            console.warn('matchResultState not available, calling simulateOtherWeekMatches without state');
+            simResult = simulateOtherWeekMatches();
+          }
+          
+          // Apply the simulation results and save
+          // Also mark the current game event as completed
+          if (simResult) {
+            const eventIdToComplete = currentGameEvent?.id;
+            finalizeWeekSimulation(simResult.leagues, simResult.teams, simResult.gameDate, eventIdToComplete);
+          } else {
+            console.error('simulateOtherWeekMatches returned null');
+          }
+        } else if (isFriendly) {
+          // For friendlies, just mark the event as completed and save
+          console.log('Friendly match completed - skipping AI league simulation');
           const eventIdToComplete = currentGameEvent?.id;
-          finalizeWeekSimulation(simResult.leagues, simResult.teams, simResult.gameDate, eventIdToComplete);
-        } else {
-          console.error('simulateOtherWeekMatches returned null');
+          if (eventIdToComplete) {
+            // Just mark the friendly event as completed without simulating league matches
+            finalizeWeekSimulation(
+              matchResultState?.updatedLeagues || currentSave?.leagues || [],
+              matchResultState?.updatedTeams || currentSave?.teams || [],
+              currentSave?.game_date || '',
+              eventIdToComplete
+            );
+          }
         }
       } catch (e) {
         console.error('Error simulating week:', e);
