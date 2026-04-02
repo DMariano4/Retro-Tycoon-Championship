@@ -151,6 +151,26 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
               </View>
             </View>
 
+            {/* Transfer Section - Moved to top for visibility (only for other teams' players) */}
+            {!isOwnPlayer && (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>TRANSFER</Text>
+                <TouchableOpacity
+                  style={styles.bidButton}
+                  onPress={() => {
+                    setBidAmount(estimatedValue.toString());
+                    setShowBidModal(true);
+                  }}
+                >
+                  <Ionicons name="cash-outline" size={20} color="#0a1628" />
+                  <Text style={styles.bidButtonText}>MAKE TRANSFER BID</Text>
+                </TouchableOpacity>
+                <Text style={styles.budgetHint}>
+                  Your budget: {formatMoney(currentSave?.budget || 0)}
+                </Text>
+              </View>
+            )}
+
             {/* Attributes */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>ATTRIBUTES</Text>
@@ -174,26 +194,6 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
                 )}
               </View>
             </View>
-
-            {/* Transfer Section (only for other teams' players) */}
-            {!isOwnPlayer && (
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>TRANSFER</Text>
-                <TouchableOpacity
-                  style={styles.bidButton}
-                  onPress={() => {
-                    setBidAmount(estimatedValue.toString());
-                    setShowBidModal(true);
-                  }}
-                >
-                  <Ionicons name="cash-outline" size={20} color="#0a1628" />
-                  <Text style={styles.bidButtonText}>MAKE TRANSFER BID</Text>
-                </TouchableOpacity>
-                <Text style={styles.budgetHint}>
-                  Your budget: {formatMoney(currentSave?.budget || 0)}
-                </Text>
-              </View>
-            )}
           </ScrollView>
         </View>
 
