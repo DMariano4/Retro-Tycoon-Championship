@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal, ScrollView, Alert, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, FlatList, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../../context/GameContext';
 import { formatDateDisplay } from '../../utils/calendar';
@@ -75,22 +75,24 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
     scheduleFriendly(selectedSlot.id, opponentId);
     setSelectedSlot(null);
   };
+
+  const handleBackFromOpponents = () => {
+    setSelectedSlot(null);
+  };
   
   const availableOpponents = selectedSlot ? getAvailableOpponents(selectedSlot.id) : [];
   
-  const renderSlotCard = (slot: FriendlySlot) => {
+  const renderSlotCard = ({ item: slot }: { item: FriendlySlot }) => {
     const isScheduled = slot.isScheduled;
     
     return (
       <Pressable
-        key={slot.id}
         style={({ pressed }) => [
           styles.slotCard, 
           isScheduled && styles.slotCardScheduled,
           pressed && styles.slotCardPressed
         ]}
         onPress={() => handleSelectSlot(slot)}
-        android_ripple={{ color: 'rgba(74, 158, 255, 0.2)' }}
       >
         <View style={styles.slotHeader}>
           <View style={styles.dateBadge}>
@@ -125,6 +127,24 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
       </Pressable>
     );
   };
+
+  const renderOpponentCard = ({ item: opponent }: { item: any }) => (
+    <Pressable
+      style={({ pressed }) => [
+        styles.opponentCard,
+        pressed && styles.opponentCardPressed
+      ]}
+      onPress={() => handleSelectOpponent(opponent.id, opponent.name)}
+    >
+      <View style={styles.opponentInfo}>
+        <Text style={styles.opponentName}>{opponent.name}</Text>
+        <View style={styles.repBadge}>
+          <Text style={styles.repText}>⭐ {opponent.reputation}</Text>
+        </View>
+      </View>
+      <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+    </Pressable>
+  );
   
   return (
     <Modal
@@ -132,8 +152,10 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
       animationType="slide"
       transparent={true}
       onRequestClose={onClose}
+      statusBarTranslucent
     >
       <View style={styles.modalOverlay}>
+        <Pressable style={styles.modalBackdrop} onPress={onClose} />
         <View style={styles.modalContent}>
           {/* Header */}
           <View style={styles.header}>
@@ -141,7 +163,7 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
             <Pressable 
               style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]} 
               onPress={onClose}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
             >
               <Ionicons name="close" size={24} color="#fff" />
             </Pressable>
@@ -158,8 +180,9 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
             <View style={styles.opponentSelection}>
               <View style={styles.selectionHeader}>
                 <Pressable 
-                  onPress={() => setSelectedSlot(null)}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  onPress={handleBackFromOpponents}
+                  hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                  style={({ pressed }) => [pressed && { opacity: 0.6 }]}
                 >
                   <Ionicons name="arrow-back" size={24} color="#00ff88" />
                 </Pressable>
@@ -168,60 +191,39 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
                 </Text>
               </View>
               
-              <ScrollView 
-                style={styles.opponentList} 
-                showsVerticalScrollIndicator={false}
-                keyboardShouldPersistTaps="handled"
-                nestedScrollEnabled={true}
-              >
-                {availableOpponents.length === 0 ? (
-                  <View style={styles.noOpponents}>
-                    <Ionicons name="alert-circle-outline" size={32} color="#6a8aaa" />
-                    <Text style={styles.noOpponentsText}>
-                      No teams available on this date
-                    </Text>
-                    <Text style={styles.noOpponentsHint}>
-                      All teams are already scheduled for friendlies
-                    </Text>
-                  </View>
-                ) : (
-                  availableOpponents.map(opponent => (
-                    <Pressable
-                      key={opponent.id}
-                      style={({ pressed }) => [
-                        styles.opponentCard,
-                        pressed && styles.opponentCardPressed
-                      ]}
-                      onPress={() => handleSelectOpponent(opponent.id, opponent.name)}
-                      android_ripple={{ color: 'rgba(0, 255, 136, 0.2)' }}
-                    >
-                      <View style={styles.opponentInfo}>
-                        <Text style={styles.opponentName}>{opponent.name}</Text>
-                        <View style={styles.repBadge}>
-                          <Text style={styles.repText}>⭐ {opponent.reputation}</Text>
-                        </View>
-                      </View>
-                      <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
-                    </Pressable>
-                  ))
-                )}
-              </ScrollView>
+              {availableOpponents.length === 0 ? (
+                <View style={styles.noOpponents}>
+                  <Ionicons name="alert-circle-outline" size={32} color="#6a8aaa" />
+                  <Text style={styles.noOpponentsText}>
+                    No teams available on this date
+                  </Text>
+                  <Text style={styles.noOpponentsHint}>
+                    All teams are already scheduled for friendlies
+                  </Text>
+                </View>
+              ) : (
+                <FlatList
+                  data={availableOpponents}
+                  renderItem={renderOpponentCard}
+                  keyExtractor={(item) => item.id}
+                  contentContainerStyle={styles.opponentListContent}
+                  showsVerticalScrollIndicator={false}
+                />
+              )}
             </View>
           ) : (
-            <ScrollView 
-              style={styles.slotsList} 
+            <FlatList
+              data={slots}
+              renderItem={renderSlotCard}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.slotsListContent}
               showsVerticalScrollIndicator={false}
-              keyboardShouldPersistTaps="handled"
-              nestedScrollEnabled={true}
-            >
-              {slots.map(slot => renderSlotCard(slot))}
-              
-              {slots.length === 0 && (
+              ListEmptyComponent={
                 <View style={styles.noSlots}>
                   <Text style={styles.noSlotsText}>No friendly slots available</Text>
                 </View>
-              )}
-            </ScrollView>
+              }
+            />
           )}
           
           {/* Info Footer */}
@@ -245,6 +247,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     justifyContent: 'flex-end',
   },
+  modalBackdrop: {
+    flex: 1,
+  },
   modalContent: {
     backgroundColor: '#0a1628',
     borderTopLeftRadius: 20,
@@ -253,6 +258,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 40,
     maxHeight: '85%',
+    minHeight: 300,
   },
   header: {
     flexDirection: 'row',
@@ -267,15 +273,15 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   closeButton: {
-    padding: 4,
+    padding: 8,
   },
   subtitle: {
     fontSize: 12,
     color: '#6a8aaa',
     marginBottom: 16,
   },
-  slotsList: {
-    flex: 1,
+  slotsListContent: {
+    paddingBottom: 16,
   },
   slotCard: {
     backgroundColor: '#0d2137',
@@ -385,8 +391,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     flex: 1,
   },
-  opponentList: {
-    flex: 1,
+  opponentListContent: {
+    paddingBottom: 16,
   },
   opponentCard: {
     flexDirection: 'row',
