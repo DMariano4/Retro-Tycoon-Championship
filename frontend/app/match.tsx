@@ -737,12 +737,7 @@ export default function MatchScreen() {
             showsVerticalScrollIndicator={false}
           >
             <View style={styles.preMatchHeader}>
-              <Ionicons name="football" size={36} color="#00ff88" />
-              <Text style={styles.preMatchTitle}>MATCH DAY</Text>
-              <Text style={styles.preMatchSubtitle}>Week {fixture.week}</Text>
-              <Text style={styles.preMatchInfo}>
-                {isHome ? 'Home' : 'Away'} match at {isHome ? managedTeam.stadium : 'Away Stadium'}
-              </Text>
+              <Text style={styles.preMatchInstructions}>Select your formation and starting eleven</Text>
             </View>
 
             {/* Visual Pitch Lineup Selector */}
@@ -773,17 +768,17 @@ export default function MatchScreen() {
 
             {/* Opponent Info */}
             <View style={styles.opponentInfoCard}>
-              <Text style={styles.opponentLabel}>OPPONENT</Text>
-              <Text style={styles.opponentName}>
-                {isHome ? awayTeam?.name : homeTeam?.name}
-              </Text>
+              <View>
+                <Text style={styles.opponentLabel}>VS</Text>
+                <Text style={styles.opponentName}>
+                  {isHome ? awayTeam?.name : homeTeam?.name}
+                </Text>
+              </View>
               <View style={styles.opponentStats}>
-                <View style={styles.opponentStatItem}>
-                  <Ionicons name="grid-outline" size={14} color="#4a9eff" />
-                  <Text style={styles.opponentStatText}>
-                    {isHome ? awayTeam?.formation : homeTeam?.formation || '4-4-2'}
-                  </Text>
-                </View>
+                <Ionicons name="grid-outline" size={12} color="#4a9eff" />
+                <Text style={styles.opponentStatText}>
+                  {isHome ? awayTeam?.formation : homeTeam?.formation || '4-4-2'}
+                </Text>
               </View>
             </View>
 

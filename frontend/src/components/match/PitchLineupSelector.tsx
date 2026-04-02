@@ -138,8 +138,8 @@ export function PitchLineupSelector({
   const [selectedSlotIndex, setSelectedSlotIndex] = useState<number | null>(null);
   const [showFormationPicker, setShowFormationPicker] = useState(false);
   
-  const pitchWidth = Math.min(SCREEN_WIDTH - 32, 340);
-  const pitchHeight = pitchWidth * 1.35;
+  const pitchWidth = Math.min(SCREEN_WIDTH - 32, 300);
+  const pitchHeight = pitchWidth * 1.2;
   
   const formationTemplate = FORMATION_TEMPLATES[formation] || FORMATION_TEMPLATES['4-4-2'];
   
@@ -396,8 +396,8 @@ const styles = StyleSheet.create({
   formationBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    gap: 10,
+    marginBottom: 8,
+    gap: 8,
   },
   formationLabel: {
     color: '#6a8aaa',
