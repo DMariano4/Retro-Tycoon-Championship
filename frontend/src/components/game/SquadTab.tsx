@@ -119,9 +119,9 @@ export function SquadTab({ team, currency }: any) {
                   </View>
                 </View>
                 <View style={styles.playerStats}>
-                  {/* Fitness indicator */}
+                  {/* Fitness indicator (1-20 scale) */}
                   <View style={{
-                    backgroundColor: player.fitness >= 80 ? '#1a4a3c' : player.fitness >= 50 ? '#4a4a1c' : '#4a1c1c',
+                    backgroundColor: player.fitness >= 16 ? '#1a4a3c' : player.fitness >= 10 ? '#4a4a1c' : '#4a1c1c',
                     paddingHorizontal: 5,
                     paddingVertical: 2,
                     borderRadius: 3,
@@ -130,9 +130,9 @@ export function SquadTab({ team, currency }: any) {
                     <Text style={{
                       fontSize: 9,
                       fontWeight: '700',
-                      color: player.fitness >= 80 ? '#00ff88' : player.fitness >= 50 ? '#ffaa00' : '#ff6b6b',
+                      color: player.fitness >= 16 ? '#00ff88' : player.fitness >= 10 ? '#ffaa00' : '#ff6b6b',
                     }}>
-                      {Math.round(player.fitness)}%
+                      FIT {Math.round(player.fitness)}
                     </Text>
                   </View>
                   <View style={styles.abilityBadge}>
