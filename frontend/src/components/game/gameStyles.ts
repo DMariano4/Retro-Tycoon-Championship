@@ -47,13 +47,14 @@ export const gameStyles = StyleSheet.create({
   tabButton: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
   tabButtonActive: {},
   tabLabel: {
-    fontSize: 9,
+    fontSize: 8,
     color: '#4a6a8a',
-    marginTop: 4,
+    marginTop: 2,
     fontWeight: '600',
   },
   tabLabelActive: {

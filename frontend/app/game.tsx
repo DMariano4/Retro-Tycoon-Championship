@@ -9,7 +9,7 @@ import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab
 import { GameEvent } from '../src/utils/calendar';
 import { CupFixture } from '../src/utils/competitions';
 
-type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'schedule';
+type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'schedule' | 'finance' | 'transfers';
 
 function TabButton({ icon, label, active, onPress }: { icon: string; label: string; active: boolean; onPress: () => void }) {
   return (
@@ -230,10 +230,12 @@ export default function GameScreen() {
         return <TacticsTab team={managedTeam} />;
       case 'league':
         return <LeagueTab league={league} teamId={managedTeam?.id} />;
-      case 'transfers':
-        return <TransfersTab />;
       case 'schedule':
         return <ScheduleTab team={managedTeam} league={league} />;
+      case 'finance':
+        return <FinanceTab team={managedTeam} save={currentSave} />;
+      case 'transfers':
+        return <TransfersTab />;
       default:
         return null;
     }
@@ -276,14 +278,15 @@ export default function GameScreen() {
         {renderTabContent()}
       </View>
 
-      {/* Bottom Tab Bar */}
+      {/* Bottom Tab Bar - 7 tabs */}
       <View style={styles.tabBar}>
         <TabButton icon="home" label="HOME" active={activeTab === 'dashboard'} onPress={() => setActiveTab('dashboard')} />
         <TabButton icon="people" label="SQUAD" active={activeTab === 'squad'} onPress={() => setActiveTab('squad')} />
         <TabButton icon="grid" label="TACTICS" active={activeTab === 'tactics'} onPress={() => setActiveTab('tactics')} />
         <TabButton icon="trophy" label="LEAGUE" active={activeTab === 'league'} onPress={() => setActiveTab('league')} />
-        <TabButton icon="calendar" label="SCHEDULE" active={activeTab === 'schedule'} onPress={() => setActiveTab('schedule')} />
-        <TabButton icon="swap-horizontal" label="TRANSFERS" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
+        <TabButton icon="calendar" label="SCHED" active={activeTab === 'schedule'} onPress={() => setActiveTab('schedule')} />
+        <TabButton icon="cash" label="FINANCE" active={activeTab === 'finance'} onPress={() => setActiveTab('finance')} />
+        <TabButton icon="swap-horizontal" label="TRADE" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
       </View>
       
       {/* Friendly Scheduler Modal */}
