@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Modal, ScrollView, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../../context/GameContext';
 import { formatDateDisplay } from '../../utils/calendar';
@@ -82,10 +82,15 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
     const isScheduled = slot.isScheduled;
     
     return (
-      <TouchableOpacity
+      <Pressable
         key={slot.id}
-        style={[styles.slotCard, isScheduled && styles.slotCardScheduled]}
+        style={({ pressed }) => [
+          styles.slotCard, 
+          isScheduled && styles.slotCardScheduled,
+          pressed && styles.slotCardPressed
+        ]}
         onPress={() => handleSelectSlot(slot)}
+        android_ripple={{ color: 'rgba(74, 158, 255, 0.2)' }}
       >
         <View style={styles.slotHeader}>
           <View style={styles.dateBadge}>
@@ -117,7 +122,7 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
             <Text style={styles.emptyText}>Tap to schedule opponent</Text>
           </View>
         )}
-      </TouchableOpacity>
+      </Pressable>
     );
   };
   
@@ -133,9 +138,13 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
           {/* Header */}
           <View style={styles.header}>
             <Text style={styles.title}>PRE-SEASON FRIENDLIES</Text>
-            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+            <Pressable 
+              style={({ pressed }) => [styles.closeButton, pressed && { opacity: 0.6 }]} 
+              onPress={onClose}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
               <Ionicons name="close" size={24} color="#fff" />
-            </TouchableOpacity>
+            </Pressable>
           </View>
           
           <Text style={styles.subtitle}>
@@ -148,15 +157,23 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
           {selectedSlot ? (
             <View style={styles.opponentSelection}>
               <View style={styles.selectionHeader}>
-                <TouchableOpacity onPress={() => setSelectedSlot(null)}>
+                <Pressable 
+                  onPress={() => setSelectedSlot(null)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
                   <Ionicons name="arrow-back" size={24} color="#00ff88" />
-                </TouchableOpacity>
+                </Pressable>
                 <Text style={styles.selectionTitle}>
                   Select Opponent for {formatDateDisplay(selectedSlot.date)}
                 </Text>
               </View>
               
-              <ScrollView style={styles.opponentList} showsVerticalScrollIndicator={false}>
+              <ScrollView 
+                style={styles.opponentList} 
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                nestedScrollEnabled={true}
+              >
                 {availableOpponents.length === 0 ? (
                   <View style={styles.noOpponents}>
                     <Ionicons name="alert-circle-outline" size={32} color="#6a8aaa" />
@@ -169,10 +186,14 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
                   </View>
                 ) : (
                   availableOpponents.map(opponent => (
-                    <TouchableOpacity
+                    <Pressable
                       key={opponent.id}
-                      style={styles.opponentCard}
+                      style={({ pressed }) => [
+                        styles.opponentCard,
+                        pressed && styles.opponentCardPressed
+                      ]}
                       onPress={() => handleSelectOpponent(opponent.id, opponent.name)}
+                      android_ripple={{ color: 'rgba(0, 255, 136, 0.2)' }}
                     >
                       <View style={styles.opponentInfo}>
                         <Text style={styles.opponentName}>{opponent.name}</Text>
@@ -181,13 +202,18 @@ export function FriendlyScheduler({ visible, onClose }: FriendlySchedulerProps) 
                         </View>
                       </View>
                       <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
-                    </TouchableOpacity>
+                    </Pressable>
                   ))
                 )}
               </ScrollView>
             </View>
           ) : (
-            <ScrollView style={styles.slotsList} showsVerticalScrollIndicator={false}>
+            <ScrollView 
+              style={styles.slotsList} 
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              nestedScrollEnabled={true}
+            >
               {slots.map(slot => renderSlotCard(slot))}
               
               {slots.length === 0 && (
@@ -261,6 +287,10 @@ const styles = StyleSheet.create({
   },
   slotCardScheduled: {
     borderColor: '#00ff88',
+  },
+  slotCardPressed: {
+    opacity: 0.7,
+    backgroundColor: '#142a45',
   },
   slotHeader: {
     flexDirection: 'row',
@@ -368,6 +398,10 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     borderWidth: 1,
     borderColor: '#1a4a6c',
+  },
+  opponentCardPressed: {
+    opacity: 0.7,
+    backgroundColor: '#142a45',
   },
   opponentInfo: {
     flex: 1,

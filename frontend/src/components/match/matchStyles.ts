@@ -652,6 +652,11 @@ export const matchStyles = StyleSheet.create({
     color: '#fff',
     flex: 1,
   },
+  ratingRightSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
   ratingBadgeCompact: {
     width: 28,
     height: 20,

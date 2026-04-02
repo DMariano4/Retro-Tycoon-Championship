@@ -1051,7 +1051,8 @@ export default function MatchScreen() {
                         return (
                           <View key={player.id} style={styles.ratingRowCompact}>
                             <Text style={styles.ratingPositionCompact}>{player.position}</Text>
-                            <View style={styles.ratingPlayerInfo}>
+                            <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
+                            <View style={styles.ratingRightSection}>
                               {playerGoals > 0 && (
                                 <View style={styles.goalAssistBadge}>
                                   <Ionicons name="football" size={10} color="#00ff88" />
@@ -1060,18 +1061,17 @@ export default function MatchScreen() {
                               )}
                               {playerAssists > 0 && (
                                 <View style={styles.goalAssistBadge}>
-                                  <Ionicons name="fitness" size={10} color="#4a9eff" />
+                                  <Ionicons name="footsteps" size={10} color="#4a9eff" />
                                   {playerAssists > 1 && <Text style={styles.goalAssistCount}>{playerAssists}</Text>}
                                 </View>
                               )}
-                              <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
-                            </View>
-                            <View style={[styles.ratingBadgeCompact, { 
-                              backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
-                            }]}>
-                              <Text style={[styles.ratingValueCompact, {
-                                color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
-                              }]}>{rating.toFixed(1)}</Text>
+                              <View style={[styles.ratingBadgeCompact, { 
+                                backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
+                              }]}>
+                                <Text style={[styles.ratingValueCompact, {
+                                  color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
+                                }]}>{rating.toFixed(1)}</Text>
+                              </View>
                             </View>
                           </View>
                         );
@@ -1101,7 +1101,8 @@ export default function MatchScreen() {
                         return (
                           <View key={player.id} style={styles.ratingRowCompact}>
                             <Text style={styles.ratingPositionCompact}>{player.position}</Text>
-                            <View style={styles.ratingPlayerInfo}>
+                            <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
+                            <View style={styles.ratingRightSection}>
                               {playerGoals > 0 && (
                                 <View style={styles.goalAssistBadge}>
                                   <Ionicons name="football" size={10} color="#00ff88" />
@@ -1110,18 +1111,17 @@ export default function MatchScreen() {
                               )}
                               {playerAssists > 0 && (
                                 <View style={styles.goalAssistBadge}>
-                                  <Ionicons name="fitness" size={10} color="#4a9eff" />
+                                  <Ionicons name="footsteps" size={10} color="#4a9eff" />
                                   {playerAssists > 1 && <Text style={styles.goalAssistCount}>{playerAssists}</Text>}
                                 </View>
                               )}
-                              <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
-                            </View>
-                            <View style={[styles.ratingBadgeCompact, { 
-                              backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
-                            }]}>
-                              <Text style={[styles.ratingValueCompact, {
-                                color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
-                              }]}>{rating.toFixed(1)}</Text>
+                              <View style={[styles.ratingBadgeCompact, { 
+                                backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
+                              }]}>
+                                <Text style={[styles.ratingValueCompact, {
+                                  color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
+                                }]}>{rating.toFixed(1)}</Text>
+                              </View>
                             </View>
                           </View>
                         );
