@@ -63,6 +63,7 @@ export default function MatchScreen() {
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
   const [isStartingMatch, setIsStartingMatch] = useState(false); // Prevent double-click
+  const [matchResultState, setMatchResultState] = useState<{ updatedLeagues: any[]; updatedTeams: any[] } | null>(null);
 
   // Guard: redirect if no game context
   useFocusEffect(
@@ -295,6 +296,14 @@ export default function MatchScreen() {
         if (result.injuries && result.injuries.length > 0) {
           setMatchInjuries(result.injuries);
         }
+        
+        // Store the updated leagues/teams for simulateOtherWeekMatches
+        if (result.updatedLeagues && result.updatedTeams) {
+          setMatchResultState({
+            updatedLeagues: result.updatedLeagues,
+            updatedTeams: result.updatedTeams,
+          });
+        }
       
       // Use real stats from the match engine
       if (result.stats) {
@@ -361,7 +370,14 @@ export default function MatchScreen() {
         }
         
         // Simulate all other matches and advance week
-        simulateOtherWeekMatches();
+        // Pass the already-updated state from simulateMatch to avoid timing issues
+        if (matchResultState) {
+          simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
+        } else {
+          // Fallback - call without parameters (may have timing issues)
+          console.warn('matchResultState not available, calling simulateOtherWeekMatches without state');
+          simulateOtherWeekMatches();
+        }
         // Save game
         await saveGame(false);
       } catch (e) {

@@ -9,13 +9,21 @@ import { gameStyles as styles } from './gameStyles';
 export function SquadTab({ team, currency }: any) {
   if (!team) return null;
 
+  // Position order for sorting within groups
+  const positionOrder: Record<string, number> = {
+    'GK': 1,
+    'LB': 2, 'CB': 3, 'RB': 4, 'LWB': 5, 'RWB': 6,
+    'DM': 7, 'CM': 8, 'LM': 9, 'RM': 10, 'AM': 11,
+    'LW': 12, 'RW': 13, 'ST': 14, 'CF': 15,
+  };
+
   const groupByPosition = () => {
     const groups: Record<string, any[]> = {};
     for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
-      // Filter and sort by current_ability (best players first)
+      // Filter and sort by position order (positional sorting)
       groups[groupName] = team.squad
         .filter((p: any) => positions.includes(p.position))
-        .sort((a: any, b: any) => (b.current_ability || 0) - (a.current_ability || 0));
+        .sort((a: any, b: any) => (positionOrder[a.position] || 99) - (positionOrder[b.position] || 99));
     }
     return groups;
   };

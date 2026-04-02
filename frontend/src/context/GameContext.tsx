@@ -323,7 +323,7 @@ interface GameContextType {
   updateFormation: (formation: string, positions: Record<string, any>) => void;
   advanceWeek: () => void;
   simulateMatch: (fixtureId: string, speed: number) => Promise<any>;
-  simulateOtherWeekMatches: () => void;
+  simulateOtherWeekMatches: (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => void;
   makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
   // Season progression
@@ -817,6 +817,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
       playerRatings: matchResult.playerRatings,
       momentum: matchResult.momentum,
       injuries: matchResult.injuries || [],
+      // Return updated state for simulateOtherWeekMatches
+      updatedLeagues,
+      updatedTeams,
     };
   };
 
@@ -922,17 +925,21 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   // Simulate all other matches for the current week (AI vs AI) and advance the week
   // Handles ALL leagues, not just the managed team's league
-  const simulateOtherWeekMatches = () => {
+  // Can optionally receive already-updated leagues/teams from simulateMatch to avoid state timing issues
+  const simulateOtherWeekMatches = (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => {
     if (!currentSave) return;
     if (currentSave.leagues.length === 0) return;
 
     const managedTeamId = currentSave.managed_team_id;
 
-    let updatedLeagues = [...currentSave.leagues];
-    let updatedTeams = [...currentSave.teams];
+    // Use provided updated state or fall back to currentSave
+    let updatedLeagues = alreadyUpdatedLeagues ? [...alreadyUpdatedLeagues] : [...currentSave.leagues];
+    let updatedTeams = alreadyUpdatedTeams ? [...alreadyUpdatedTeams] : [...currentSave.teams];
+
+    console.log('simulateOtherWeekMatches: Starting AI match simulation');
 
     // Process every league in the game
-    for (const league of currentSave.leagues) {
+    for (const league of updatedLeagues) {
       // Find all unplayed fixtures for the current week
       // For the managed team's league: skip the managed team's fixture (already played)
       // For other leagues: simulate ALL fixtures
