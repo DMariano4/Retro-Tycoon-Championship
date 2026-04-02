@@ -174,15 +174,6 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
               </View>
             </View>
 
-            {/* Career Stats Button */}
-            <TouchableOpacity
-              style={styles.careerStatsButton}
-              onPress={() => setShowCareerStats(true)}
-            >
-              <Ionicons name="stats-chart" size={18} color="#fff" />
-              <Text style={styles.careerStatsButtonText}>VIEW CAREER STATS</Text>
-            </TouchableOpacity>
-
             {/* Transfer Section - Moved to top for visibility (only for other teams' players) */}
             {!isOwnPlayer && (
               <View style={styles.section}>
