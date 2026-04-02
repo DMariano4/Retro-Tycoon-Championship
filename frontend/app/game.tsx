@@ -5,11 +5,11 @@ import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../src/context/GameContext';
 import { useSaveSlots } from '../src/context/SaveSlotsContext';
-import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, FriendlyScheduler, CupDrawModal, gameStyles as styles } from '../src/components/game';
+import { DashboardTab, SquadTab, TacticsTab, LeagueTab, TransfersTab, FinanceTab, ScheduleTab, FriendlyScheduler, CupDrawModal, gameStyles as styles } from '../src/components/game';
 import { GameEvent } from '../src/utils/calendar';
 import { CupFixture } from '../src/utils/competitions';
 
-type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'finance';
+type TabType = 'dashboard' | 'squad' | 'tactics' | 'league' | 'transfers' | 'schedule';
 
 function TabButton({ icon, label, active, onPress }: { icon: string; label: string; active: boolean; onPress: () => void }) {
   return (
@@ -232,8 +232,8 @@ export default function GameScreen() {
         return <LeagueTab league={league} teamId={managedTeam?.id} />;
       case 'transfers':
         return <TransfersTab />;
-      case 'finance':
-        return <FinanceTab team={managedTeam} save={currentSave} />;
+      case 'schedule':
+        return <ScheduleTab team={managedTeam} league={league} />;
       default:
         return null;
     }
@@ -282,7 +282,7 @@ export default function GameScreen() {
         <TabButton icon="people" label="SQUAD" active={activeTab === 'squad'} onPress={() => setActiveTab('squad')} />
         <TabButton icon="grid" label="TACTICS" active={activeTab === 'tactics'} onPress={() => setActiveTab('tactics')} />
         <TabButton icon="trophy" label="LEAGUE" active={activeTab === 'league'} onPress={() => setActiveTab('league')} />
-        <TabButton icon="cash" label="FINANCE" active={activeTab === 'finance'} onPress={() => setActiveTab('finance')} />
+        <TabButton icon="calendar" label="SCHEDULE" active={activeTab === 'schedule'} onPress={() => setActiveTab('schedule')} />
         <TabButton icon="swap-horizontal" label="TRANSFERS" active={activeTab === 'transfers'} onPress={() => setActiveTab('transfers')} />
       </View>
       

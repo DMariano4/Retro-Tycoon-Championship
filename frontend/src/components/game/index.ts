@@ -4,6 +4,7 @@ export { TacticsTab } from './TacticsTab';
 export { LeagueTab } from './LeagueTab';
 export { TransfersTab } from './TransfersTab';
 export { FinanceTab } from './FinanceTab';
+export { ScheduleTab } from './ScheduleTab';
 export { FriendlyScheduler } from './FriendlyScheduler';
 export { CupDrawModal } from './CupDrawModal';
 export { gameStyles } from './gameStyles';
