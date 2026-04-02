@@ -22,6 +22,7 @@ import {
   SubstitutionModal,
   LineupModal,
 } from '../src/components/match';
+import { PitchLineupSelector } from '../src/components/match/PitchLineupSelector';
 
 const { width } = Dimensions.get('window');
 

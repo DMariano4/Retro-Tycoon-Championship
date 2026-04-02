@@ -752,21 +752,82 @@ function getTeamTactics(team: Team): TeamTactics {
  * Get starting XI (first 11 players, ideally sorted by position)
  */
 function getStartingXI(team: Team): Player[] {
-  // Sort by position priority: GK first, then DEF, MID, FWD
-  const positionOrder: Record<string, number> = {
-    'GK': 0, 'CB': 1, 'LB': 2, 'RB': 3, 'LWB': 2, 'RWB': 3,
-    'DM': 4, 'CM': 5, 'LM': 6, 'RM': 7, 'AM': 8,
-    'LW': 9, 'RW': 10, 'ST': 11
+  // Get formation or default to 4-4-2
+  const formation = team.formation || '4-4-2';
+  const formationParts = formation.split('-').map(Number);
+  
+  // Determine positional requirements from formation
+  let defCount = 4, midCount = 4, fwdCount = 2;
+  if (formationParts.length === 3) {
+    [defCount, midCount, fwdCount] = formationParts;
+  } else if (formationParts.length === 4) {
+    // Formations like 4-2-3-1
+    defCount = formationParts[0];
+    midCount = formationParts[1] + formationParts[2];
+    fwdCount = formationParts[3];
+  }
+  
+  const squad = team.squad || [];
+  
+  // Helper to get best available players for a position group
+  const getBestPlayers = (positions: string[], count: number, exclude: Set<string>): Player[] => {
+    return squad
+      .filter(p => positions.includes(p.position) && !exclude.has(p.id))
+      .sort((a, b) => {
+        // Sort by fitness * ability (prefer fit players)
+        const scoreA = (a.current_ability || 10) * ((a.fitness || 15) / 20);
+        const scoreB = (b.current_ability || 10) * ((b.fitness || 15) / 20);
+        return scoreB - scoreA;
+      })
+      .slice(0, count);
   };
   
-  const sorted = [...team.squad].sort((a, b) => {
-    const orderA = positionOrder[a.position] ?? 6;
-    const orderB = positionOrder[b.position] ?? 6;
-    if (orderA !== orderB) return orderA - orderB;
-    return b.current_ability - a.current_ability; // Higher ability first within position
+  const selectedIds = new Set<string>();
+  const startingXI: Player[] = [];
+  
+  // 1. Select 1 GK
+  const gks = getBestPlayers(['GK'], 1, selectedIds);
+  gks.forEach(p => {
+    startingXI.push(p);
+    selectedIds.add(p.id);
   });
   
-  return sorted.slice(0, 11);
+  // 2. Select defenders
+  const defenders = getBestPlayers(['CB', 'LB', 'RB', 'LWB', 'RWB'], defCount, selectedIds);
+  defenders.forEach(p => {
+    startingXI.push(p);
+    selectedIds.add(p.id);
+  });
+  
+  // 3. Select midfielders
+  const midfielders = getBestPlayers(['DM', 'CM', 'LM', 'RM', 'AM', 'LW', 'RW'], midCount, selectedIds);
+  midfielders.forEach(p => {
+    startingXI.push(p);
+    selectedIds.add(p.id);
+  });
+  
+  // 4. Select forwards
+  const forwards = getBestPlayers(['ST', 'CF', 'LW', 'RW'], fwdCount, selectedIds);
+  forwards.forEach(p => {
+    startingXI.push(p);
+    selectedIds.add(p.id);
+  });
+  
+  // 5. If we still don't have 11, fill with best remaining players
+  while (startingXI.length < 11 && startingXI.length < squad.length) {
+    const remaining = squad
+      .filter(p => !selectedIds.has(p.id))
+      .sort((a, b) => (b.current_ability || 10) - (a.current_ability || 10));
+    
+    if (remaining.length > 0) {
+      startingXI.push(remaining[0]);
+      selectedIds.add(remaining[0].id);
+    } else {
+      break;
+    }
+  }
+  
+  return startingXI;
 }
 
 /**
