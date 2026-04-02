@@ -378,6 +378,7 @@ const styles = StyleSheet.create({
   },
   opponentSelection: {
     flex: 1,
+    minHeight: 350,
   },
   selectionHeader: {
     flexDirection: 'row',
@@ -392,7 +393,8 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   opponentListContent: {
-    paddingBottom: 16,
+    paddingBottom: 24,
+    flexGrow: 1,
   },
   opponentCard: {
     flexDirection: 'row',
