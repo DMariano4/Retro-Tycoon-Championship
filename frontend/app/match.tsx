@@ -62,6 +62,7 @@ export default function MatchScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [isReady, setIsReady] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
+  const [isStartingMatch, setIsStartingMatch] = useState(false); // Prevent double-click
 
   // Guard: redirect if no game context
   useFocusEffect(
@@ -241,6 +242,12 @@ export default function MatchScreen() {
   }
 
   const handleStartMatch = async () => {
+    // Prevent double-clicking
+    if (isStartingMatch) {
+      console.log('Match already starting, ignoring click');
+      return;
+    }
+    
     if (!fixture) {
       console.log('No fixture found!');
       Alert.alert('Error', 'No match fixture found. Please go back and try again.');
@@ -255,25 +262,35 @@ export default function MatchScreen() {
       return;
     }
     
-    console.log('Starting match with fixture:', fixtureId);
-    const result = await simulateMatch(fixtureId, speed);
-    if (result) {
-      setEvents(result.events);
-      setMatchState('live');
-      setActiveTab('pitch'); // Start with pitch view
-      
-      // Phase 2: Store player ratings and momentum data
-      if (result.playerRatings) {
-        setPlayerRatings(result.playerRatings);
-      }
-      if (result.momentum) {
-        setMomentumData(result.momentum);
-      }
+    // Check if fixture is already played
+    if (fixture.played) {
+      console.log('Fixture already played!');
+      Alert.alert('Match Played', 'This match has already been played.');
+      return;
+    }
+    
+    setIsStartingMatch(true);
+    console.log('Starting match with fixture:', fixtureId, 'speed:', speed);
+    
+    try {
+      const result = await simulateMatch(fixtureId, speed);
+      if (result) {
+        setEvents(result.events);
+        setMatchState('live');
+        setActiveTab('pitch'); // Start with pitch view
+        
+        // Phase 2: Store player ratings and momentum data
+        if (result.playerRatings) {
+          setPlayerRatings(result.playerRatings);
+        }
+        if (result.momentum) {
+          setMomentumData(result.momentum);
+        }
 
-      // Phase 3: Store injuries from match result
-      if (result.injuries && result.injuries.length > 0) {
-        setMatchInjuries(result.injuries);
-      }
+        // Phase 3: Store injuries from match result
+        if (result.injuries && result.injuries.length > 0) {
+          setMatchInjuries(result.injuries);
+        }
       
       // Use real stats from the match engine
       if (result.stats) {
@@ -296,6 +313,16 @@ export default function MatchScreen() {
           yellowCards: { home: 0, away: 0 },
         });
       }
+    } else {
+      // Match simulation failed
+      console.log('Match simulation returned null');
+      Alert.alert('Error', 'Failed to start match. The fixture may have already been played.');
+      setIsStartingMatch(false);
+    }
+    } catch (error) {
+      console.error('Error starting match:', error);
+      Alert.alert('Error', 'An error occurred while starting the match.');
+      setIsStartingMatch(false);
     }
   };
 
@@ -734,13 +761,20 @@ export default function MatchScreen() {
                   <Text style={styles.lineupConfirmedText}>Team Selected</Text>
                 </View>
                 <Pressable 
-                  style={styles.startButton} 
+                  style={[styles.startButton, isStartingMatch && { opacity: 0.6 }]} 
                   onPress={handleStartMatch}
-                  {...(Platform.OS === 'web' ? { onClick: handleStartMatch } : {})}
+                  disabled={isStartingMatch}
+                  {...(Platform.OS === 'web' ? { onClick: isStartingMatch ? undefined : handleStartMatch } : {})}
                   accessibilityRole="button"
                 >
-                  <Ionicons name="play" size={20} color="#0a1628" />
-                  <Text style={styles.startButtonText}>KICK OFF</Text>
+                  {isStartingMatch ? (
+                    <ActivityIndicator size="small" color="#0a1628" />
+                  ) : (
+                    <Ionicons name="play" size={20} color="#0a1628" />
+                  )}
+                  <Text style={styles.startButtonText}>
+                    {isStartingMatch ? 'STARTING...' : 'KICK OFF'}
+                  </Text>
                 </Pressable>
               </>
             )}
