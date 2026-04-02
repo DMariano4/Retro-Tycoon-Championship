@@ -1099,28 +1099,9 @@ export default function MatchScreen() {
         )}
       </View>
 
-      {/* Footer */}
+      {/* Footer - Progress bar only (controls are at top) */}
       {matchState === 'live' && (
         <View style={styles.liveFooter}>
-          <View style={styles.liveControls}>
-            <View style={styles.speedButtons}>
-              {[1, 2, 4].map(s => (
-                <TouchableOpacity
-                  key={s}
-                  style={[styles.speedButton, speed === s && styles.speedButtonActive]}
-                  onPress={() => setSpeed(s)}
-                >
-                  <Text style={[styles.speedButtonText, speed === s && styles.speedButtonTextActive]}>
-                    {s}x
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <TouchableOpacity style={styles.pauseButton} onPress={handlePause}>
-              <Ionicons name="pause" size={20} color="#fff" />
-              <Text style={styles.pauseButtonText}>PAUSE</Text>
-            </TouchableOpacity>
-          </View>
           <View style={styles.progressBar}>
             <View style={[styles.progressFill, { width: `${(currentMinute / 90) * 100}%` }]} />
           </View>

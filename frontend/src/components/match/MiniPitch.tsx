@@ -95,8 +95,8 @@ export function MiniPitch({ formation, homeTeam, awayTeam, lastEvent }: MiniPitc
   const homePositions = VISUAL_FORMATION_POSITIONS[homeFormation] || VISUAL_FORMATION_POSITIONS['4-4-2'];
   const awayPositions = VISUAL_FORMATION_POSITIONS[awayFormation] || VISUAL_FORMATION_POSITIONS['4-4-2'];
   
-  const pitchWidth = Math.min(width - 32, 360);
-  const pitchHeight = pitchWidth * 1.4; // More vertical space for proper football pitch proportions
+  const pitchWidth = Math.min(width - 32, 360) * 0.75; // Reduced by 25%
+  const pitchHeight = pitchWidth * 1.4; // Keep aspect ratio
 
   // Home team plays in bottom half (y: 50-100%)
   // GK (y:2) should be at ~95%, Strikers (y:80) should be at ~55%
