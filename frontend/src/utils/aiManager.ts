@@ -524,3 +524,141 @@ export function updateAIFormations(teams: Team[], managedTeamId: string): Team[]
     return team;
   });
 }
+
+// ============================================
+// AI BIDS FOR USER PLAYERS
+// ============================================
+
+export interface IncomingOffer {
+  id: string;
+  playerId: string;
+  playerName: string;
+  playerPosition: string;
+  playerOverall: number;
+  fromTeamId: string;
+  fromTeamName: string;
+  offerAmount: number;
+  playerValue: number;
+  week: number;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired';
+  createdAt: number;
+  expiresInWeeks: number;
+}
+
+/**
+ * Calculate a player's market value
+ */
+function calculatePlayerValue(player: Player): number {
+  const overall = player.overall || player.current_ability || 50;
+  const baseValue = overall * 50000;
+  const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
+  const positionMultiplier = ['ST', 'LW', 'RW', 'AM', 'CF'].includes(player.position) ? 1.3 : 1.0;
+  return Math.round(baseValue * ageMultiplier * positionMultiplier);
+}
+
+/**
+ * Generate AI bids for user's players
+ * Called during week simulation
+ */
+export function generateAIOffersForUserPlayers(
+  teams: Team[],
+  managedTeamId: string,
+  currentWeek: number,
+  existingOffers: IncomingOffer[] = []
+): IncomingOffer[] {
+  const newOffers: IncomingOffer[] = [];
+  
+  // Find user's team
+  const userTeam = teams.find(t => t.id === managedTeamId);
+  if (!userTeam || !userTeam.squad) return newOffers;
+  
+  // Get AI teams that might be interested in buying
+  const aiTeams = teams.filter(t => t.id !== managedTeamId);
+  
+  // Limit number of offers per week (1-3 max, with probability)
+  const offerChance = 0.3; // 30% chance of getting an offer each week
+  if (Math.random() > offerChance) return newOffers;
+  
+  const maxOffersThisWeek = Math.floor(1 + Math.random() * 2); // 1-2 offers max
+  
+  // Filter out players that already have pending offers
+  const pendingOfferPlayerIds = existingOffers
+    .filter(o => o.status === 'pending')
+    .map(o => o.playerId);
+  
+  const availablePlayers = userTeam.squad.filter(p => 
+    !pendingOfferPlayerIds.includes(p.id) &&
+    p.overall >= 60 // Only bid for decent players
+  );
+  
+  if (availablePlayers.length === 0) return newOffers;
+  
+  // Sort players by attractiveness (higher overall = more interest)
+  const sortedPlayers = [...availablePlayers].sort((a, b) => 
+    (b.overall || 0) - (a.overall || 0)
+  );
+  
+  // Generate offers
+  for (let i = 0; i < Math.min(maxOffersThisWeek, sortedPlayers.length); i++) {
+    const player = sortedPlayers[i];
+    const playerValue = calculatePlayerValue(player);
+    
+    // Find an AI team that needs this position and can afford the player
+    const interestedTeams = aiTeams.filter(team => {
+      const analysis = analyzeSquad(team);
+      const needsPosition = analysis.weakPositions.includes(player.position);
+      const canAfford = (team.transfer_budget || 5000000) >= playerValue * 0.8;
+      const betterThanAverage = (player.overall || 50) > analysis.averageRating;
+      
+      return (needsPosition || betterThanAverage) && canAfford;
+    });
+    
+    if (interestedTeams.length === 0) continue;
+    
+    // Pick a random interested team
+    const biddingTeam = interestedTeams[Math.floor(Math.random() * interestedTeams.length)];
+    
+    // Generate offer amount (80% to 120% of value, AI tries to get a deal)
+    const offerMultiplier = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
+    const offerAmount = Math.round(playerValue * offerMultiplier);
+    
+    const offer: IncomingOffer = {
+      id: `offer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      playerId: player.id,
+      playerName: player.name,
+      playerPosition: player.position,
+      playerOverall: player.overall || 50,
+      fromTeamId: biddingTeam.id,
+      fromTeamName: biddingTeam.name,
+      offerAmount,
+      playerValue,
+      week: currentWeek,
+      status: 'pending',
+      createdAt: Date.now(),
+      expiresInWeeks: 2, // Offer expires after 2 weeks
+    };
+    
+    newOffers.push(offer);
+  }
+  
+  return newOffers;
+}
+
+/**
+ * Process expired offers
+ */
+export function processExpiredOffers(
+  offers: IncomingOffer[],
+  currentWeek: number
+): IncomingOffer[] {
+  return offers.map(offer => {
+    if (offer.status === 'pending') {
+      const weeksOld = currentWeek - offer.week;
+      if (weeksOld >= offer.expiresInWeeks) {
+        return { ...offer, status: 'expired' as const };
+      }
+    }
+    return offer;
+  });
+}
+

@@ -60,6 +60,9 @@ import {
   executeAITransfers,
   updateAIFormations,
   AITransferAction,
+  IncomingOffer,
+  generateAIOffersForUserPlayers,
+  processExpiredOffers,
 } from '../utils/aiManager';
 
 const BACKEND_URL = getBackendUrl();
@@ -300,6 +303,8 @@ export interface GameSave {
   // Pre-season friendly system
   friendlySlots?: FriendlySlot[];
   aiFriendlySchedules?: Record<string, string[]>;
+  // Incoming transfer offers from AI
+  incomingOffers?: IncomingOffer[];
 }
 
 interface GameContextType {
@@ -358,6 +363,11 @@ interface GameContextType {
   
   // P1: Cup Match Result Processing
   processCupMatchResult: (cupId: string, fixtureId: string, homeScore: number, awayScore: number) => void;
+  
+  // Incoming Transfer Offers
+  getIncomingOffers: () => IncomingOffer[];
+  acceptOffer: (offerId: string) => Promise<{ success: boolean; message: string }>;
+  rejectOffer: (offerId: string) => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -541,11 +551,26 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // Advance game date by 7 days
     const currentDate = new Date(currentSave.game_date);
     currentDate.setDate(currentDate.getDate() + 7);
+    
+    const currentWeek = updatedLeagues[0]?.current_week || 1;
+
+    // Generate AI offers for user's players during transfer window
+    const existingOffers = currentSave.incomingOffers || [];
+    const newOffers = generateAIOffersForUserPlayers(
+      currentSave.teams,
+      currentSave.managed_team_id,
+      currentWeek,
+      existingOffers
+    );
+    
+    // Process expired offers
+    const processedOffers = processExpiredOffers([...existingOffers, ...newOffers], currentWeek);
 
     setCurrentSave({
       ...currentSave,
       leagues: updatedLeagues,
-      game_date: currentDate.toISOString().split('T')[0]
+      game_date: currentDate.toISOString().split('T')[0],
+      incomingOffers: processedOffers,
     });
   };
 
@@ -2357,6 +2382,87 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
   };
 
+  // ============================================
+  // INCOMING TRANSFER OFFERS
+  // ============================================
+
+  const getIncomingOffers = (): IncomingOffer[] => {
+    return currentSave?.incomingOffers?.filter(o => o.status === 'pending') || [];
+  };
+
+  const acceptOffer = async (offerId: string): Promise<{ success: boolean; message: string }> => {
+    if (!currentSave) return { success: false, message: 'No active game' };
+
+    const offer = currentSave.incomingOffers?.find(o => o.id === offerId);
+    if (!offer) return { success: false, message: 'Offer not found' };
+    if (offer.status !== 'pending') return { success: false, message: 'Offer is no longer valid' };
+
+    // Find the player in user's squad
+    const managedTeam = getManagedTeam();
+    if (!managedTeam) return { success: false, message: 'Team not found' };
+
+    const player = managedTeam.squad.find(p => p.id === offer.playerId);
+    if (!player) return { success: false, message: 'Player not found in squad' };
+
+    // Transfer the player
+    const updatedTeams = currentSave.teams.map(team => {
+      if (team.id === currentSave.managed_team_id) {
+        // Remove player from user's squad
+        return {
+          ...team,
+          squad: team.squad.filter(p => p.id !== offer.playerId)
+        };
+      }
+      if (team.id === offer.fromTeamId) {
+        // Add player to buying team's squad
+        return {
+          ...team,
+          squad: [...team.squad, player]
+        };
+      }
+      return team;
+    });
+
+    // Update offer status
+    const updatedOffers = (currentSave.incomingOffers || []).map(o =>
+      o.id === offerId ? { ...o, status: 'accepted' as const } : o
+    );
+
+    const updatedSave = {
+      ...currentSave,
+      teams: updatedTeams,
+      budget: currentSave.budget + offer.offerAmount,
+      incomingOffers: updatedOffers,
+    };
+
+    setCurrentSave(updatedSave);
+
+    // Persist to storage
+    try {
+      await AsyncStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(updatedSave));
+    } catch (e) {
+      console.error('Failed to save after accepting offer:', e);
+    }
+
+    return { 
+      success: true, 
+      message: `${player.name} has been sold to ${offer.fromTeamName} for £${(offer.offerAmount / 1000000).toFixed(1)}M!`
+    };
+  };
+
+  const rejectOffer = (offerId: string): void => {
+    if (!currentSave) return;
+
+    const updatedOffers = (currentSave.incomingOffers || []).map(o =>
+      o.id === offerId ? { ...o, status: 'rejected' as const } : o
+    );
+
+    setCurrentSave({
+      ...currentSave,
+      incomingOffers: updatedOffers,
+    });
+  };
+
   return (
     <GameContext.Provider
       value={{
@@ -2407,6 +2513,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
         // P1: Scouting & Transfers
         makeUnlistedBid,
         processCupMatchResult,
+        // Incoming Transfer Offers
+        getIncomingOffers,
+        acceptOffer,
+        rejectOffer,
       }}
     >
       {children}
