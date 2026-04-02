@@ -72,12 +72,21 @@ export function TeamProfileModal({ visible, team, onClose }: TeamProfileModalPro
     return `${currency}${amount}`;
   };
 
-  // Get player value
+  // Get player value (consistent with aiManager.ts - 1-20 ability scale)
   const getPlayerValue = (player: Player): number => {
-    const overall = player.overall || 50;
-    const baseValue = overall * 50000;
-    const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
-    const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
+    const ability = player.current_ability || 10;
+    const baseValue = ability * 500000;  // £500K per ability point
+    
+    // Age multiplier
+    let ageMultiplier = 1.0;
+    if (player.age < 21) ageMultiplier = 1.6;
+    else if (player.age < 24) ageMultiplier = 1.4;
+    else if (player.age < 28) ageMultiplier = 1.1;
+    else if (player.age < 30) ageMultiplier = 1.0;
+    else if (player.age < 32) ageMultiplier = 0.7;
+    else ageMultiplier = 0.5;
+    
+    const positionMultiplier = ['ST', 'CF', 'LW', 'RW', 'CAM'].includes(player.position) ? 1.3 : 1.0;
     return Math.round(baseValue * ageMultiplier * positionMultiplier);
   };
 

@@ -2242,19 +2242,31 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { accepted: false, reason: 'Insufficient funds' };
     }
     
-    // Calculate player's market value
-    const baseValue = player.overall * 50000;
-    const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
-    const positionMultiplier = ['ST', 'LW', 'RW', 'AM'].includes(player.position) ? 1.3 : 1.0;
+    // Calculate player's market value (consistent with aiManager.ts)
+    // Using current_ability on 1-20 scale × £500,000 base
+    const ability = player.current_ability || 10;
+    const baseValue = ability * 500000;
+    
+    // Age multiplier: young players worth more
+    let ageMultiplier = 1.0;
+    if (player.age < 21) ageMultiplier = 1.6;
+    else if (player.age < 24) ageMultiplier = 1.4;
+    else if (player.age < 28) ageMultiplier = 1.1;
+    else if (player.age < 30) ageMultiplier = 1.0;
+    else if (player.age < 32) ageMultiplier = 0.7;
+    else ageMultiplier = 0.5;
+    
+    // Position multiplier: attackers worth more
+    const positionMultiplier = ['ST', 'CF', 'LW', 'RW', 'CAM'].includes(player.position) ? 1.3 : 1.0;
     const estimatedValue = Math.round(baseValue * ageMultiplier * positionMultiplier);
     
     // AI Decision Logic:
     // 1. Is the bid high enough? (>= 110% of value for unlisted players)
-    // 2. Is the player a key player? (top 3 in squad by overall)
+    // 2. Is the player a key player? (top 3 in squad by current_ability)
     // 3. Does the team have depth in this position?
     
     const bidPercentage = bidAmount / estimatedValue;
-    const sortedSquad = [...sellingTeam.squad].sort((a, b) => b.overall - a.overall);
+    const sortedSquad = [...sellingTeam.squad].sort((a, b) => (b.current_ability || 0) - (a.current_ability || 0));
     const isKeyPlayer = sortedSquad.slice(0, 3).some(p => p.id === playerId);
     const samePositionPlayers = sellingTeam.squad.filter(p => p.position === player.position);
     const hasDepth = samePositionPlayers.length >= 2;

@@ -174,8 +174,20 @@ export function generatePlayer(
   const isMid = ['DM', 'CM', 'AM'].includes(position);
   const isAtt = ['LW', 'RW', 'ST'].includes(position);
   
-  const ageMultiplier = clampedAge < 24 ? 1.5 : clampedAge < 28 ? 1.2 : clampedAge < 32 ? 0.8 : 0.4;
-  const value = Math.round(baseAbility * 800000 * ageMultiplier * (0.8 + Math.random() * 0.4));
+  // Age multiplier for value calculation (consistent with aiManager.ts)
+  let ageMultiplier = 1.0;
+  if (clampedAge < 21) ageMultiplier = 1.6;
+  else if (clampedAge < 24) ageMultiplier = 1.4;
+  else if (clampedAge < 28) ageMultiplier = 1.1;
+  else if (clampedAge < 30) ageMultiplier = 1.0;
+  else if (clampedAge < 32) ageMultiplier = 0.7;
+  else ageMultiplier = 0.5;
+  
+  // Position multiplier: attackers worth more
+  const positionMultiplier = ['ST', 'CF', 'LW', 'RW', 'CAM'].includes(position) ? 1.3 : 1.0;
+  
+  // Base value: ability × £500K (consistent with rest of game)
+  const value = Math.round(baseAbility * 500000 * ageMultiplier * positionMultiplier * (0.9 + Math.random() * 0.2));
   const wage = Math.round(baseAbility * 2000 * (0.8 + Math.random() * 0.4));
   const contractYears = 1 + Math.floor(Math.random() * 5);
   const contract_end = `${season + contractYears}-06-30`;
