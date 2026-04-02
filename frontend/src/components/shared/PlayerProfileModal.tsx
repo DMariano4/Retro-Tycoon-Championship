@@ -93,16 +93,37 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
     }
   };
 
-  // Attribute row component
-  const AttributeRow = ({ label, value }: { label: string; value: number }) => (
-    <View style={styles.attributeRow}>
-      <Text style={styles.attributeLabel}>{label}</Text>
-      <View style={styles.attributeBarContainer}>
-        <View style={[styles.attributeBar, { width: `${Math.min((value || 10) * 5, 100)}%` }]} />
+  // Get key attributes for position (these will be highlighted)
+  const getKeyAttributes = (position: string): string[] => {
+    if (position === 'GK') return ['reflexes', 'handling', 'positioning', 'communication'];
+    if (['CB'].includes(position)) return ['tackling', 'marking', 'heading', 'strength'];
+    if (['LB', 'RB', 'LWB', 'RWB'].includes(position)) return ['pace', 'tackling', 'stamina', 'crossing'];
+    if (['DM', 'CM'].includes(position)) return ['passing', 'tackling', 'stamina', 'vision'];
+    if (['AM', 'CAM'].includes(position)) return ['passing', 'vision', 'dribbling', 'finishing'];
+    if (['LM', 'RM', 'LW', 'RW'].includes(position)) return ['pace', 'dribbling', 'crossing', 'finishing'];
+    if (['ST', 'CF'].includes(position)) return ['finishing', 'heading', 'pace', 'off_the_ball'];
+    return ['pace', 'passing', 'finishing', 'tackling'];
+  };
+
+  const keyAttrs = getKeyAttributes(player.position);
+
+  // Compact attribute component with highlight support
+  const AttrItem = ({ label, attrKey, value }: { label: string; attrKey: string; value: number }) => {
+    const isKey = keyAttrs.includes(attrKey);
+    return (
+      <View style={styles.compactAttrItem}>
+        <Text style={[styles.compactAttrLabel, isKey && styles.compactAttrLabelHighlight]}>{label}</Text>
+        <View style={styles.compactAttrBarBg}>
+          <View style={[
+            styles.compactAttrBar, 
+            { width: `${Math.min((value || 10) * 5, 100)}%` },
+            isKey && styles.compactAttrBarHighlight
+          ]} />
+        </View>
+        <Text style={[styles.compactAttrValue, isKey && styles.compactAttrValueHighlight]}>{value || '-'}</Text>
       </View>
-      <Text style={styles.attributeValue}>{value || '-'}</Text>
-    </View>
-  );
+    );
+  };
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -171,27 +192,47 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
               </View>
             )}
 
-            {/* Attributes */}
+            {/* Attributes - Compact grid showing ALL stats with position highlights */}
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>ATTRIBUTES</Text>
-              <View style={styles.attributesGrid}>
-                {player.position === 'GK' ? (
-                  <>
-                    <AttributeRow label="Shot Stopping" value={player.shot_stopping || 10} />
-                    <AttributeRow label="Handling" value={player.handling || 10} />
-                    <AttributeRow label="Reflexes" value={player.reflexes || 10} />
-                    <AttributeRow label="Positioning" value={player.positioning || 10} />
-                  </>
-                ) : (
-                  <>
-                    <AttributeRow label="Pace" value={player.pace} />
-                    <AttributeRow label="Shooting" value={player.finishing} />
-                    <AttributeRow label="Passing" value={player.passing} />
-                    <AttributeRow label="Dribbling" value={player.technique} />
-                    <AttributeRow label="Defending" value={player.tackling} />
-                    <AttributeRow label="Physical" value={player.stamina} />
-                  </>
-                )}
+              
+              {/* Physical */}
+              <Text style={styles.attrCategoryTitle}>Physical</Text>
+              <View style={styles.compactAttrGrid}>
+                <AttrItem label="Pace" attrKey="pace" value={player.pace} />
+                <AttrItem label="Strength" attrKey="strength" value={player.strength} />
+                <AttrItem label="Stamina" attrKey="stamina" value={player.stamina} />
+                <AttrItem label="Agility" attrKey="agility" value={player.agility} />
+              </View>
+
+              {/* Technical */}
+              <Text style={styles.attrCategoryTitle}>Technical</Text>
+              <View style={styles.compactAttrGrid}>
+                <AttrItem label="Passing" attrKey="passing" value={player.passing} />
+                <AttrItem label="Dribbling" attrKey="dribbling" value={player.dribbling} />
+                <AttrItem label="Finishing" attrKey="finishing" value={player.finishing} />
+                <AttrItem label="Crossing" attrKey="crossing" value={player.crossing} />
+                <AttrItem label="Heading" attrKey="heading" value={player.heading} />
+                <AttrItem label="Tackling" attrKey="tackling" value={player.tackling} />
+                <AttrItem label="Marking" attrKey="marking" value={player.marking} />
+                <AttrItem label="Control" attrKey="control" value={player.control} />
+              </View>
+
+              {/* Mental */}
+              <Text style={styles.attrCategoryTitle}>Mental</Text>
+              <View style={styles.compactAttrGrid}>
+                <AttrItem label="Vision" attrKey="vision" value={player.vision} />
+                <AttrItem label="Composure" attrKey="composure" value={player.composure} />
+                <AttrItem label="Off the Ball" attrKey="off_the_ball" value={player.off_the_ball} />
+                <AttrItem label="Positioning" attrKey="positioning" value={player.positioning} />
+              </View>
+
+              {/* Goalkeeping (shown for all but highlighted for GK) */}
+              <Text style={styles.attrCategoryTitle}>Goalkeeping</Text>
+              <View style={styles.compactAttrGrid}>
+                <AttrItem label="Reflexes" attrKey="reflexes" value={player.reflexes} />
+                <AttrItem label="Handling" attrKey="handling" value={player.handling} />
+                <AttrItem label="Communication" attrKey="communication" value={player.communication} />
               </View>
             </View>
           </ScrollView>
@@ -388,6 +429,63 @@ const styles = StyleSheet.create({
   },
   attributesGrid: {
     gap: 10,
+  },
+  // Compact attribute styles for full stats display
+  attrCategoryTitle: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6a8aaa',
+    letterSpacing: 0.5,
+    marginTop: 10,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  compactAttrGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  compactAttrItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '48%',
+    paddingVertical: 3,
+  },
+  compactAttrLabel: {
+    width: 70,
+    fontSize: 10,
+    color: '#6a8aaa',
+  },
+  compactAttrLabelHighlight: {
+    color: '#4a9eff',
+    fontWeight: '600',
+  },
+  compactAttrBarBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#1a3a5c',
+    borderRadius: 2,
+    marginHorizontal: 6,
+    overflow: 'hidden',
+  },
+  compactAttrBar: {
+    height: '100%',
+    backgroundColor: '#4a6a8a',
+    borderRadius: 2,
+  },
+  compactAttrBarHighlight: {
+    backgroundColor: '#00ff88',
+  },
+  compactAttrValue: {
+    width: 18,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#8aa8c8',
+    textAlign: 'right',
+  },
+  compactAttrValueHighlight: {
+    color: '#00ff88',
+    fontWeight: '700',
   },
   attributeRow: {
     flexDirection: 'row',
