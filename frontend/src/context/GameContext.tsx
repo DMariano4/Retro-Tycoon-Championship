@@ -971,8 +971,11 @@ export function GameProvider({ children }: { children: ReactNode }) {
             const rating = liteResult.playerRatings[player.id];
             if (rating === undefined) return player;
 
-            const formChange = (rating - 6.5) * 0.5;
-            const newForm = Math.max(1, Math.min(20, player.form + formChange));
+            // NEW: Update form using recentMatchRatings system (1-10 scale)
+            const previousRatings = player.recentMatchRatings || [];
+            const updatedRatings = [...previousRatings.slice(-4), rating]; // Keep last 4 + new = 5
+            const newForm = updatedRatings.reduce((sum, r) => sum + r, 0) / updatedRatings.length;
+            
             // Fitness decrease after match (1-3) - more realistic fatigue
             const fitnessLoss = 1 + Math.random() * 2;
             const newFitness = Math.max(1, player.fitness - fitnessLoss);
@@ -984,6 +987,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
             return {
               ...player,
+              recentMatchRatings: updatedRatings,
               form: Math.round(newForm * 10) / 10,
               fitness: Math.round(newFitness * 10) / 10,
               ...(playerInjury ? {
