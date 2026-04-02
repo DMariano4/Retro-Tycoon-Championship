@@ -259,6 +259,76 @@ export const matchStyles = StyleSheet.create({
     color: '#4a6a8a',
     fontWeight: '600',
   },
+  // New visual lineup selector styles
+  preMatchScrollView: {
+    flex: 1,
+  },
+  preMatchScrollContent: {
+    padding: 16,
+    paddingBottom: 32,
+  },
+  preMatchHeader: {
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 4,
+  },
+  lineupSelectorContainer: {
+    marginVertical: 16,
+  },
+  opponentInfoCard: {
+    backgroundColor: '#0d2137',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    marginBottom: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#1a3a5c',
+  },
+  opponentLabel: {
+    fontSize: 10,
+    color: '#6a8aaa',
+    fontWeight: '600',
+    letterSpacing: 1,
+    marginBottom: 4,
+  },
+  opponentName: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  opponentStats: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  opponentStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  opponentStatText: {
+    fontSize: 13,
+    color: '#4a9eff',
+    fontWeight: '600',
+  },
+  kickOffContainer: {
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  selectLineupHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#0d2137',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+  },
+  selectLineupHintText: {
+    fontSize: 13,
+    color: '#6a8aaa',
+  },
   startButton: {
     flexDirection: 'row',
     alignItems: 'center',

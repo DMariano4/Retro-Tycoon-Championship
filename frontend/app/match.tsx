@@ -731,39 +731,65 @@ export default function MatchScreen() {
       {/* Main Content Area */}
       <View style={styles.contentContainer}>
         {matchState === 'pre' ? (
-          <View style={styles.preMatchContainer}>
-            <Ionicons name="football" size={48} color="#00ff88" />
-            <Text style={styles.preMatchTitle}>MATCH DAY</Text>
-            <Text style={styles.preMatchSubtitle}>Week {fixture.week}</Text>
-            <Text style={styles.preMatchInfo}>
-              {isHome ? 'Home' : 'Away'} match at {isHome ? managedTeam.stadium : 'Away Stadium'}
-            </Text>
-            <View style={styles.preMatchFormations}>
-              <View style={styles.preMatchFormationItem}>
-                <Text style={styles.preMatchFormationTeam}>{homeTeam?.short_name}</Text>
-                <Text style={styles.preMatchFormationValue}>{homeTeam?.formation || '4-4-2'}</Text>
-              </View>
-              <Text style={styles.preMatchFormationVs}>vs</Text>
-              <View style={styles.preMatchFormationItem}>
-                <Text style={styles.preMatchFormationTeam}>{awayTeam?.short_name}</Text>
-                <Text style={styles.preMatchFormationValue}>{awayTeam?.formation || '4-4-2'}</Text>
+          <ScrollView 
+            style={styles.preMatchScrollView} 
+            contentContainerStyle={styles.preMatchScrollContent}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.preMatchHeader}>
+              <Ionicons name="football" size={36} color="#00ff88" />
+              <Text style={styles.preMatchTitle}>MATCH DAY</Text>
+              <Text style={styles.preMatchSubtitle}>Week {fixture.week}</Text>
+              <Text style={styles.preMatchInfo}>
+                {isHome ? 'Home' : 'Away'} match at {isHome ? managedTeam.stadium : 'Away Stadium'}
+              </Text>
+            </View>
+
+            {/* Visual Pitch Lineup Selector */}
+            <View style={styles.lineupSelectorContainer}>
+              <PitchLineupSelector
+                team={managedTeam}
+                formation={selectedFormation}
+                selectedLineup={currentSquad}
+                onLineupChange={(lineup) => {
+                  setCurrentSquad(lineup);
+                  // Update bench with remaining players
+                  const selectedIds = new Set(lineup.filter(p => p).map(p => p.id));
+                  const newBench = managedTeam.squad.filter(p => !selectedIds.has(p.id));
+                  setBenchPlayers(newBench);
+                  // Auto-confirm when 11 players selected
+                  if (lineup.filter(p => p).length === 11) {
+                    setLineupConfirmed(true);
+                  } else {
+                    setLineupConfirmed(false);
+                  }
+                }}
+                onFormationChange={(formation) => {
+                  setSelectedFormation(formation);
+                  updateFormation(formation, {});
+                }}
+              />
+            </View>
+
+            {/* Opponent Info */}
+            <View style={styles.opponentInfoCard}>
+              <Text style={styles.opponentLabel}>OPPONENT</Text>
+              <Text style={styles.opponentName}>
+                {isHome ? awayTeam?.name : homeTeam?.name}
+              </Text>
+              <View style={styles.opponentStats}>
+                <View style={styles.opponentStatItem}>
+                  <Ionicons name="grid-outline" size={14} color="#4a9eff" />
+                  <Text style={styles.opponentStatText}>
+                    {isHome ? awayTeam?.formation : homeTeam?.formation || '4-4-2'}
+                  </Text>
+                </View>
               </View>
             </View>
 
-            {!lineupConfirmed ? (
-              <TouchableOpacity 
-                style={styles.selectTeamButton} 
-                onPress={() => setShowLineupModal(true)}
-              >
-                <Ionicons name="people-outline" size={20} color="#0a1628" />
-                <Text style={styles.selectTeamButtonText}>SELECT TEAM</Text>
-              </TouchableOpacity>
-            ) : (
-              <>
-                <View style={styles.lineupConfirmedBadge}>
-                  <Ionicons name="checkmark-circle" size={20} color="#00ff88" />
-                  <Text style={styles.lineupConfirmedText}>Team Selected</Text>
-                </View>
+            {/* Kick Off Button */}
+            <View style={styles.kickOffContainer}>
+              {lineupConfirmed ? (
                 <Pressable 
                   style={[styles.startButton, isStartingMatch && { opacity: 0.6 }]} 
                   onPress={handleStartMatch}
@@ -780,9 +806,16 @@ export default function MatchScreen() {
                     {isStartingMatch ? 'STARTING...' : 'KICK OFF'}
                   </Text>
                 </Pressable>
-              </>
-            )}
-          </View>
+              ) : (
+                <View style={styles.selectLineupHint}>
+                  <Ionicons name="information-circle-outline" size={16} color="#6a8aaa" />
+                  <Text style={styles.selectLineupHintText}>
+                    Select 11 players or tap AUTO to fill lineup
+                  </Text>
+                </View>
+              )}
+            </View>
+          </ScrollView>
         ) : (
           <>
             {/* Pitch View */}
@@ -1145,21 +1178,7 @@ export default function MatchScreen() {
         onMakeSubstitution={handleMakeSubstitution}
       />
 
-      {/* Lineup Selection Modal */}
-      <LineupModal
-        visible={showLineupModal}
-        currentSquad={currentSquad}
-        benchPlayers={benchPlayers}
-        selectedForSwap={selectedForSwap}
-        swapMode={swapMode}
-        onClose={() => {
-          setShowLineupModal(false);
-          setSelectedForSwap(null);
-          setSwapMode(null);
-        }}
-        onPlayerSelect={handlePlayerSelect}
-        onConfirmLineup={handleConfirmLineup}
-      />
+      {/* LineupModal no longer used - replaced by inline PitchLineupSelector */}
     </SafeAreaView>
   );
 }
