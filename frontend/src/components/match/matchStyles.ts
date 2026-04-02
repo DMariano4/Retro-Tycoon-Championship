@@ -587,6 +587,92 @@ export const matchStyles = StyleSheet.create({
   awayStatBar: {
     backgroundColor: '#ff9f43',
   },
+  // Compact Stats styles
+  statsContainerCompact: {
+    padding: 12,
+  },
+  statItemCompact: {
+    marginBottom: 12,
+  },
+  statLabelCompact: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    letterSpacing: 1,
+  },
+  statValueCompact: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: '#fff',
+  },
+  // Compact Ratings styles
+  ratingsSectionCompact: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#1a3a5c',
+  },
+  sectionTitleCompact: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  ratingsTeamNameCompact: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4a9eff',
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  ratingRowCompact: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 6,
+    backgroundColor: '#0d1a28',
+    borderRadius: 4,
+    marginBottom: 3,
+  },
+  ratingPositionCompact: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    width: 24,
+  },
+  ratingPlayerInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  ratingPlayerNameCompact: {
+    fontSize: 11,
+    color: '#fff',
+    flex: 1,
+  },
+  ratingBadgeCompact: {
+    width: 28,
+    height: 20,
+    borderRadius: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingValueCompact: {
+    fontSize: 10,
+    fontWeight: '800',
+  },
+  goalAssistBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 1,
+  },
+  goalAssistCount: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#fff',
+  },
   // Footer
   liveFooter: {
     padding: 16,

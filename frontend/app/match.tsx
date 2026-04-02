@@ -897,13 +897,13 @@ export default function MatchScreen() {
             {/* Stats View */}
             {activeTab === 'stats' && (
               <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
-                <View style={styles.statsContainer}>
+                <View style={styles.statsContainerCompact}>
                   {/* Possession */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.possession.home}%</Text>
-                      <Text style={styles.statLabel}>POSSESSION</Text>
-                      <Text style={styles.statValue}>{matchStats.possession.away}%</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.possession.home}%</Text>
+                      <Text style={styles.statLabelCompact}>POSSESSION</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.possession.away}%</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { width: `${matchStats.possession.home}%` }]} />
@@ -912,11 +912,11 @@ export default function MatchScreen() {
                   </View>
 
                   {/* Shots */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.shots.home}</Text>
-                      <Text style={styles.statLabel}>SHOTS</Text>
-                      <Text style={styles.statValue}>{matchStats.shots.away}</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.shots.home}</Text>
+                      <Text style={styles.statLabelCompact}>SHOTS</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.shots.away}</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { 
@@ -929,11 +929,11 @@ export default function MatchScreen() {
                   </View>
 
                   {/* Shots on Target */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.shotsOnTarget.home}</Text>
-                      <Text style={styles.statLabel}>SHOTS ON TARGET</Text>
-                      <Text style={styles.statValue}>{matchStats.shotsOnTarget.away}</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.shotsOnTarget.home}</Text>
+                      <Text style={styles.statLabelCompact}>ON TARGET</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.shotsOnTarget.away}</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { 
@@ -946,11 +946,11 @@ export default function MatchScreen() {
                   </View>
 
                   {/* Corners */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.corners.home}</Text>
-                      <Text style={styles.statLabel}>CORNERS</Text>
-                      <Text style={styles.statValue}>{matchStats.corners.away}</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.corners.home}</Text>
+                      <Text style={styles.statLabelCompact}>CORNERS</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.corners.away}</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { 
@@ -963,11 +963,11 @@ export default function MatchScreen() {
                   </View>
 
                   {/* Fouls */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.fouls.home}</Text>
-                      <Text style={styles.statLabel}>FOULS</Text>
-                      <Text style={styles.statValue}>{matchStats.fouls.away}</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.fouls.home}</Text>
+                      <Text style={styles.statLabelCompact}>FOULS</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.fouls.away}</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { 
@@ -980,11 +980,11 @@ export default function MatchScreen() {
                   </View>
 
                   {/* Yellow Cards */}
-                  <View style={styles.statItem}>
+                  <View style={styles.statItemCompact}>
                     <View style={styles.statHeader}>
-                      <Text style={styles.statValue}>{matchStats.yellowCards.home}</Text>
-                      <Text style={styles.statLabel}>YELLOW CARDS</Text>
-                      <Text style={styles.statValue}>{matchStats.yellowCards.away}</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.yellowCards.home}</Text>
+                      <Text style={styles.statLabelCompact}>YELLOW CARDS</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.yellowCards.away}</Text>
                     </View>
                     <View style={styles.statBarContainer}>
                       <View style={[styles.statBar, styles.homeStatBar, { 
@@ -996,51 +996,12 @@ export default function MatchScreen() {
                     </View>
                   </View>
 
-                  {/* Phase 2: Momentum Display */}
-                  {momentumData && matchState === 'post' && (
-                    <View style={styles.momentumSection}>
-                      <Text style={styles.sectionTitle}>MATCH MOMENTUM</Text>
-                      <View style={styles.momentumBar}>
-                        <View style={styles.momentumLabels}>
-                          <Text style={styles.momentumLabelHome}>{homeTeam?.short_name}</Text>
-                          <Text style={styles.momentumLabelAway}>{awayTeam?.short_name}</Text>
-                        </View>
-                        <View style={styles.momentumBarTrack}>
-                          <View style={[styles.momentumBarFill, { 
-                            width: `${momentumData.finalHome}%`,
-                            backgroundColor: '#4a9eff' 
-                          }]} />
-                        </View>
-                        <View style={styles.momentumBarTrack}>
-                          <View style={[styles.momentumBarFill, { 
-                            width: `${momentumData.finalAway}%`,
-                            backgroundColor: '#ff6b6b' 
-                          }]} />
-                        </View>
-                      </View>
-                      {/* Mini momentum timeline */}
-                      <View style={styles.momentumTimeline}>
-                        {momentumData.timeline.filter((_, i) => i % 2 === 0).map((point, idx) => (
-                          <View key={idx} style={styles.momentumPoint}>
-                            <View style={[styles.momentumDotHome, { 
-                              height: Math.max(2, (point.homeValue / 85) * 20),
-                            }]} />
-                            <Text style={styles.momentumMinute}>{point.minute}'</Text>
-                            <View style={[styles.momentumDotAway, { 
-                              height: Math.max(2, (point.awayValue / 85) * 20),
-                            }]} />
-                          </View>
-                        ))}
-                      </View>
-                    </View>
-                  )}
-
                   {matchState === 'post' && Object.keys(playerRatings).length > 0 && (
-                    <View style={styles.ratingsSection}>
-                      <Text style={styles.sectionTitle}>PLAYER RATINGS</Text>
+                    <View style={styles.ratingsSectionCompact}>
+                      <Text style={styles.sectionTitleCompact}>PLAYER RATINGS</Text>
                       
                       {/* Home Team Ratings */}
-                      <Text style={styles.ratingsTeamName}>{homeTeam?.name}</Text>
+                      <Text style={styles.ratingsTeamNameCompact}>{homeTeam?.name}</Text>
                       {homeTeam?.squad
                         .filter(player => playerRatings[player.id] !== undefined)
                         .sort((a, b) => {
@@ -1049,14 +1010,39 @@ export default function MatchScreen() {
                         })
                         .map(player => {
                         const rating = playerRatings[player.id];
+                        // Count goals and assists from match events
+                        const playerGoals = events.filter(e => 
+                          (e.type === 'GOAL' || e.type === 'PENALTY_GOAL') && 
+                          e.player === player.name && 
+                          e.team === homeTeam?.short_name
+                        ).length;
+                        const playerAssists = events.filter(e => 
+                          (e.type === 'GOAL' || e.type === 'PENALTY_GOAL') && 
+                          e.assistPlayer === player.name && 
+                          e.team === homeTeam?.short_name
+                        ).length;
                         return (
-                          <View key={player.id} style={styles.ratingRow}>
-                            <Text style={styles.ratingPosition}>{player.position}</Text>
-                            <Text style={styles.ratingPlayerName} numberOfLines={1}>{player.name}</Text>
-                            <View style={[styles.ratingBadge, { 
+                          <View key={player.id} style={styles.ratingRowCompact}>
+                            <Text style={styles.ratingPositionCompact}>{player.position}</Text>
+                            <View style={styles.ratingPlayerInfo}>
+                              {playerGoals > 0 && (
+                                <View style={styles.goalAssistBadge}>
+                                  <Ionicons name="football" size={10} color="#00ff88" />
+                                  {playerGoals > 1 && <Text style={styles.goalAssistCount}>{playerGoals}</Text>}
+                                </View>
+                              )}
+                              {playerAssists > 0 && (
+                                <View style={styles.goalAssistBadge}>
+                                  <Ionicons name="fitness" size={10} color="#4a9eff" />
+                                  {playerAssists > 1 && <Text style={styles.goalAssistCount}>{playerAssists}</Text>}
+                                </View>
+                              )}
+                              <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
+                            </View>
+                            <View style={[styles.ratingBadgeCompact, { 
                               backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
                             }]}>
-                              <Text style={[styles.ratingValue, {
+                              <Text style={[styles.ratingValueCompact, {
                                 color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
                               }]}>{rating.toFixed(1)}</Text>
                             </View>
@@ -1065,7 +1051,7 @@ export default function MatchScreen() {
                       })}
                       
                       {/* Away Team Ratings */}
-                      <Text style={[styles.ratingsTeamName, { marginTop: 16 }]}>{awayTeam?.name}</Text>
+                      <Text style={[styles.ratingsTeamNameCompact, { marginTop: 10 }]}>{awayTeam?.name}</Text>
                       {awayTeam?.squad
                         .filter(player => playerRatings[player.id] !== undefined)
                         .sort((a, b) => {
@@ -1074,14 +1060,39 @@ export default function MatchScreen() {
                         })
                         .map(player => {
                         const rating = playerRatings[player.id];
+                        // Count goals and assists from match events
+                        const playerGoals = events.filter(e => 
+                          (e.type === 'GOAL' || e.type === 'PENALTY_GOAL') && 
+                          e.player === player.name && 
+                          e.team === awayTeam?.short_name
+                        ).length;
+                        const playerAssists = events.filter(e => 
+                          (e.type === 'GOAL' || e.type === 'PENALTY_GOAL') && 
+                          e.assistPlayer === player.name && 
+                          e.team === awayTeam?.short_name
+                        ).length;
                         return (
-                          <View key={player.id} style={styles.ratingRow}>
-                            <Text style={styles.ratingPosition}>{player.position}</Text>
-                            <Text style={styles.ratingPlayerName} numberOfLines={1}>{player.name}</Text>
-                            <View style={[styles.ratingBadge, { 
+                          <View key={player.id} style={styles.ratingRowCompact}>
+                            <Text style={styles.ratingPositionCompact}>{player.position}</Text>
+                            <View style={styles.ratingPlayerInfo}>
+                              {playerGoals > 0 && (
+                                <View style={styles.goalAssistBadge}>
+                                  <Ionicons name="football" size={10} color="#00ff88" />
+                                  {playerGoals > 1 && <Text style={styles.goalAssistCount}>{playerGoals}</Text>}
+                                </View>
+                              )}
+                              {playerAssists > 0 && (
+                                <View style={styles.goalAssistBadge}>
+                                  <Ionicons name="fitness" size={10} color="#4a9eff" />
+                                  {playerAssists > 1 && <Text style={styles.goalAssistCount}>{playerAssists}</Text>}
+                                </View>
+                              )}
+                              <Text style={styles.ratingPlayerNameCompact} numberOfLines={1}>{player.name}</Text>
+                            </View>
+                            <View style={[styles.ratingBadgeCompact, { 
                               backgroundColor: rating >= 7.5 ? '#00ff88' : rating >= 6.5 ? '#ffcc00' : rating >= 5.5 ? '#ff9f43' : '#ff6b6b'
                             }]}>
-                              <Text style={[styles.ratingValue, {
+                              <Text style={[styles.ratingValueCompact, {
                                 color: rating >= 7.5 ? '#0a1628' : rating >= 6.5 ? '#0a1628' : '#fff'
                               }]}>{rating.toFixed(1)}</Text>
                             </View>
