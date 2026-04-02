@@ -924,15 +924,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     };
   };
 
-  // Simulate all other matches for the current week (AI vs AI) and advance the week
-  // Handles ALL leagues, not just the managed team's league
-  // Can optionally receive already-updated leagues/teams from simulateMatch to avoid state timing issues
+  // Simulate all other matches for the SAME DATE as the user's match (AI vs AI)
+  // Uses the event-driven date system, not the legacy week system
   // Returns the final state instead of calling setCurrentSave (caller must finalize)
   const simulateOtherWeekMatches = (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]): { leagues: League[]; teams: Team[]; gameDate: string } | null => {
     if (!currentSave) return null;
     if (currentSave.leagues.length === 0) return null;
 
     const managedTeamId = currentSave.managed_team_id;
+    const currentGameDate = currentSave.game_date;
 
     // Use provided updated state or fall back to currentSave
     let updatedLeagues = alreadyUpdatedLeagues ? [...alreadyUpdatedLeagues] : [...currentSave.leagues];
@@ -940,7 +940,23 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     console.log('simulateOtherWeekMatches: Starting AI match simulation');
     console.log('simulateOtherWeekMatches: Using provided state?', !!alreadyUpdatedLeagues);
+    console.log('simulateOtherWeekMatches: Current game date:', currentGameDate);
     console.log('simulateOtherWeekMatches: Number of leagues:', updatedLeagues.length);
+
+    // Find the user's match that was just played to get the match date
+    let matchDate = currentGameDate;
+    for (const league of updatedLeagues) {
+      const userPlayedMatch = league.fixtures.find(f => 
+        f.played && 
+        (f.home_team_id === managedTeamId || f.away_team_id === managedTeamId)
+      );
+      // Get the most recently played match's date
+      if (userPlayedMatch?.match_date) {
+        matchDate = userPlayedMatch.match_date;
+        console.log('simulateOtherWeekMatches: Found user match date:', matchDate);
+        break;
+      }
+    }
 
     let totalAIMatchesSimulated = 0;
 
@@ -948,41 +964,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
     for (let leagueIndex = 0; leagueIndex < updatedLeagues.length; leagueIndex++) {
       const league = updatedLeagues[leagueIndex];
       
-      // SAFEGUARD: If current_week is 0 but we have played fixtures in week 1, infer the correct week
-      let effectiveWeek = league.current_week;
-      console.log(`simulateOtherWeekMatches: League ${league.name} initial current_week=${league.current_week}`);
-      
-      if (effectiveWeek === 0) {
-        console.log(`simulateOtherWeekMatches: Week is 0, checking for played fixtures...`);
-        // Check if there are any played fixtures - if so, use the week of the first played fixture
-        const playedFixture = league.fixtures.find(f => f.played);
-        console.log(`simulateOtherWeekMatches: Played fixture found?`, playedFixture ? `Yes, week ${playedFixture.week}` : 'No');
-        
-        if (playedFixture) {
-          effectiveWeek = playedFixture.week;
-          console.log(`simulateOtherWeekMatches: Correcting week from 0 to ${effectiveWeek} based on played fixture`);
-          // Also update the league's current_week
-          updatedLeagues[leagueIndex] = { ...league, current_week: effectiveWeek };
-        } else {
-          // No played fixtures, assume week 1 if there are week 1 fixtures
-          const hasWeek1Fixtures = league.fixtures.some(f => f.week === 1);
-          if (hasWeek1Fixtures) {
-            effectiveWeek = 1;
-            console.log('simulateOtherWeekMatches: Correcting week from 0 to 1 (pre-season over)');
-            updatedLeagues[leagueIndex] = { ...league, current_week: 1 };
-          }
-        }
-      }
-      
-      // Find all unplayed fixtures for the effective week (after correction)
-      // For the managed team's league: skip the managed team's fixture (already played)
-      // For other leagues: simulate ALL fixtures
-      const otherFixtures = updatedLeagues[leagueIndex].fixtures.filter(
-        f => f.week === effectiveWeek && !f.played && 
+      // Find all unplayed fixtures for the SAME DATE as the user's match
+      // Skip the managed team's fixtures (already played)
+      const otherFixtures = league.fixtures.filter(
+        f => f.match_date === matchDate && !f.played && 
              f.home_team_id !== managedTeamId && f.away_team_id !== managedTeamId
       );
 
-      console.log(`simulateOtherWeekMatches: League ${updatedLeagues[leagueIndex].name} week ${effectiveWeek} - found ${otherFixtures.length} AI fixtures to simulate`);
+      console.log(`simulateOtherWeekMatches: League ${league.name} date ${matchDate} - found ${otherFixtures.length} AI fixtures to simulate`);
 
       for (const fixture of otherFixtures) {
         const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
@@ -1106,13 +1095,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // WEEKLY FINANCIAL PROCESSING for ALL teams
     // ============================================
     updatedTeams = updatedTeams.map(team => {
-      // Find if this team had a home match this week (already played)
-      const homeFixture = currentSave.leagues
+      // Find if this team had a home match on this date (already played)
+      const homeFixture = updatedLeagues
         .flatMap(l => l.fixtures)
         .find(f => 
           f.home_team_id === team.id && 
           f.played &&
-          f.week === currentSave.leagues[0]?.current_week
+          f.match_date === matchDate
         );
       
       const hadHomeMatch = !!homeFixture;
