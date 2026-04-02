@@ -6,6 +6,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, TextInput, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Player, Team, useGame } from '../../context/GameContext';
+import { PlayerCareerStatsModal } from './PlayerCareerStatsModal';
 
 interface PlayerProfileModalProps {
   visible: boolean;
@@ -18,6 +19,7 @@ interface PlayerProfileModalProps {
 export function PlayerProfileModal({ visible, player, team, onClose, onBidSuccess }: PlayerProfileModalProps) {
   const { currentSave, makeUnlistedBid } = useGame();
   const [showBidModal, setShowBidModal] = useState(false);
+  const [showCareerStats, setShowCareerStats] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -172,6 +174,15 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
               </View>
             </View>
 
+            {/* Career Stats Button */}
+            <TouchableOpacity
+              style={styles.careerStatsButton}
+              onPress={() => setShowCareerStats(true)}
+            >
+              <Ionicons name="stats-chart" size={18} color="#fff" />
+              <Text style={styles.careerStatsButtonText}>VIEW CAREER STATS</Text>
+            </TouchableOpacity>
+
             {/* Transfer Section - Moved to top for visibility (only for other teams' players) */}
             {!isOwnPlayer && (
               <View style={styles.section}>
@@ -292,6 +303,13 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
             </View>
           </View>
         </Modal>
+
+        {/* Career Stats Modal */}
+        <PlayerCareerStatsModal
+          visible={showCareerStats}
+          player={player}
+          onClose={() => setShowCareerStats(false)}
+        />
       </View>
     </Modal>
   );
@@ -536,6 +554,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6a8aaa',
     marginTop: 10,
+  },
+  careerStatsButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#1a3a5c',
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginHorizontal: 16,
+    marginBottom: 12,
+    gap: 8,
+  },
+  careerStatsButtonText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.5,
   },
   // Bid Modal Styles
   bidOverlay: {

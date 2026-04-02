@@ -125,7 +125,7 @@ export interface Player {
     recoveryWeeks: number;
     injuredDate: string; // YYYY-MM-DD
   };
-  // Season statistics
+  // Current season statistics
   stats?: {
     appearances: number;
     goals: number;
@@ -133,6 +133,20 @@ export interface Player {
     cleanSheets?: number;  // For goalkeepers
     yellowCards?: number;
     redCards?: number;
+  };
+  // Career statistics by season
+  careerStats?: {
+    [season: string]: {
+      teamId: string;
+      teamName: string;
+      appearances: number;
+      goals: number;
+      assists: number;
+      cleanSheets: number;
+      yellowCards: number;
+      redCards: number;
+      avgRating?: number;
+    };
   };
 }
 
@@ -821,12 +835,47 @@ export function GameProvider({ children }: { children: ReactNode }) {
           redCards: prevStats.redCards || 0,
         };
         
+        // Update career stats for this season
+        const seasonKey = String(currentSave.season || 2025);
+        const prevCareerStats = player.careerStats || {};
+        const prevSeasonStats = prevCareerStats[seasonKey] || {
+          teamId: team.id,
+          teamName: team.name,
+          appearances: 0,
+          goals: 0,
+          assists: 0,
+          cleanSheets: 0,
+          yellowCards: 0,
+          redCards: 0,
+          avgRating: 0,
+        };
+        
+        // Calculate new average rating for the season
+        const totalRatings = prevSeasonStats.appearances * (prevSeasonStats.avgRating || 0);
+        const newAvgRating = (totalRatings + rating) / (prevSeasonStats.appearances + 1);
+        
+        const updatedCareerStats = {
+          ...prevCareerStats,
+          [seasonKey]: {
+            teamId: team.id,
+            teamName: team.name,
+            appearances: prevSeasonStats.appearances + 1,
+            goals: prevSeasonStats.goals + playerGoals,
+            assists: prevSeasonStats.assists + playerAssists,
+            cleanSheets: prevSeasonStats.cleanSheets + (isGK && teamCleanSheet ? 1 : 0),
+            yellowCards: prevSeasonStats.yellowCards,
+            redCards: prevSeasonStats.redCards,
+            avgRating: Math.round(newAvgRating * 10) / 10,
+          },
+        };
+        
         return {
           ...player,
           recentMatchRatings: updatedRatings,
           form: Math.round(newForm * 10) / 10,  // Form now on 1-10 scale
           fitness: Math.round(newFitness * 10) / 10,
           stats: newStats,
+          careerStats: updatedCareerStats,
           // Apply injury if one occurred
           ...(playerInjury ? {
             injury: {
