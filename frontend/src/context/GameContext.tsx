@@ -125,6 +125,15 @@ export interface Player {
     recoveryWeeks: number;
     injuredDate: string; // YYYY-MM-DD
   };
+  // Season statistics
+  stats?: {
+    appearances: number;
+    goals: number;
+    assists: number;
+    cleanSheets?: number;  // For goalkeepers
+    yellowCards?: number;
+    redCards?: number;
+  };
 }
 
 export interface Team {
@@ -746,12 +755,40 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     // Update player form based on match performance
     // Form is now the average of the last 5 match ratings (1-10 scale)
+    // Also track goals, assists, and appearances
+    
+    // Extract goals and assists from match events
+    // Events have player names, so we need to match by name
+    const goalEvents = matchResult.events?.filter((e: any) => 
+      e.type === 'GOAL' || e.type === 'PENALTY_GOAL'
+    ) || [];
+    
+    // Build lookup of goals and assists by player name
+    const goalsByName: Record<string, number> = {};
+    const assistsByName: Record<string, number> = {};
+    
+    goalEvents.forEach((e: any) => {
+      if (e.player) {
+        goalsByName[e.player] = (goalsByName[e.player] || 0) + 1;
+      }
+      if (e.assistPlayer) {
+        assistsByName[e.assistPlayer] = (assistsByName[e.assistPlayer] || 0) + 1;
+      }
+    });
+    
+    // Check for clean sheet (GK stat)
+    const homeCleanSheet = matchResult.awayScore === 0;
+    const awayCleanSheet = matchResult.homeScore === 0;
+    
     let updatedTeams = currentSave.teams.map(team => {
       if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
       
+      const isHomeTeam = team.id === homeTeam.id;
+      const teamCleanSheet = isHomeTeam ? homeCleanSheet : awayCleanSheet;
+      
       const updatedSquad = team.squad.map(player => {
         const rating = matchResult.playerRatings[player.id];
-        if (rating === undefined) return player;
+        if (rating === undefined) return player; // Player didn't play
         
         // Add new match rating to recent ratings array (keep last 5)
         const previousRatings = player.recentMatchRatings || [];
@@ -769,11 +806,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
           (inj: MatchInjury) => inj.playerId === player.id
         );
         
+        // Update stats - match by player name
+        const prevStats = player.stats || { appearances: 0, goals: 0, assists: 0, cleanSheets: 0, yellowCards: 0, redCards: 0 };
+        const playerGoals = goalsByName[player.name] || 0;
+        const playerAssists = assistsByName[player.name] || 0;
+        const isGK = player.position === 'GK';
+        
+        const newStats = {
+          appearances: prevStats.appearances + 1,
+          goals: prevStats.goals + playerGoals,
+          assists: prevStats.assists + playerAssists,
+          cleanSheets: (prevStats.cleanSheets || 0) + (isGK && teamCleanSheet ? 1 : 0),
+          yellowCards: prevStats.yellowCards || 0,
+          redCards: prevStats.redCards || 0,
+        };
+        
         return {
           ...player,
           recentMatchRatings: updatedRatings,
           form: Math.round(newForm * 10) / 10,  // Form now on 1-10 scale
           fitness: Math.round(newFitness * 10) / 10,
+          stats: newStats,
           // Apply injury if one occurred
           ...(playerInjury ? {
             injury: {
