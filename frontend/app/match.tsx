@@ -90,6 +90,7 @@ export default function MatchScreen() {
     corners: { home: 0, away: 0 },
     fouls: { home: 0, away: 0 },
     yellowCards: { home: 0, away: 0 },
+    redCards: { home: 0, away: 0 },
   });
 
   const managedTeam = getManagedTeam();
@@ -200,6 +201,13 @@ export default function MatchScreen() {
             newStats.yellowCards = {
               home: isHome ? prev.yellowCards.home + 1 : prev.yellowCards.home,
               away: !isHome ? prev.yellowCards.away + 1 : prev.yellowCards.away,
+            };
+          }
+          
+          if (nextEvent.type === 'RED_CARD' || nextEvent.type === 'SECOND_YELLOW') {
+            newStats.redCards = {
+              home: isHome ? prev.redCards.home + 1 : prev.redCards.home,
+              away: !isHome ? prev.redCards.away + 1 : prev.redCards.away,
             };
           }
           
@@ -315,6 +323,7 @@ export default function MatchScreen() {
           corners: result.stats.corners,
           fouls: result.stats.fouls,
           yellowCards: result.stats.yellowCards,
+          redCards: result.stats.redCards || { home: 0, away: 0 },
         });
       } else {
         // Fallback to calculated stats if not provided
@@ -325,6 +334,7 @@ export default function MatchScreen() {
           corners: { home: 0, away: 0 },
           fouls: { home: 0, away: 0 },
           yellowCards: { home: 0, away: 0 },
+          redCards: { home: 0, away: 0 },
         });
       }
     } else {
@@ -992,6 +1002,23 @@ export default function MatchScreen() {
                       }]} />
                       <View style={[styles.statBar, styles.awayStatBar, { 
                         width: `${(matchStats.yellowCards.away / Math.max(matchStats.yellowCards.home + matchStats.yellowCards.away, 1)) * 100}%` 
+                      }]} />
+                    </View>
+                  </View>
+
+                  {/* Red Cards */}
+                  <View style={styles.statItemCompact}>
+                    <View style={styles.statHeader}>
+                      <Text style={styles.statValueCompact}>{matchStats.redCards.home}</Text>
+                      <Text style={styles.statLabelCompact}>RED CARDS</Text>
+                      <Text style={styles.statValueCompact}>{matchStats.redCards.away}</Text>
+                    </View>
+                    <View style={styles.statBarContainer}>
+                      <View style={[styles.statBar, { backgroundColor: '#ff3b30' }, { 
+                        width: `${(matchStats.redCards.home / Math.max(matchStats.redCards.home + matchStats.redCards.away, 1)) * 100}%` 
+                      }]} />
+                      <View style={[styles.statBar, { backgroundColor: '#cc0000' }, { 
+                        width: `${(matchStats.redCards.away / Math.max(matchStats.redCards.home + matchStats.redCards.away, 1)) * 100}%` 
                       }]} />
                     </View>
                   </View>
