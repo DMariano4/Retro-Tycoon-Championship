@@ -33,7 +33,7 @@ const formations = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1
 
 export default function MatchScreen() {
   const { eventId } = useLocalSearchParams<{ eventId?: string }>();
-  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processEvent, processCupMatchResult } = useGame();
+  const { currentSave, getManagedTeam, getLeague, simulateMatch, simulateOtherWeekMatches, finalizeWeekSimulation, saveGame, updateFormation, advanceWeek, isSeasonComplete, getNextEvent, processEvent, processCupMatchResult } = useGame();
   const [matchState, setMatchState] = useState<MatchState>('pre');
   const [activeTab, setActiveTab] = useState<MatchTab>('pitch');
   const [events, setEvents] = useState<any[]>([]);
@@ -369,17 +369,23 @@ export default function MatchScreen() {
           processCupMatchResult(fixture.cupId, fixture.id, homeScore, awayScore);
         }
         
-        // Simulate all other matches and advance week
+        // Simulate all other matches and get the result
         // Pass the already-updated state from simulateMatch to avoid timing issues
+        let simResult;
         if (matchResultState) {
-          simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
+          simResult = simulateOtherWeekMatches(matchResultState.updatedLeagues, matchResultState.updatedTeams);
         } else {
           // Fallback - call without parameters (may have timing issues)
           console.warn('matchResultState not available, calling simulateOtherWeekMatches without state');
-          simulateOtherWeekMatches();
+          simResult = simulateOtherWeekMatches();
         }
-        // Save game
-        await saveGame(false);
+        
+        // Apply the simulation results and save (this handles state + AsyncStorage atomically)
+        if (simResult) {
+          finalizeWeekSimulation(simResult.leagues, simResult.teams, simResult.gameDate);
+        } else {
+          console.error('simulateOtherWeekMatches returned null');
+        }
       } catch (e) {
         console.error('Error simulating week:', e);
       }

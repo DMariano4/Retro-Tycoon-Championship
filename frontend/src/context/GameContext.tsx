@@ -323,7 +323,8 @@ interface GameContextType {
   updateFormation: (formation: string, positions: Record<string, any>) => void;
   advanceWeek: () => void;
   simulateMatch: (fixtureId: string, speed: number) => Promise<any>;
-  simulateOtherWeekMatches: (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => void;
+  simulateOtherWeekMatches: (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => { leagues: League[]; teams: Team[]; gameDate: string } | null;
+  finalizeWeekSimulation: (leagues: League[], teams: Team[], gameDate: string) => void;
   makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
   // Season progression
@@ -926,9 +927,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // Simulate all other matches for the current week (AI vs AI) and advance the week
   // Handles ALL leagues, not just the managed team's league
   // Can optionally receive already-updated leagues/teams from simulateMatch to avoid state timing issues
-  const simulateOtherWeekMatches = (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => {
-    if (!currentSave) return;
-    if (currentSave.leagues.length === 0) return;
+  // Returns the final state instead of calling setCurrentSave (caller must finalize)
+  const simulateOtherWeekMatches = (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]): { leagues: League[]; teams: Team[]; gameDate: string } | null => {
+    if (!currentSave) return null;
+    if (currentSave.leagues.length === 0) return null;
 
     const managedTeamId = currentSave.managed_team_id;
 
@@ -937,9 +939,15 @@ export function GameProvider({ children }: { children: ReactNode }) {
     let updatedTeams = alreadyUpdatedTeams ? [...alreadyUpdatedTeams] : [...currentSave.teams];
 
     console.log('simulateOtherWeekMatches: Starting AI match simulation');
+    console.log('simulateOtherWeekMatches: Using provided state?', !!alreadyUpdatedLeagues);
+    console.log('simulateOtherWeekMatches: Number of leagues:', updatedLeagues.length);
+
+    let totalAIMatchesSimulated = 0;
 
     // Process every league in the game
-    for (const league of updatedLeagues) {
+    for (let leagueIndex = 0; leagueIndex < updatedLeagues.length; leagueIndex++) {
+      const league = updatedLeagues[leagueIndex];
+      
       // Find all unplayed fixtures for the current week
       // For the managed team's league: skip the managed team's fixture (already played)
       // For other leagues: simulate ALL fixtures
@@ -948,14 +956,20 @@ export function GameProvider({ children }: { children: ReactNode }) {
              f.home_team_id !== managedTeamId && f.away_team_id !== managedTeamId
       );
 
+      console.log(`simulateOtherWeekMatches: League ${league.name} week ${league.current_week} - found ${otherFixtures.length} AI fixtures to simulate`);
+
       for (const fixture of otherFixtures) {
         const homeTeam = updatedTeams.find(t => t.id === fixture.home_team_id);
         const awayTeam = updatedTeams.find(t => t.id === fixture.away_team_id);
 
-        if (!homeTeam || !awayTeam) continue;
+        if (!homeTeam || !awayTeam) {
+          console.warn(`simulateOtherWeekMatches: Missing team for fixture ${fixture.id}`);
+          continue;
+        }
 
         // Use lightweight engine for AI vs AI (no commentary, no momentum, no events)
         const liteResult = simulateMatchLite(homeTeam, awayTeam);
+        totalAIMatchesSimulated++;
 
         // Update fixture and table within this league
         updatedLeagues = updatedLeagues.map(l => {
@@ -1124,37 +1138,6 @@ export function GameProvider({ children }: { children: ReactNode }) {
       return { ...l, current_week: l.current_week + 1 };
     });
 
-    // ============================================
-    // AI MANAGER INTELLIGENCE
-    // ============================================
-    // Process AI transfers when transfer window is open
-    let updatedMarket = [...(currentSave.transfer_market || [])];
-    let aiTransferActions: AITransferAction[] = [];
-    
-    if (currentSave.transfer_window_open) {
-      const aiResult = executeAITransfers(
-        updatedTeams,
-        currentSave.managed_team_id,
-        updatedMarket,
-        true
-      );
-      updatedTeams = aiResult.updatedTeams;
-      updatedMarket = aiResult.updatedMarket;
-      aiTransferActions = aiResult.actions;
-      
-      // Log AI transfer activity (for debugging)
-      if (aiTransferActions.length > 0) {
-        console.log('AI Transfer Activity:', aiTransferActions.map(a => 
-          `${a.teamName} ${a.type}s ${a.player.name} for £${(a.price / 1000000).toFixed(1)}M - ${a.reason}`
-        ));
-      }
-    }
-    
-    // Update AI formations periodically (every few weeks)
-    if (Math.random() > 0.8) {
-      updatedTeams = updateAIFormations(updatedTeams, currentSave.managed_team_id);
-    }
-
     // Advance game date by 7 days (with defensive validation)
     let nextGameDate: string;
     try {
@@ -1180,13 +1163,63 @@ export function GameProvider({ children }: { children: ReactNode }) {
       nextGameDate = fallbackDate.toISOString().split('T')[0];
     }
 
-    setCurrentSave({ 
+    console.log(`simulateOtherWeekMatches: Total AI matches simulated: ${totalAIMatchesSimulated}`);
+
+    // Return the final state - caller must call finalizeWeekSimulation to apply it
+    return {
+      leagues: updatedLeagues,
+      teams: updatedTeams,
+      gameDate: nextGameDate
+    };
+  };
+
+  // Apply the final week simulation state and save
+  const finalizeWeekSimulation = (leagues: League[], teams: Team[], gameDate: string) => {
+    if (!currentSave) return;
+    
+    // Process AI transfers when transfer window is open
+    let updatedTeams = [...teams];
+    let updatedMarket = [...(currentSave.transfer_market || [])];
+    
+    if (currentSave.transfer_window_open) {
+      const aiResult = executeAITransfers(
+        updatedTeams,
+        currentSave.managed_team_id,
+        updatedMarket,
+        true
+      );
+      updatedTeams = aiResult.updatedTeams;
+      updatedMarket = aiResult.updatedMarket;
+      
+      if (aiResult.actions.length > 0) {
+        console.log('AI Transfer Activity:', aiResult.actions.map(a => 
+          `${a.teamName} ${a.type}s ${a.player.name} for £${(a.price / 1000000).toFixed(1)}M - ${a.reason}`
+        ));
+      }
+    }
+    
+    // Update AI formations periodically
+    if (Math.random() > 0.8) {
+      updatedTeams = updateAIFormations(updatedTeams, currentSave.managed_team_id);
+    }
+
+    const updatedSave = { 
       ...currentSave, 
-      leagues: updatedLeagues, 
+      leagues, 
       teams: updatedTeams,
       transfer_market: updatedMarket,
-      game_date: nextGameDate
+      game_date: gameDate,
+      updated_at: new Date().toISOString()
+    };
+    
+    setCurrentSave(updatedSave);
+    
+    // Also save to AsyncStorage immediately to avoid state timing issues
+    AsyncStorage.setItem(LOCAL_SAVE_KEY, JSON.stringify(updatedSave)).catch(err => {
+      console.error('Error saving game after week simulation:', err);
     });
+    
+    console.log('finalizeWeekSimulation: State updated and saved');
   };
 
   // Old helper functions removed - now handled by matchEngine.ts
@@ -2615,6 +2648,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         advanceWeek,
         simulateMatch,
         simulateOtherWeekMatches,
+        finalizeWeekSimulation,
         makeTransferOffer,
         listPlayerForSale,
         isSeasonComplete,
