@@ -2088,9 +2088,25 @@ export function GameProvider({ children }: { children: ReactNode }) {
   // PRE-SEASON FRIENDLY SYSTEM
   // ============================================
 
-  /** Get all friendly slots */
+  /** Get all friendly slots - generate if missing */
   const getFriendlySlots = (): FriendlySlot[] => {
-    return currentSave?.friendlySlots || [];
+    if (currentSave?.friendlySlots && currentSave.friendlySlots.length > 0) {
+      return currentSave.friendlySlots;
+    }
+    
+    // Fallback: generate slots if they don't exist (for older saves)
+    if (currentSave) {
+      const season = currentSave.season || 2025;
+      const generatedSlots: FriendlySlot[] = [
+        { id: `friendly_slot_${season}_0`, date: `${season}-07-12`, isHome: true, isScheduled: false },
+        { id: `friendly_slot_${season}_1`, date: `${season}-07-19`, isHome: false, isScheduled: false },
+        { id: `friendly_slot_${season}_2`, date: `${season}-07-26`, isHome: true, isScheduled: false },
+        { id: `friendly_slot_${season}_3`, date: `${season}-08-02`, isHome: false, isScheduled: false },
+      ];
+      return generatedSlots;
+    }
+    
+    return [];
   };
 
   /** Get available opponents for a specific friendly slot */

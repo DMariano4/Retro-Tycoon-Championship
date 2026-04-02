@@ -71,19 +71,33 @@ export function DashboardTab({
         
         {isMatch && event.data && (
           <View style={styles.eventMatchInfo}>
-            <Text style={[
-              styles.eventTeamName,
-              event.data.home_team_id === team?.id && styles.eventTeamHighlight
-            ]}>
-              {event.data.home_team_name}
-            </Text>
+            <TouchableOpacity 
+              onPress={() => event.data.home_team_id && event.data.home_team_id !== team?.id && 
+                router.push(`/team/${event.data.home_team_id}`)}
+              activeOpacity={event.data.home_team_id === team?.id ? 1 : 0.7}
+            >
+              <Text style={[
+                styles.eventTeamName,
+                event.data.home_team_id === team?.id && styles.eventTeamHighlight,
+                event.data.home_team_id !== team?.id && { textDecorationLine: 'underline' }
+              ]}>
+                {event.data.home_team_name}
+              </Text>
+            </TouchableOpacity>
             <Text style={styles.eventVs}>vs</Text>
-            <Text style={[
-              styles.eventTeamName,
-              event.data.away_team_id === team?.id && styles.eventTeamHighlight
-            ]}>
-              {event.data.away_team_name}
-            </Text>
+            <TouchableOpacity 
+              onPress={() => event.data.away_team_id && event.data.away_team_id !== team?.id && 
+                router.push(`/team/${event.data.away_team_id}`)}
+              activeOpacity={event.data.away_team_id === team?.id ? 1 : 0.7}
+            >
+              <Text style={[
+                styles.eventTeamName,
+                event.data.away_team_id === team?.id && styles.eventTeamHighlight,
+                event.data.away_team_id !== team?.id && { textDecorationLine: 'underline' }
+              ]}>
+                {event.data.away_team_name}
+              </Text>
+            </TouchableOpacity>
           </View>
         )}
         

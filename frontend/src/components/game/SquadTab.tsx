@@ -12,7 +12,10 @@ export function SquadTab({ team, currency }: any) {
   const groupByPosition = () => {
     const groups: Record<string, any[]> = {};
     for (const [groupName, positions] of Object.entries(POSITION_GROUPS)) {
-      groups[groupName] = team.squad.filter((p: any) => positions.includes(p.position));
+      // Filter and sort by current_ability (best players first)
+      groups[groupName] = team.squad
+        .filter((p: any) => positions.includes(p.position))
+        .sort((a: any, b: any) => (b.current_ability || 0) - (a.current_ability || 0));
     }
     return groups;
   };
