@@ -101,11 +101,11 @@ export default function PlayerProfileScreen() {
   };
 
   const getFormText = (form: number) => {
-    // Form is on 1-20 scale
-    if (form >= 16) return 'Outstanding';
-    if (form >= 12) return 'Good';
-    if (form >= 8) return 'Average';
-    if (form >= 4) return 'Poor';
+    // Form is now on 1-10 scale (average of last 5 match ratings)
+    if (form >= 8.5) return 'Outstanding';
+    if (form >= 7.0) return 'Good';
+    if (form >= 5.5) return 'Average';
+    if (form >= 4.0) return 'Poor';
     return 'Terrible';
   };
 
@@ -222,66 +222,37 @@ export default function PlayerProfileScreen() {
     </View>
   );
 
-  // Get position-specific stats to show
-  const getPositionStats = () => {
-    const category = POSITION_CATEGORY[player.position] || 'MID';
-    
-    switch (category) {
-      case 'GK':
-        return {
-          title: 'GOALKEEPER SKILLS',
-          stats: [
-            { label: 'Reflexes', value: player.reflexes },
-            { label: 'Handling', value: player.handling },
-            { label: 'Communication', value: player.communication },
-            { label: 'Positioning', value: player.positioning },
-          ]
-        };
-      case 'DEF':
-        return {
-          title: 'DEFENSIVE SKILLS',
-          stats: [
-            { label: 'Tackling', value: player.tackling },
-            { label: 'Marking', value: player.marking },
-            { label: 'Positioning', value: player.positioning },
-            { label: 'Heading', value: player.heading },
-            ...(player.position === 'LB' || player.position === 'RB' 
-              ? [{ label: 'Crossing', value: player.crossing }] 
-              : []),
-          ]
-        };
-      case 'MID':
-        return {
-          title: 'MIDFIELD SKILLS',
-          stats: [
-            { label: 'Passing', value: player.passing },
-            { label: 'Vision', value: player.vision },
-            { label: 'Dribbling', value: player.dribbling },
-            { label: 'Control', value: player.control },
-            ...(player.position === 'DM' 
-              ? [{ label: 'Tackling', value: player.tackling }]
-              : [{ label: 'Flair', value: player.flair }]),
-          ]
-        };
-      case 'FWD':
-        return {
-          title: 'ATTACKING SKILLS',
-          stats: [
-            { label: 'Finishing', value: player.finishing },
-            { label: 'Off the Ball', value: player.off_the_ball },
-            { label: 'Dribbling', value: player.dribbling },
-            { label: 'Flair', value: player.flair },
-            ...(player.position === 'ST' 
-              ? [{ label: 'Heading', value: player.heading }]
-              : [{ label: 'Crossing', value: player.crossing }]),
-          ]
-        };
-      default:
-        return { title: 'SKILLS', stats: [] };
-    }
+  // Get key attributes for position highlighting
+  const getKeyAttributes = (position: string): string[] => {
+    if (position === 'GK') return ['reflexes', 'handling', 'positioning', 'communication'];
+    if (['CB'].includes(position)) return ['tackling', 'marking', 'heading', 'strength'];
+    if (['LB', 'RB', 'LWB', 'RWB'].includes(position)) return ['pace', 'tackling', 'stamina', 'crossing'];
+    if (['DM', 'CM'].includes(position)) return ['passing', 'tackling', 'stamina', 'vision'];
+    if (['AM', 'CAM'].includes(position)) return ['passing', 'vision', 'dribbling', 'finishing'];
+    if (['LM', 'RM', 'LW', 'RW'].includes(position)) return ['pace', 'dribbling', 'crossing', 'finishing'];
+    if (['ST', 'CF'].includes(position)) return ['finishing', 'heading', 'pace', 'off_the_ball'];
+    return ['pace', 'passing', 'finishing', 'tackling'];
   };
 
-  const positionStats = getPositionStats();
+  const keyAttrs = getKeyAttributes(player.position);
+
+  // Compact stat item with position highlighting
+  const CompactStatItem = ({ label, attrKey, value }: { label: string; attrKey: string; value: number }) => {
+    const isKey = keyAttrs.includes(attrKey);
+    return (
+      <View style={styles.compactStatItem}>
+        <Text style={[styles.compactStatLabel, isKey && styles.compactStatLabelHighlight]}>{label}</Text>
+        <View style={styles.compactStatBarBg}>
+          <View style={[
+            styles.compactStatBar, 
+            { width: `${Math.min((value || 10) * 5, 100)}%` },
+            isKey && styles.compactStatBarHighlight
+          ]} />
+        </View>
+        <Text style={[styles.compactStatValue, isKey && styles.compactStatValueHighlight]}>{Math.round(value) || '-'}</Text>
+      </View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -329,47 +300,72 @@ export default function PlayerProfileScreen() {
             <Text style={styles.quickInfoLabel}>Fitness</Text>
           </View>
           <View style={styles.quickInfoItem}>
-            <Text style={[styles.quickInfoValue, { color: getAbilityColor(player.form) }]}>
-              {getFormText(player.form).substring(0, 4)}
+            <Text style={[styles.quickInfoValue, { color: player.form >= 7.0 ? '#00ff88' : player.form >= 5.5 ? '#ffcc00' : '#ff6b6b' }]}>
+              {player.form?.toFixed(1) || '6.0'}
             </Text>
             <Text style={styles.quickInfoLabel}>Form</Text>
           </View>
         </View>
 
-        {/* Position-Specific Stats */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>{positionStats.title}</Text>
-          <View style={styles.statsGrid}>
-            {positionStats.stats.map((stat, index) => (
-              <StatItem 
-                key={index} 
-                label={stat.label} 
-                value={stat.value} 
-                color={getAbilityColor(stat.value)}
-              />
-            ))}
+        {/* Player Actions - Moved to top for visibility */}
+        {isOwnPlayer && (
+          <View style={styles.section}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={() => setShowActionsMenu(true)}
+            >
+              <Ionicons name="settings-outline" size={20} color="#0a1628" />
+              <Text style={styles.actionButtonText}>PLAYER ACTIONS</Text>
+            </TouchableOpacity>
           </View>
-        </View>
+        )}
 
-        {/* Physical Attributes */}
+        {/* ALL ATTRIBUTES - Compact grid with position highlighting */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>PHYSICAL</Text>
-          <View style={styles.statsGrid}>
-            <StatItem label="Pace" value={player.pace} color={getAbilityColor(player.pace)} />
-            <StatItem label="Strength" value={player.strength} color={getAbilityColor(player.strength)} />
-            <StatItem label="Stamina" value={player.stamina} color={getAbilityColor(player.stamina)} />
-            <StatItem label="Agility" value={player.agility} color={getAbilityColor(player.agility)} />
+          <Text style={styles.sectionTitle}>ALL ATTRIBUTES</Text>
+          <Text style={styles.highlightHint}>
+            <Ionicons name="star" size={10} color="#00ff88" /> Highlighted = Key stats for {player.position}
+          </Text>
+          
+          {/* Physical */}
+          <Text style={styles.attrCategoryTitle}>PHYSICAL</Text>
+          <View style={styles.compactStatsGrid}>
+            <CompactStatItem label="Pace" attrKey="pace" value={player.pace} />
+            <CompactStatItem label="Strength" attrKey="strength" value={player.strength} />
+            <CompactStatItem label="Stamina" attrKey="stamina" value={player.stamina} />
+            <CompactStatItem label="Agility" attrKey="agility" value={player.agility} />
           </View>
-        </View>
 
-        {/* Mental Attributes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>MENTAL</Text>
-          <View style={styles.statsGrid}>
-            <StatItem label="Work Rate" value={player.work_rate} color={getAbilityColor(player.work_rate)} />
-            <StatItem label="Concentration" value={player.concentration} color={getAbilityColor(player.concentration)} />
-            <StatItem label="Decision Making" value={player.decision_making} color={getAbilityColor(player.decision_making)} />
-            <StatItem label="Composure" value={player.composure} color={getAbilityColor(player.composure)} />
+          {/* Technical */}
+          <Text style={styles.attrCategoryTitle}>TECHNICAL</Text>
+          <View style={styles.compactStatsGrid}>
+            <CompactStatItem label="Passing" attrKey="passing" value={player.passing} />
+            <CompactStatItem label="Dribbling" attrKey="dribbling" value={player.dribbling} />
+            <CompactStatItem label="Finishing" attrKey="finishing" value={player.finishing} />
+            <CompactStatItem label="Crossing" attrKey="crossing" value={player.crossing} />
+            <CompactStatItem label="Heading" attrKey="heading" value={player.heading} />
+            <CompactStatItem label="Tackling" attrKey="tackling" value={player.tackling} />
+            <CompactStatItem label="Marking" attrKey="marking" value={player.marking} />
+            <CompactStatItem label="Control" attrKey="control" value={player.control} />
+          </View>
+
+          {/* Mental */}
+          <Text style={styles.attrCategoryTitle}>MENTAL</Text>
+          <View style={styles.compactStatsGrid}>
+            <CompactStatItem label="Vision" attrKey="vision" value={player.vision} />
+            <CompactStatItem label="Composure" attrKey="composure" value={player.composure} />
+            <CompactStatItem label="Off the Ball" attrKey="off_the_ball" value={player.off_the_ball} />
+            <CompactStatItem label="Positioning" attrKey="positioning" value={player.positioning} />
+            <CompactStatItem label="Work Rate" attrKey="work_rate" value={player.work_rate} />
+            <CompactStatItem label="Concentration" attrKey="concentration" value={player.concentration} />
+          </View>
+
+          {/* Goalkeeping */}
+          <Text style={styles.attrCategoryTitle}>GOALKEEPING</Text>
+          <View style={styles.compactStatsGrid}>
+            <CompactStatItem label="Reflexes" attrKey="reflexes" value={player.reflexes} />
+            <CompactStatItem label="Handling" attrKey="handling" value={player.handling} />
+            <CompactStatItem label="Communication" attrKey="communication" value={player.communication} />
           </View>
         </View>
 
@@ -907,6 +903,83 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
+  },
+  // NEW: Compact stats grid for ALL attributes with highlighting
+  compactStatsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginBottom: 8,
+  },
+  compactStatItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '48%',
+    paddingVertical: 4,
+  },
+  compactStatLabel: {
+    width: 75,
+    fontSize: 11,
+    color: '#6a8aaa',
+  },
+  compactStatLabelHighlight: {
+    color: '#4a9eff',
+    fontWeight: '700',
+  },
+  compactStatBarBg: {
+    flex: 1,
+    height: 5,
+    backgroundColor: '#1a3a5c',
+    borderRadius: 3,
+    marginHorizontal: 6,
+    overflow: 'hidden',
+  },
+  compactStatBar: {
+    height: '100%',
+    backgroundColor: '#4a6a8a',
+    borderRadius: 3,
+  },
+  compactStatBarHighlight: {
+    backgroundColor: '#00ff88',
+  },
+  compactStatValue: {
+    width: 22,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#8aa8c8',
+    textAlign: 'right',
+  },
+  compactStatValueHighlight: {
+    color: '#00ff88',
+    fontWeight: '800',
+  },
+  attrCategoryTitle: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6a8aaa',
+    letterSpacing: 1,
+    marginTop: 12,
+    marginBottom: 6,
+  },
+  highlightHint: {
+    fontSize: 10,
+    color: '#4a6a8a',
+    marginBottom: 8,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#00ff88',
+    padding: 14,
+    borderRadius: 8,
+    gap: 8,
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0a1628',
+    letterSpacing: 1,
   },
   statItem: {
     width: '47%',
