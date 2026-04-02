@@ -324,7 +324,7 @@ interface GameContextType {
   advanceWeek: () => void;
   simulateMatch: (fixtureId: string, speed: number) => Promise<any>;
   simulateOtherWeekMatches: (alreadyUpdatedLeagues?: League[], alreadyUpdatedTeams?: Team[]) => { leagues: League[]; teams: Team[]; gameDate: string } | null;
-  finalizeWeekSimulation: (leagues: League[], teams: Team[], gameDate: string) => void;
+  finalizeWeekSimulation: (leagues: League[], teams: Team[], gameDate: string, completedEventId?: string) => void;
   makeTransferOffer: (listingId: string, offerAmount: number, proposedWage?: number) => Promise<boolean>;
   listPlayerForSale: (playerId: string, askingPrice: number) => void;
   // Season progression
@@ -1190,7 +1190,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
   };
 
   // Apply the final week simulation state and save
-  const finalizeWeekSimulation = (leagues: League[], teams: Team[], gameDate: string) => {
+  const finalizeWeekSimulation = (leagues: League[], teams: Team[], gameDate: string, completedEventId?: string) => {
     if (!currentSave) return;
     
     // Process AI transfers when transfer window is open
@@ -1219,12 +1219,22 @@ export function GameProvider({ children }: { children: ReactNode }) {
       updatedTeams = updateAIFormations(updatedTeams, currentSave.managed_team_id);
     }
 
+    // Mark the completed event if provided
+    let updatedEvents = currentSave.events || [];
+    if (completedEventId && updatedEvents.length > 0) {
+      updatedEvents = updatedEvents.map(e => 
+        e.id === completedEventId ? { ...e, completed: true } : e
+      );
+      console.log('finalizeWeekSimulation: Marked event as completed:', completedEventId);
+    }
+
     const updatedSave = { 
       ...currentSave, 
       leagues, 
       teams: updatedTeams,
       transfer_market: updatedMarket,
       game_date: gameDate,
+      events: updatedEvents,
       updated_at: new Date().toISOString()
     };
     
