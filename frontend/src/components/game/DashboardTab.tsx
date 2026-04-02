@@ -7,6 +7,7 @@ import { gameStyles as styles } from './gameStyles';
 import { GameEvent, formatDateDisplay } from '../../utils/calendar';
 import { getCompetitionIcon, getCompetitionColor } from '../../utils/competitions';
 import { FriendlySlot } from '../../utils/gameGenerator';
+import { useGame } from '../../context/GameContext';
 
 interface DashboardTabProps {
   team: any;
@@ -37,6 +38,8 @@ export function DashboardTab({
   friendlySlots = [],
   onOpenFriendlyScheduler,
 }: DashboardTabProps) {
+  const { getIncomingOffers } = useGame();
+  const pendingOffers = getIncomingOffers();
   const currency = save?.currency_symbol || '£';
   const hasEventSystem = upcomingEvents && upcomingEvents.length > 0;
   
@@ -200,6 +203,47 @@ export function DashboardTab({
               </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      {/* Transfer Inbox Button - Shows pending offers from AI teams */}
+      <View style={styles.section}>
+        <TouchableOpacity 
+          style={[styles.friendlySchedulerButton, { borderColor: pendingOffers.length > 0 ? '#ff6b6b' : '#6a8aaa' }]}
+          onPress={() => router.push('/transfer-inbox')}
+        >
+          <View style={styles.friendlyButtonContent}>
+            <View style={styles.friendlyButtonLeft}>
+              <Ionicons name="mail" size={24} color={pendingOffers.length > 0 ? '#ff6b6b' : '#6a8aaa'} />
+              <View style={styles.friendlyButtonText}>
+                <Text style={[styles.friendlyButtonTitle, { color: pendingOffers.length > 0 ? '#ff6b6b' : '#6a8aaa' }]}>
+                  TRANSFER INBOX
+                </Text>
+                <Text style={styles.friendlyButtonSubtitle}>
+                  {pendingOffers.length > 0 
+                    ? `${pendingOffers.length} pending offer${pendingOffers.length > 1 ? 's' : ''}`
+                    : 'No incoming offers'}
+                </Text>
+              </View>
+            </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {pendingOffers.length > 0 && (
+                <View style={{ 
+                  backgroundColor: '#ff6b6b', 
+                  paddingHorizontal: 8, 
+                  paddingVertical: 4, 
+                  borderRadius: 10,
+                  minWidth: 24,
+                  alignItems: 'center',
+                }}>
+                  <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>
+                    {pendingOffers.length}
+                  </Text>
+                </View>
+              )}
+              <Ionicons name="chevron-forward" size={20} color="#4a6a8a" />
+            </View>
           </View>
         </TouchableOpacity>
       </View>

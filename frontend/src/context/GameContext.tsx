@@ -114,6 +114,7 @@ export interface Player {
   morale: number;
   fitness: number;
   form: number;
+  recentMatchRatings?: number[];  // Last 5 match ratings for form calculation (1-10 scale)
   last_contract_renewal?: number;
   // Phase 3: Injury data
   injury?: {
@@ -554,10 +555,58 @@ export function GameProvider({ children }: { children: ReactNode }) {
     
     const currentWeek = updatedLeagues[0]?.current_week || 1;
 
+    // ============================================
+    // FORM DECAY FOR NON-PLAYING PLAYERS
+    // Players who didn't play this week have form decay toward 6.0 (average)
+    // ============================================
+    const teamsWithFormDecay = currentSave.teams.map(team => ({
+      ...team,
+      squad: team.squad.map(player => {
+        // Check if player played this week by looking at recentMatchRatings length change
+        // If they have match ratings, their form was already updated in simulateMatch
+        // For players without recent activity, apply decay
+        const hasRecentRatings = player.recentMatchRatings && player.recentMatchRatings.length > 0;
+        
+        // Only decay if player has established form but didn't play recently
+        // We track this by checking if form deviates from 6.0 and no recent matches
+        if (!hasRecentRatings || player.recentMatchRatings!.length === 0) {
+          // New player or no history - keep at default
+          return player;
+        }
+        
+        // Form decay: move 0.1 toward 6.0 if player didn't play
+        // This simulates loss of match sharpness
+        const currentForm = player.form;
+        const targetForm = 6.0;
+        
+        if (Math.abs(currentForm - targetForm) < 0.1) {
+          // Already at or near average, no change needed
+          return player;
+        }
+        
+        // Note: This decay is applied every week, but simulateMatch updates form
+        // when a player plays - so active players won't see decay
+        // For bench players, we apply slight decay here
+        const decayRate = 0.1;
+        let newForm: number;
+        
+        if (currentForm > targetForm) {
+          newForm = Math.max(targetForm, currentForm - decayRate);
+        } else {
+          newForm = Math.min(targetForm, currentForm + decayRate);
+        }
+        
+        return {
+          ...player,
+          form: Math.round(newForm * 10) / 10,
+        };
+      }),
+    }));
+
     // Generate AI offers for user's players during transfer window
     const existingOffers = currentSave.incomingOffers || [];
     const newOffers = generateAIOffersForUserPlayers(
-      currentSave.teams,
+      teamsWithFormDecay,
       currentSave.managed_team_id,
       currentWeek,
       existingOffers
@@ -568,6 +617,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
     setCurrentSave({
       ...currentSave,
+      teams: teamsWithFormDecay,
       leagues: updatedLeagues,
       game_date: currentDate.toISOString().split('T')[0],
       incomingOffers: processedOffers,
@@ -666,6 +716,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }
 
     // Update player form based on match performance
+    // Form is now the average of the last 5 match ratings (1-10 scale)
     let updatedTeams = currentSave.teams.map(team => {
       if (team.id !== homeTeam.id && team.id !== awayTeam.id) return team;
       
@@ -673,9 +724,12 @@ export function GameProvider({ children }: { children: ReactNode }) {
         const rating = matchResult.playerRatings[player.id];
         if (rating === undefined) return player;
         
-        // Adjust form based on match rating (rating 7+ improves form, <6 decreases)
-        const formChange = (rating - 6.5) * 0.5;
-        const newForm = Math.max(1, Math.min(20, player.form + formChange));
+        // Add new match rating to recent ratings array (keep last 5)
+        const previousRatings = player.recentMatchRatings || [];
+        const updatedRatings = [...previousRatings.slice(-4), rating]; // Keep last 4 + new one = 5
+        
+        // Calculate form as average of recent match ratings (1-10 scale)
+        const newForm = updatedRatings.reduce((sum, r) => sum + r, 0) / updatedRatings.length;
         
         // Fitness decrease after match (1-3) - more realistic fatigue
         const fitnessLoss = 1 + Math.random() * 2;
@@ -688,7 +742,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         
         return {
           ...player,
-          form: Math.round(newForm * 10) / 10,
+          recentMatchRatings: updatedRatings,
+          form: Math.round(newForm * 10) / 10,  // Form now on 1-10 scale
           fitness: Math.round(newFitness * 10) / 10,
           // Apply injury if one occurred
           ...(playerInjury ? {
@@ -767,9 +822,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     // price 40 = 1.0, price 140 = 0.5, price 1 = 1.39
     const priceFactor = 1 / (1 + (team.ticket_price - 40) / 100);
     
-    // Form factor: form 10 = 1.0, form 20 = 1.2, form 1 = 0.82
+    // Form factor: form 6 = 1.0 (average), form 10 = 1.16, form 1 = 0.8
+    // Form is now on 1-10 scale
     const avgForm = team.squad.reduce((sum, p) => sum + p.form, 0) / Math.max(1, team.squad.length);
-    const formFactor = 0.8 + (avgForm / 50);
+    const formFactor = 0.8 + (avgForm / 25);
     
     // Random variance ±10%
     const variance = 0.9 + Math.random() * 0.2;
@@ -1483,7 +1539,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
       value: 100000 + Math.floor(Math.random() * 400000),
       wage: 1000 + Math.floor(Math.random() * 3000),
       contract_end: `${(currentSave?.season || 2025) + 4}-06-30`,
-      morale: 14, fitness: 18, form: 12,
+      morale: 14, fitness: 18, form: 6.0,  // Form now on 1-10 scale, 6.0 = average
+      recentMatchRatings: [],  // No match history yet
     };
   };
 
@@ -1803,7 +1860,8 @@ export function GameProvider({ children }: { children: ReactNode }) {
         return {
           ...player,
           fitness: newInjury ? Math.min(12, 8 + Math.random() * 4) : 16 + Math.random() * 4,  // Injured players start less fit
-          form: 10 + Math.random() * 4,     // 10-14 (neutral start)
+          form: 5.5 + Math.random() * 1,     // 5.5-6.5 (neutral start, 1-10 scale)
+          recentMatchRatings: [],             // Clear match history for new season
           morale: Math.max(10, player.morale), // Minimum 10 morale
           injury: newInjury,
         };

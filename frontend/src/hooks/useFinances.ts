@@ -36,9 +36,10 @@ export function calculateAttendance(team: Team, isHomeMatch: boolean): number {
   // Price factor: ticket_price of 40 = 1.0, higher = lower attendance
   const priceFactor = 1 / (1 + (team.ticket_price - 40) / 100);
   
-  // Form factor: form 10 = 1.0, form 20 = 1.2, form 1 = 0.82
+  // Form factor: form 6 = 1.0 (average), form 10 = 1.16, form 1 = 0.84
+  // Form is now on 1-10 scale
   const avgForm = team.squad.reduce((sum, p) => sum + p.form, 0) / Math.max(1, team.squad.length);
-  const formFactor = 0.8 + (avgForm / 50);
+  const formFactor = 0.8 + (avgForm / 25);
   
   // Random variance ±10%
   const variance = 0.9 + Math.random() * 0.2;

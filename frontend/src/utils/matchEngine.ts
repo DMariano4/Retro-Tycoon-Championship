@@ -845,12 +845,13 @@ export function calculateTeamRatings(team: Team): TeamRatings {
 function applyFormAndFitness(ratings: TeamRatings, team: Team): TeamRatings {
   const startingXI = getStartingXI(team);
   
-  // Calculate average form and fitness (1-20 scale)
+  // Calculate average form (1-10 scale) and fitness (1-20 scale)
   const avgForm = startingXI.reduce((sum, p) => sum + p.form, 0) / startingXI.length;
   const avgFitness = startingXI.reduce((sum, p) => sum + p.fitness, 0) / startingXI.length;
   
-  // Form modifier: form of 10 = no change, 20 = +10%, 1 = -10%
-  const formModifier = 1 + ((avgForm - 10) / 100);
+  // Form modifier: form of 6 = no change (average), 10 = +8%, 1 = -10%
+  // Form is now on 1-10 scale (average of last 5 match ratings)
+  const formModifier = 1 + ((avgForm - 6) / 50);
   
   // Fitness modifier: fitness of 20 = no change, 10 = -5%, 1 = -15%
   const fitnessModifier = 1 - ((20 - avgFitness) / 133);
@@ -964,7 +965,7 @@ function selectScorer(team: Team): Player {
     
     // Modify by finishing ability
     const abilityWeight = p.finishing / 10;
-    const formWeight = p.form / 15;
+    const formWeight = p.form / 7.5;  // Form now 1-10, so divide by 7.5 for similar scaling
     
     return { player: p, weight: positionWeight * abilityWeight * formWeight };
   });
@@ -1370,8 +1371,8 @@ function generateDetailedPlayerRatings(
     if (teamLost) baseRating -= 0.3;
     if (isDraw) baseRating += 0.1;
     
-    // Form influence (subtle)
-    baseRating += (player.form - 10) / 20;
+    // Form influence (subtle) - Form now on 1-10 scale, 6 is average
+    baseRating += (player.form - 6) / 10;
     
     // Fitness influence
     baseRating += (player.fitness - 15) / 30;
@@ -2191,8 +2192,8 @@ export function simulateMatchLite(homeTeam: Team, awayTeam: Team): LiteMatchResu
       // Base rating from ability relative to 10 (average)
       let rating = 5.5 + (player.current_ability - 10) * 0.15;
 
-      // Form bonus
-      rating += (player.form - 10) * 0.05;
+      // Form bonus - Form now on 1-10 scale, 6 is average
+      rating += (player.form - 6) * 0.1;
 
       // Position-based adjustment
       if (player.position === 'GK') {

@@ -116,9 +116,10 @@ export function generateRegen(retiringPlayer: Player, season: number): Player {
     wage: Math.round(currentAbility * 100),
     contract_end: `${season + 4}-06-30`,
     // Form & fitness
-    form: 10,
+    form: 6.0,  // Form now on 1-10 scale, 6 = average
     fitness: 100,
     morale: 15,
+    recentMatchRatings: [],  // No match history yet
     // Stats
     goals: 0,
     assists: 0,
@@ -210,8 +211,9 @@ export function resetPlayerStats(squad: Player[]): Player[] {
     yellow_cards: 0,
     red_cards: 0,
     clean_sheets: 0,
-    form: 10,
+    form: 6.0,  // Form now on 1-10 scale, 6 = average
     fitness: 100,
     injury: undefined,
+    recentMatchRatings: [],  // Clear match history for new season
   }));
 }

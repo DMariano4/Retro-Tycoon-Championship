@@ -535,6 +535,7 @@ export interface IncomingOffer {
   playerName: string;
   playerPosition: string;
   playerOverall: number;
+  playerForm: number;
   fromTeamId: string;
   fromTeamName: string;
   offerAmount: number;
@@ -546,25 +547,141 @@ export interface IncomingOffer {
 }
 
 /**
- * Calculate a player's market value
+ * Calculate a player's market value (fixed for 1-20 ability scale)
  */
 function calculatePlayerValue(player: Player): number {
-  const overall = player.overall || player.current_ability || 50;
-  const baseValue = overall * 50000;
-  const ageMultiplier = player.age < 24 ? 1.5 : player.age > 30 ? 0.6 : 1.0;
-  const positionMultiplier = ['ST', 'LW', 'RW', 'AM', 'CF'].includes(player.position) ? 1.3 : 1.0;
+  const ability = player.current_ability || 10;
+  // Base value: ability on 1-20 scale × £500,000
+  // So a 10-rated player = £5M, 15-rated = £7.5M, 18-rated = £9M
+  const baseValue = ability * 500000;
+  
+  // Age multiplier: young players worth more (potential), old players worth less
+  let ageMultiplier = 1.0;
+  if (player.age < 21) ageMultiplier = 1.6;
+  else if (player.age < 24) ageMultiplier = 1.4;
+  else if (player.age < 28) ageMultiplier = 1.1;
+  else if (player.age < 30) ageMultiplier = 1.0;
+  else if (player.age < 32) ageMultiplier = 0.7;
+  else ageMultiplier = 0.5;
+  
+  // Position multiplier: attackers worth more
+  const positionMultiplier = ['ST', 'CF', 'LW', 'RW', 'CAM'].includes(player.position) ? 1.3 : 1.0;
+  
   return Math.round(baseValue * ageMultiplier * positionMultiplier);
+}
+
+/**
+ * Calculate AI interest score for a player
+ * Based on: Performance (form), Relative Quality, Position Need, and Special Factors
+ */
+function calculateInterestScore(
+  player: Player,
+  biddingTeam: Team,
+  isOnTransferList: boolean = false
+): { score: number; reason: string } {
+  const analysis = analyzeSquad(biddingTeam);
+  let score = 0;
+  const reasons: string[] = [];
+  
+  // 1. PERFORMANCE SCORE (form-based) - 50% weight
+  // Form is now on 1-10 scale (average of last 5 match ratings)
+  const form = player.form || 6.0;
+  if (form >= 8.5) {
+    score += 5;
+    reasons.push('Outstanding form');
+  } else if (form >= 7.5) {
+    score += 4;
+    reasons.push('Excellent form');
+  } else if (form >= 6.5) {
+    score += 2;
+    reasons.push('Good form');
+  } else if (form >= 5.5) {
+    score += 1;
+    reasons.push('Average form');
+  } else {
+    // Struggling players - still get some interest but less
+    score += 0;
+    if (isOnTransferList) {
+      score += 1; // Slightly more interest if already listed
+      reasons.push('Available (listed)');
+    }
+  }
+  
+  // 2. RELATIVE QUALITY (30% weight)
+  // Compare player's ability to the bidding team's squad average
+  const playerAbility = player.current_ability || 10;
+  const teamAvgAbility = analysis.averageRating;
+  
+  if (playerAbility > teamAvgAbility + 3) {
+    score += 4;
+    reasons.push('Significant upgrade');
+  } else if (playerAbility > teamAvgAbility + 1) {
+    score += 3;
+    reasons.push('Quality improvement');
+  } else if (playerAbility > teamAvgAbility) {
+    score += 2;
+    reasons.push('Slight improvement');
+  } else if (playerAbility >= teamAvgAbility - 1) {
+    score += 1;
+    reasons.push('Depth option');
+  }
+  // If player is worse than team average, no score bonus
+  
+  // 3. POSITION NEED (20% weight)
+  if (analysis.weakPositions.includes(player.position)) {
+    score += 3;
+    reasons.push(`Need ${player.position}`);
+  }
+  
+  // 4. BREAKOUT BONUS: Young player in great form
+  if (player.age < 23 && form >= 7.5) {
+    score += 2;
+    reasons.push('Young talent');
+  }
+  
+  return { 
+    score, 
+    reason: reasons.length > 0 ? reasons.join(', ') : 'General interest' 
+  };
+}
+
+/**
+ * Determine offer amount based on form and value
+ */
+function calculateOfferAmount(player: Player, baseValue: number): number {
+  const form = player.form || 6.0;
+  
+  // Offer multiplier based on form
+  let multiplier: number;
+  if (form >= 8.5) {
+    // Hot player - premium offers (100-130% of value)
+    multiplier = 1.0 + Math.random() * 0.3;
+  } else if (form >= 7.0) {
+    // Good form - fair to good offers (90-115% of value)
+    multiplier = 0.9 + Math.random() * 0.25;
+  } else if (form >= 5.5) {
+    // Average form - standard offers (80-100% of value)
+    multiplier = 0.8 + Math.random() * 0.2;
+  } else {
+    // Struggling form - lowball offers (60-85% of value)
+    multiplier = 0.6 + Math.random() * 0.25;
+  }
+  
+  return Math.round(baseValue * multiplier);
 }
 
 /**
  * Generate AI bids for user's players
  * Called during week simulation
+ * 
+ * Uses PERFORMANCE-BASED scouting (not static ability thresholds)
  */
 export function generateAIOffersForUserPlayers(
   teams: Team[],
   managedTeamId: string,
   currentWeek: number,
-  existingOffers: IncomingOffer[] = []
+  existingOffers: IncomingOffer[] = [],
+  transferListedPlayerIds: string[] = []
 ): IncomingOffer[] {
   const newOffers: IncomingOffer[] = [];
   
@@ -575,8 +692,8 @@ export function generateAIOffersForUserPlayers(
   // Get AI teams that might be interested in buying
   const aiTeams = teams.filter(t => t.id !== managedTeamId);
   
-  // Limit number of offers per week (1-3 max, with probability)
-  const offerChance = 0.3; // 30% chance of getting an offer each week
+  // Base offer chance: 35% per week (slightly increased for more activity)
+  const offerChance = 0.35;
   if (Math.random() > offerChance) return newOffers;
   
   const maxOffersThisWeek = Math.floor(1 + Math.random() * 2); // 1-2 offers max
@@ -586,50 +703,75 @@ export function generateAIOffersForUserPlayers(
     .filter(o => o.status === 'pending')
     .map(o => o.playerId);
   
+  // All players can potentially receive offers (no static ability filter!)
+  // The interest score will determine which players actually get offers
   const availablePlayers = userTeam.squad.filter(p => 
-    !pendingOfferPlayerIds.includes(p.id) &&
-    p.overall >= 60 // Only bid for decent players
+    !pendingOfferPlayerIds.includes(p.id)
   );
   
   if (availablePlayers.length === 0) return newOffers;
   
-  // Sort players by attractiveness (higher overall = more interest)
-  const sortedPlayers = [...availablePlayers].sort((a, b) => 
-    (b.overall || 0) - (a.overall || 0)
-  );
+  // Score each player based on attractiveness to AI teams
+  interface ScoredPlayer {
+    player: Player;
+    bestTeam: Team | null;
+    score: number;
+    reason: string;
+    isListed: boolean;
+  }
   
-  // Generate offers
-  for (let i = 0; i < Math.min(maxOffersThisWeek, sortedPlayers.length); i++) {
-    const player = sortedPlayers[i];
-    const playerValue = calculatePlayerValue(player);
+  const scoredPlayers: ScoredPlayer[] = availablePlayers.map(player => {
+    const isListed = transferListedPlayerIds.includes(player.id);
+    let bestTeam: Team | null = null;
+    let bestScore = 0;
+    let bestReason = '';
     
-    // Find an AI team that needs this position and can afford the player
-    const interestedTeams = aiTeams.filter(team => {
-      const analysis = analyzeSquad(team);
-      const needsPosition = analysis.weakPositions.includes(player.position);
-      const canAfford = (team.transfer_budget || 5000000) >= playerValue * 0.8;
-      const betterThanAverage = (player.overall || 50) > analysis.averageRating;
+    // Find the most interested AI team
+    for (const team of aiTeams) {
+      const playerValue = calculatePlayerValue(player);
+      const canAfford = (team.budget || team.transfer_budget || 5000000) >= playerValue * 0.6;
       
-      return (needsPosition || betterThanAverage) && canAfford;
-    });
+      if (!canAfford) continue;
+      
+      const { score, reason } = calculateInterestScore(player, team, isListed);
+      if (score > bestScore) {
+        bestScore = score;
+        bestTeam = team;
+        bestReason = reason;
+      }
+    }
     
-    if (interestedTeams.length === 0) continue;
+    return { player, bestTeam, score: bestScore, reason: bestReason, isListed };
+  });
+  
+  // Sort by interest score (highest first)
+  scoredPlayers.sort((a, b) => {
+    // Listed players with struggling form get priority from lower teams
+    if (a.isListed && a.player.form < 5.5 && !b.isListed) return -1;
+    if (b.isListed && b.player.form < 5.5 && !a.isListed) return 1;
+    return b.score - a.score;
+  });
+  
+  // Generate offers for top scoring players
+  // Minimum interest score threshold: 3 (ensures some genuine interest)
+  const eligiblePlayers = scoredPlayers.filter(sp => sp.score >= 3 && sp.bestTeam);
+  
+  for (let i = 0; i < Math.min(maxOffersThisWeek, eligiblePlayers.length); i++) {
+    const { player, bestTeam, reason } = eligiblePlayers[i];
+    if (!bestTeam) continue;
     
-    // Pick a random interested team
-    const biddingTeam = interestedTeams[Math.floor(Math.random() * interestedTeams.length)];
-    
-    // Generate offer amount (80% to 120% of value, AI tries to get a deal)
-    const offerMultiplier = 0.8 + Math.random() * 0.4; // 0.8 to 1.2
-    const offerAmount = Math.round(playerValue * offerMultiplier);
+    const playerValue = calculatePlayerValue(player);
+    const offerAmount = calculateOfferAmount(player, playerValue);
     
     const offer: IncomingOffer = {
       id: `offer_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       playerId: player.id,
       playerName: player.name,
       playerPosition: player.position,
-      playerOverall: player.overall || 50,
-      fromTeamId: biddingTeam.id,
-      fromTeamName: biddingTeam.name,
+      playerOverall: player.current_ability || 10,
+      playerForm: player.form || 6.0,
+      fromTeamId: bestTeam.id,
+      fromTeamName: bestTeam.name,
       offerAmount,
       playerValue,
       week: currentWeek,

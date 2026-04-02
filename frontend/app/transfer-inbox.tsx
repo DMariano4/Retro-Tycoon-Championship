@@ -113,6 +113,15 @@ export default function TransferInboxScreen() {
             <Text style={styles.offerStatValue}>{formatMoney(offer.playerValue)}</Text>
           </View>
           <View style={styles.offerStat}>
+            <Text style={styles.offerStatLabel}>Form</Text>
+            <Text style={[styles.offerStatValue, { 
+              color: (offer.playerForm || 6) >= 7.5 ? '#00ff88' : 
+                     (offer.playerForm || 6) >= 5.5 ? '#ffaa00' : '#ff6b6b' 
+            }]}>
+              {(offer.playerForm || 6).toFixed(1)}
+            </Text>
+          </View>
+          <View style={styles.offerStat}>
             <Text style={styles.offerStatLabel}>Diff</Text>
             <Text style={[styles.offerStatValue, { 
               color: offer.offerAmount >= offer.playerValue ? '#00ff88' : '#ff6b6b' 

@@ -50,20 +50,20 @@ export const getMoraleText = (morale: number): string => {
   return 'Very Poor';
 };
 
-// Get form text description (1-20 scale)
+// Get form text description (1-10 scale, matches match rating scale)
 export const getFormText = (form: number): string => {
-  if (form >= 16) return 'Outstanding';
-  if (form >= 12) return 'Good';
-  if (form >= 8) return 'Average';
-  if (form >= 4) return 'Poor';
+  if (form >= 8.5) return 'Outstanding';
+  if (form >= 7.0) return 'Good';
+  if (form >= 5.5) return 'Average';
+  if (form >= 4.0) return 'Poor';
   return 'Terrible';
 };
 
-// Get form color for display
+// Get form color for display (1-10 scale)
 export const getFormColor = (form: number): string => {
-  if (form >= 16) return '#00ff88';
-  if (form >= 12) return '#4a9eff';
-  if (form >= 8) return '#ffaa00';
+  if (form >= 8.5) return '#00ff88';
+  if (form >= 7.0) return '#4a9eff';
+  if (form >= 5.5) return '#ffaa00';
   return '#ff6b6b';
 };
 

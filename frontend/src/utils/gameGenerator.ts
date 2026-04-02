@@ -218,7 +218,8 @@ export function generatePlayer(
     contract_end,
     morale: 12 + Math.floor(Math.random() * 6),
     fitness: 16 + Math.floor(Math.random() * 5),
-    form: 10 + Math.floor(Math.random() * 6),
+    form: 5.5 + Math.random() * 1.5,  // 5.5-7.0 (neutral start, 1-10 scale)
+    recentMatchRatings: [],  // No match history yet
   };
 }
 
