@@ -662,7 +662,7 @@ export default function MatchScreen() {
           
           {/* Right side - Speed control */}
           <View style={styles.liveSpeedControl}>
-            {[1, 2, 4].map(s => (
+            {[1, 2, 4, 10].map(s => (
               <TouchableOpacity
                 key={s}
                 style={[styles.liveSpeedButton, speed === s && styles.liveSpeedButtonActive]}
@@ -682,7 +682,7 @@ export default function MatchScreen() {
         <View style={styles.speedControls}>
           <Text style={styles.speedLabel}>Commentary Speed:</Text>
           <View style={styles.speedButtons}>
-            {[1, 2, 4].map(s => (
+            {[1, 2, 4, 10].map(s => (
               <TouchableOpacity
                 key={s}
                 style={[styles.speedButton, speed === s && styles.speedButtonActive]}

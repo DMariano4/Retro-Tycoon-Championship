@@ -66,51 +66,96 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
       return;
     }
     updateTicketPrice(newPrice);
+    Alert.alert('✓ Price Updated', `Match day ticket price set to ${currency}${newPrice}`);
   };
 
   // Handle upgrades
-  const handleStadiumUpgrade = () => {
+  const handleStadiumUpgrade = (levels: number = 1) => {
     if (team?.stadium_capacity >= STADIUM_MAX_CAPACITY) {
       Alert.alert('Maximum Reached', 'Stadium is at maximum capacity!');
       return;
     }
-    if (team?.budget < STADIUM_UPGRADE_COST) {
-      Alert.alert('Insufficient Funds', `You need ${formatValue(STADIUM_UPGRADE_COST, currency)} to upgrade the stadium.`);
+    
+    // Calculate max possible upgrades
+    const currentCapacity = team?.stadium_capacity || 10000;
+    const maxUpgrades = Math.floor((STADIUM_MAX_CAPACITY - currentCapacity) / 1000);
+    const actualLevels = Math.min(levels === -1 ? maxUpgrades : levels, maxUpgrades);
+    
+    // Apply discount for bulk: 5% for 5x, 10% for Max
+    const discount = levels === 5 ? 0.95 : levels === -1 ? 0.90 : 1.0;
+    const totalCost = Math.round(STADIUM_UPGRADE_COST * actualLevels * discount);
+    
+    if (team?.budget < totalCost) {
+      Alert.alert('Insufficient Funds', `You need ${formatValue(totalCost, currency)} to upgrade the stadium ${actualLevels}x.`);
       return;
     }
-    const success = upgradeStadium();
-    if (success) {
-      Alert.alert('Stadium Upgraded!', '+1,000 capacity added.');
+    
+    let successCount = 0;
+    for (let i = 0; i < actualLevels; i++) {
+      if (upgradeStadium()) successCount++;
+    }
+    
+    if (successCount > 0) {
+      const discountText = discount < 1 ? ` (${Math.round((1-discount)*100)}% discount applied!)` : '';
+      Alert.alert('Stadium Upgraded!', `+${successCount * 1000} capacity added.${discountText}`);
     }
   };
 
-  const handleYouthUpgrade = () => {
+  const handleYouthUpgrade = (levels: number = 1) => {
     if (team?.youth_facilities >= FACILITY_MAX_LEVEL) {
       Alert.alert('Maximum Reached', 'Youth facilities are at maximum level!');
       return;
     }
-    if (team?.budget < FACILITY_UPGRADE_COST) {
-      Alert.alert('Insufficient Funds', `You need ${formatValue(FACILITY_UPGRADE_COST, currency)} to upgrade youth facilities.`);
+    
+    const currentLevel = team?.youth_facilities || 1;
+    const maxUpgrades = FACILITY_MAX_LEVEL - currentLevel;
+    const actualLevels = Math.min(levels === -1 ? maxUpgrades : levels, maxUpgrades);
+    
+    const discount = levels === 5 ? 0.95 : levels === -1 ? 0.90 : 1.0;
+    const totalCost = Math.round(FACILITY_UPGRADE_COST * actualLevels * discount);
+    
+    if (team?.budget < totalCost) {
+      Alert.alert('Insufficient Funds', `You need ${formatValue(totalCost, currency)} to upgrade youth facilities ${actualLevels}x.`);
       return;
     }
-    const success = upgradeYouthFacilities();
-    if (success) {
-      Alert.alert('Youth Facilities Upgraded!', '+1 rating added.');
+    
+    let successCount = 0;
+    for (let i = 0; i < actualLevels; i++) {
+      if (upgradeYouthFacilities()) successCount++;
+    }
+    
+    if (successCount > 0) {
+      const discountText = discount < 1 ? ` (${Math.round((1-discount)*100)}% discount applied!)` : '';
+      Alert.alert('Youth Facilities Upgraded!', `+${successCount} levels added.${discountText}`);
     }
   };
 
-  const handleTrainingUpgrade = () => {
+  const handleTrainingUpgrade = (levels: number = 1) => {
     if (team?.training_facilities >= FACILITY_MAX_LEVEL) {
       Alert.alert('Maximum Reached', 'Training facilities are at maximum level!');
       return;
     }
-    if (team?.budget < FACILITY_UPGRADE_COST) {
-      Alert.alert('Insufficient Funds', `You need ${formatValue(FACILITY_UPGRADE_COST, currency)} to upgrade training facilities.`);
+    
+    const currentLevel = team?.training_facilities || 1;
+    const maxUpgrades = FACILITY_MAX_LEVEL - currentLevel;
+    const actualLevels = Math.min(levels === -1 ? maxUpgrades : levels, maxUpgrades);
+    
+    const discount = levels === 5 ? 0.95 : levels === -1 ? 0.90 : 1.0;
+    const totalCost = Math.round(FACILITY_UPGRADE_COST * actualLevels * discount);
+    
+    if (team?.budget < totalCost) {
+      Alert.alert('Insufficient Funds', `You need ${formatValue(totalCost, currency)} to upgrade training facilities ${actualLevels}x.`);
       return;
     }
-    const success = upgradeTrainingFacilities();
-    if (success) {
-      Alert.alert('Training Facilities Upgraded!', '+1 rating added.');
+    
+    let successCount = 0;
+    for (let i = 0; i < actualLevels; i++) {
+      if (upgradeTrainingFacilities()) successCount++;
+    }
+    
+    if (successCount > 0) {
+      const discountText = discount < 1 ? ` (${Math.round((1-discount)*100)}% discount applied!)` : '';
+      Alert.alert('Training Facilities Upgraded!', `+${successCount} levels added.${discountText}`);
     }
   };
 
@@ -215,15 +260,29 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
               backgroundColor: '#a55eea'
             }]} />
           </View>
-          <TouchableOpacity 
-            style={[financeStyles.upgradeButton, !canAffordStadium && financeStyles.upgradeButtonDisabled]}
-            onPress={handleStadiumUpgrade}
-            disabled={!canAffordStadium}
-          >
-            <Text style={financeStyles.upgradeButtonText}>
-              +1,000 Seats • {formatValue(STADIUM_UPGRADE_COST, currency)}
-            </Text>
-          </TouchableOpacity>
+          <View style={financeStyles.upgradeButtonRow}>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordStadium && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleStadiumUpgrade(1)}
+              disabled={!canAffordStadium}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordStadium && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleStadiumUpgrade(5)}
+              disabled={!canAffordStadium}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+5 (5%)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordStadium && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleStadiumUpgrade(-1)}
+              disabled={!canAffordStadium}
+            >
+              <Text style={financeStyles.upgradeButtonText}>MAX (10%)</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Youth Facilities */}
@@ -243,15 +302,29 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
               backgroundColor: '#4a9eff'
             }]} />
           </View>
-          <TouchableOpacity 
-            style={[financeStyles.upgradeButton, !canAffordYouth && financeStyles.upgradeButtonDisabled]}
-            onPress={handleYouthUpgrade}
-            disabled={!canAffordYouth}
-          >
-            <Text style={financeStyles.upgradeButtonText}>
-              +1 Level • {formatValue(FACILITY_UPGRADE_COST, currency)}
-            </Text>
-          </TouchableOpacity>
+          <View style={financeStyles.upgradeButtonRow}>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordYouth && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleYouthUpgrade(1)}
+              disabled={!canAffordYouth}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordYouth && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleYouthUpgrade(5)}
+              disabled={!canAffordYouth}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+5 (5%)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordYouth && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleYouthUpgrade(-1)}
+              disabled={!canAffordYouth}
+            >
+              <Text style={financeStyles.upgradeButtonText}>MAX (10%)</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Training Facilities */}
@@ -271,15 +344,29 @@ export function FinanceTab({ team, save }: FinanceTabProps) {
               backgroundColor: '#00ff88'
             }]} />
           </View>
-          <TouchableOpacity 
-            style={[financeStyles.upgradeButton, !canAffordTraining && financeStyles.upgradeButtonDisabled]}
-            onPress={handleTrainingUpgrade}
-            disabled={!canAffordTraining}
-          >
-            <Text style={financeStyles.upgradeButtonText}>
-              +1 Level • {formatValue(FACILITY_UPGRADE_COST, currency)}
-            </Text>
-          </TouchableOpacity>
+          <View style={financeStyles.upgradeButtonRow}>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordTraining && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleTrainingUpgrade(1)}
+              disabled={!canAffordTraining}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+1</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordTraining && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleTrainingUpgrade(5)}
+              disabled={!canAffordTraining}
+            >
+              <Text style={financeStyles.upgradeButtonText}>+5 (5%)</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[financeStyles.upgradeButton, financeStyles.upgradeButtonSmall, !canAffordTraining && financeStyles.upgradeButtonDisabled]}
+              onPress={() => handleTrainingUpgrade(-1)}
+              disabled={!canAffordTraining}
+            >
+              <Text style={financeStyles.upgradeButtonText}>MAX (10%)</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -759,12 +846,20 @@ const financeStyles = StyleSheet.create({
     borderRadius: 8,
     alignItems: 'center',
   },
+  upgradeButtonSmall: {
+    flex: 1,
+    padding: 10,
+  },
+  upgradeButtonRow: {
+    flexDirection: 'row',
+    gap: 6,
+  },
   upgradeButtonDisabled: {
     backgroundColor: '#1a3a5c',
     opacity: 0.5,
   },
   upgradeButtonText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
     color: '#fff',
   },

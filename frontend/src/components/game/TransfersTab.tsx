@@ -1,10 +1,30 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, TextInput, Modal, Alert, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useGame } from '../../context/GameContext';
 import { formatValue, formatWageShort } from '../../utils/formatters';
 import { gameStyles as styles } from './gameStyles';
+
+// Local compact styles for transfers
+const transferStyles = StyleSheet.create({
+  compactStats: {
+    alignItems: 'flex-end',
+    marginBottom: 6,
+  },
+  ovrBadge: {
+    backgroundColor: '#1a4a3c',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+    marginBottom: 4,
+  },
+  ovrText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#00ff88',
+  },
+});
 
 export function TransfersTab() {
   const { currentSave, makeTransferOffer, getManagedTeam } = useGame();
@@ -171,14 +191,14 @@ export function TransfersTab() {
                 <Text style={styles.transferMeta}>
                   {listing.player.position} | {listing.player.age} yrs | {listing.team_name}
                 </Text>
-                <View style={styles.transferStats}>
-                  <Text style={styles.transferStat}>OVR {Math.round(listing.player.current_ability)}</Text>
-                  <Text style={styles.transferStat}>PAC {Math.round(listing.player.pace)}</Text>
-                  <Text style={styles.transferStat}>STR {Math.round(listing.player.strength)}</Text>
-                </View>
               </TouchableOpacity>
               <View style={styles.transferAction}>
-                <Text style={styles.transferPrice}>{formatValue(listing.asking_price, currency)}</Text>
+                <View style={transferStyles.compactStats}>
+                  <View style={transferStyles.ovrBadge}>
+                    <Text style={transferStyles.ovrText}>{Math.round(listing.player.current_ability)}</Text>
+                  </View>
+                  <Text style={styles.transferPrice}>{formatValue(listing.asking_price, currency)}</Text>
+                </View>
                 <TouchableOpacity 
                   style={styles.offerButton}
                   onPress={() => handleMakeOffer(listing)}
