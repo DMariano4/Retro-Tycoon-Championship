@@ -272,31 +272,7 @@ export default function ScoutingScreen() {
           </View>
         </View>
 
-        {/* Attributes */}
-        <View style={styles.attributesSection}>
-          <Text style={styles.sectionTitle}>Attributes</Text>
-          <View style={styles.attributesGrid}>
-            {selectedPlayer.position === 'GK' ? (
-              <>
-                <AttributeRow label="Shot Stopping" value={selectedPlayer.shot_stopping || 10} />
-                <AttributeRow label="Handling" value={selectedPlayer.handling || 10} />
-                <AttributeRow label="Reflexes" value={selectedPlayer.reflexes || 10} />
-                <AttributeRow label="Positioning" value={selectedPlayer.positioning || 10} />
-              </>
-            ) : (
-              <>
-                <AttributeRow label="Pace" value={selectedPlayer.pace} />
-                <AttributeRow label="Shooting" value={selectedPlayer.finishing} />
-                <AttributeRow label="Passing" value={selectedPlayer.passing} />
-                <AttributeRow label="Dribbling" value={selectedPlayer.technique} />
-                <AttributeRow label="Defending" value={selectedPlayer.tackling} />
-                <AttributeRow label="Physical" value={selectedPlayer.stamina} />
-              </>
-            )}
-          </View>
-        </View>
-
-        {/* Make Bid Button */}
+        {/* Make Bid Button - At top for visibility */}
         <TouchableOpacity
           style={styles.bidButton}
           onPress={() => {
@@ -311,11 +287,85 @@ export default function ScoutingScreen() {
         <Text style={styles.bidHint}>
           Your budget: {formatMoney(currentSave?.budget || 0)}
         </Text>
+
+        {/* Attributes - Compact grid showing ALL stats */}
+        <View style={styles.attributesSection}>
+          <Text style={styles.sectionTitle}>Attributes</Text>
+          
+          {/* Physical */}
+          <Text style={styles.attrCategoryLabel}>Physical</Text>
+          <View style={styles.compactAttrGrid}>
+            <CompactAttr label="Pace" attrKey="pace" value={selectedPlayer.pace} position={selectedPlayer.position} />
+            <CompactAttr label="Strength" attrKey="strength" value={selectedPlayer.strength} position={selectedPlayer.position} />
+            <CompactAttr label="Stamina" attrKey="stamina" value={selectedPlayer.stamina} position={selectedPlayer.position} />
+            <CompactAttr label="Agility" attrKey="agility" value={selectedPlayer.agility} position={selectedPlayer.position} />
+          </View>
+
+          {/* Technical */}
+          <Text style={styles.attrCategoryLabel}>Technical</Text>
+          <View style={styles.compactAttrGrid}>
+            <CompactAttr label="Passing" attrKey="passing" value={selectedPlayer.passing} position={selectedPlayer.position} />
+            <CompactAttr label="Dribbling" attrKey="dribbling" value={selectedPlayer.dribbling} position={selectedPlayer.position} />
+            <CompactAttr label="Finishing" attrKey="finishing" value={selectedPlayer.finishing} position={selectedPlayer.position} />
+            <CompactAttr label="Crossing" attrKey="crossing" value={selectedPlayer.crossing} position={selectedPlayer.position} />
+            <CompactAttr label="Heading" attrKey="heading" value={selectedPlayer.heading} position={selectedPlayer.position} />
+            <CompactAttr label="Tackling" attrKey="tackling" value={selectedPlayer.tackling} position={selectedPlayer.position} />
+            <CompactAttr label="Marking" attrKey="marking" value={selectedPlayer.marking} position={selectedPlayer.position} />
+            <CompactAttr label="Control" attrKey="control" value={selectedPlayer.control} position={selectedPlayer.position} />
+          </View>
+
+          {/* Mental */}
+          <Text style={styles.attrCategoryLabel}>Mental</Text>
+          <View style={styles.compactAttrGrid}>
+            <CompactAttr label="Vision" attrKey="vision" value={selectedPlayer.vision} position={selectedPlayer.position} />
+            <CompactAttr label="Composure" attrKey="composure" value={selectedPlayer.composure} position={selectedPlayer.position} />
+            <CompactAttr label="Off Ball" attrKey="off_the_ball" value={selectedPlayer.off_the_ball} position={selectedPlayer.position} />
+            <CompactAttr label="Positioning" attrKey="positioning" value={selectedPlayer.positioning} position={selectedPlayer.position} />
+          </View>
+
+          {/* Goalkeeping */}
+          <Text style={styles.attrCategoryLabel}>Goalkeeping</Text>
+          <View style={styles.compactAttrGrid}>
+            <CompactAttr label="Reflexes" attrKey="reflexes" value={selectedPlayer.reflexes} position={selectedPlayer.position} />
+            <CompactAttr label="Handling" attrKey="handling" value={selectedPlayer.handling} position={selectedPlayer.position} />
+            <CompactAttr label="Comms" attrKey="communication" value={selectedPlayer.communication} position={selectedPlayer.position} />
+          </View>
+        </View>
       </View>
     );
   };
 
-  // Attribute row component
+  // Get key attributes for position (these will be highlighted)
+  const getKeyAttributes = (position: string): string[] => {
+    if (position === 'GK') return ['reflexes', 'handling', 'positioning', 'communication'];
+    if (['CB'].includes(position)) return ['tackling', 'marking', 'heading', 'strength'];
+    if (['LB', 'RB', 'LWB', 'RWB'].includes(position)) return ['pace', 'tackling', 'stamina', 'crossing'];
+    if (['DM', 'CM'].includes(position)) return ['passing', 'tackling', 'stamina', 'vision'];
+    if (['AM', 'CAM'].includes(position)) return ['passing', 'vision', 'dribbling', 'finishing'];
+    if (['LM', 'RM', 'LW', 'RW'].includes(position)) return ['pace', 'dribbling', 'crossing', 'finishing'];
+    if (['ST', 'CF'].includes(position)) return ['finishing', 'heading', 'pace', 'off_the_ball'];
+    return ['pace', 'passing', 'finishing', 'tackling'];
+  };
+
+  // Compact attribute component with position highlighting
+  const CompactAttr = ({ label, attrKey, value, position }: { label: string; attrKey: string; value: number; position: string }) => {
+    const isKey = getKeyAttributes(position).includes(attrKey);
+    return (
+      <View style={styles.compactAttrItem}>
+        <Text style={[styles.compactAttrLabel, isKey && styles.compactAttrLabelHighlight]}>{label}</Text>
+        <View style={styles.compactAttrBarBg}>
+          <View style={[
+            styles.compactAttrBar, 
+            { width: `${Math.min((value || 10) * 5, 100)}%` },
+            isKey && styles.compactAttrBarHighlight
+          ]} />
+        </View>
+        <Text style={[styles.compactAttrValue, isKey && styles.compactAttrValueHighlight]}>{value || '-'}</Text>
+      </View>
+    );
+  };
+
+  // Attribute row component (legacy, keeping for compatibility)
   const AttributeRow = ({ label, value }: { label: string; value: number }) => (
     <View style={styles.attributeRow}>
       <Text style={styles.attributeLabel}>{label}</Text>
@@ -728,6 +778,63 @@ const styles = StyleSheet.create({
   },
   attributesGrid: {
     gap: 10,
+  },
+  // Compact attribute styles for full stats display
+  attrCategoryLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#6a8aaa',
+    letterSpacing: 0.5,
+    marginTop: 10,
+    marginBottom: 6,
+    textTransform: 'uppercase',
+  },
+  compactAttrGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  compactAttrItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '48%',
+    paddingVertical: 3,
+  },
+  compactAttrLabel: {
+    width: 65,
+    fontSize: 10,
+    color: '#6a8aaa',
+  },
+  compactAttrLabelHighlight: {
+    color: '#4a9eff',
+    fontWeight: '600',
+  },
+  compactAttrBarBg: {
+    flex: 1,
+    height: 4,
+    backgroundColor: '#1a3a5c',
+    borderRadius: 2,
+    marginHorizontal: 6,
+    overflow: 'hidden',
+  },
+  compactAttrBar: {
+    height: '100%',
+    backgroundColor: '#4a6a8a',
+    borderRadius: 2,
+  },
+  compactAttrBarHighlight: {
+    backgroundColor: '#00ff88',
+  },
+  compactAttrValue: {
+    width: 18,
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#8aa8c8',
+    textAlign: 'right',
+  },
+  compactAttrValueHighlight: {
+    color: '#00ff88',
+    fontWeight: '700',
   },
   attributeRow: {
     flexDirection: 'row',
