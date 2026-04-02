@@ -270,10 +270,14 @@ export default function MatchScreen() {
     }
     
     setIsStartingMatch(true);
-    console.log('Starting match with fixture:', fixtureId, 'speed:', speed);
+    
+    // Always start with speed 1 - user can change it during the match
+    setSpeed(1);
+    
+    console.log('Starting match with fixture:', fixtureId, 'speed: 1 (default)');
     
     try {
-      const result = await simulateMatch(fixtureId, speed);
+      const result = await simulateMatch(fixtureId, 1); // Always use speed 1 for simulation
       if (result) {
         setEvents(result.events);
         setMatchState('live');
@@ -696,26 +700,6 @@ export default function MatchScreen() {
                 onPress={() => setSpeed(s)}
               >
                 <Text style={[styles.liveSpeedText, speed === s && styles.liveSpeedTextActive]}>
-                  {s}x
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      )}
-
-      {/* Speed Controls (pre-match) */}
-      {matchState === 'pre' && (
-        <View style={styles.speedControls}>
-          <Text style={styles.speedLabel}>Commentary Speed:</Text>
-          <View style={styles.speedButtons}>
-            {[1, 2, 4, 10].map(s => (
-              <TouchableOpacity
-                key={s}
-                style={[styles.speedButton, speed === s && styles.speedButtonActive]}
-                onPress={() => setSpeed(s)}
-              >
-                <Text style={[styles.speedButtonText, speed === s && styles.speedButtonTextActive]}>
                   {s}x
                 </Text>
               </TouchableOpacity>
