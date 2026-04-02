@@ -20,7 +20,32 @@ export function formatDate(date: Date): string {
  * Parse YYYY-MM-DD to Date
  */
 export function parseDate(dateStr: string): Date {
-  const [year, month, day] = dateStr.split('-').map(Number);
+  // Defensive check for invalid input
+  if (!dateStr || typeof dateStr !== 'string') {
+    console.warn('parseDate: Invalid dateStr received:', dateStr);
+    return new Date(); // Return current date as fallback
+  }
+  
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) {
+    console.warn('parseDate: Invalid date format:', dateStr);
+    return new Date();
+  }
+  
+  const [year, month, day] = parts.map(Number);
+  
+  // Validate the numbers
+  if (isNaN(year) || isNaN(month) || isNaN(day)) {
+    console.warn('parseDate: Invalid date numbers:', { year, month, day, dateStr });
+    return new Date();
+  }
+  
+  // Validate ranges
+  if (year < 1900 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    console.warn('parseDate: Date values out of range:', { year, month, day, dateStr });
+    return new Date();
+  }
+  
   return new Date(year, month - 1, day);
 }
 
@@ -55,7 +80,18 @@ export function getNextDayOfWeek(fromDate: Date, targetDay: number): Date {
  * Format date for display (e.g., "Sat, Aug 17")
  */
 export function formatDateDisplay(dateStr: string): string {
+  // Defensive check
+  if (!dateStr || typeof dateStr !== 'string') {
+    return 'TBD';
+  }
+  
   const date = parseDate(dateStr);
+  
+  // Check for invalid date
+  if (isNaN(date.getTime())) {
+    return 'TBD';
+  }
+  
   const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   return `${days[date.getDay()]}, ${months[date.getMonth()]} ${date.getDate()}`;

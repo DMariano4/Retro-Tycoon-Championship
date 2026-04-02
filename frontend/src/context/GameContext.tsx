@@ -549,11 +549,27 @@ export function GameProvider({ children }: { children: ReactNode }) {
       current_week: league.current_week + 1
     }));
 
-    // Advance game date by 7 days
-    const currentDate = new Date(currentSave.game_date);
-    currentDate.setDate(currentDate.getDate() + 7);
-    
+    // Advance game date by 7 days (with defensive validation)
     const currentWeek = updatedLeagues[0]?.current_week || 1;
+    let nextGameDate: string;
+    try {
+      const currentDate = new Date(currentSave.game_date);
+      // Check for invalid date
+      if (isNaN(currentDate.getTime())) {
+        console.warn('Invalid game_date detected in advanceWeek, using fallback');
+        const season = currentSave.season || 2025;
+        const fallbackDate = new Date(season, 7, 10 + (currentWeek - 1) * 7);
+        nextGameDate = fallbackDate.toISOString().split('T')[0];
+      } else {
+        currentDate.setDate(currentDate.getDate() + 7);
+        nextGameDate = currentDate.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('Date parsing error in advanceWeek:', e);
+      const season = currentSave.season || 2025;
+      const fallbackDate = new Date(season, 7, 10 + (currentWeek - 1) * 7);
+      nextGameDate = fallbackDate.toISOString().split('T')[0];
+    }
 
     // ============================================
     // FORM DECAY FOR NON-PLAYING PLAYERS
@@ -619,7 +635,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       ...currentSave,
       teams: teamsWithFormDecay,
       leagues: updatedLeagues,
-      game_date: currentDate.toISOString().split('T')[0],
+      game_date: nextGameDate,
       incomingOffers: processedOffers,
     });
   };
@@ -1132,16 +1148,37 @@ export function GameProvider({ children }: { children: ReactNode }) {
       updatedTeams = updateAIFormations(updatedTeams, currentSave.managed_team_id);
     }
 
-    // Advance game date by 7 days
-    const currentDate = new Date(currentSave.game_date);
-    currentDate.setDate(currentDate.getDate() + 7);
+    // Advance game date by 7 days (with defensive validation)
+    let nextGameDate: string;
+    try {
+      const currentDate = new Date(currentSave.game_date);
+      // Check for invalid date
+      if (isNaN(currentDate.getTime())) {
+        console.warn('Invalid game_date detected, falling back to calculated date');
+        // Fallback: calculate date from season and current week
+        const season = currentSave.season || 2025;
+        const week = updatedLeagues[0]?.current_week || 1;
+        const fallbackDate = new Date(season, 7, 10 + (week - 1) * 7); // Aug 10 + weeks
+        nextGameDate = fallbackDate.toISOString().split('T')[0];
+      } else {
+        currentDate.setDate(currentDate.getDate() + 7);
+        nextGameDate = currentDate.toISOString().split('T')[0];
+      }
+    } catch (e) {
+      console.error('Date parsing error in simulateOtherWeekMatches:', e);
+      // Fallback
+      const season = currentSave.season || 2025;
+      const week = updatedLeagues[0]?.current_week || 1;
+      const fallbackDate = new Date(season, 7, 10 + (week - 1) * 7);
+      nextGameDate = fallbackDate.toISOString().split('T')[0];
+    }
 
     setCurrentSave({ 
       ...currentSave, 
       leagues: updatedLeagues, 
       teams: updatedTeams,
       transfer_market: updatedMarket,
-      game_date: currentDate.toISOString().split('T')[0]
+      game_date: nextGameDate
     });
   };
 

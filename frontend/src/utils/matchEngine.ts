@@ -845,9 +845,16 @@ export function calculateTeamRatings(team: Team): TeamRatings {
 function applyFormAndFitness(ratings: TeamRatings, team: Team): TeamRatings {
   const startingXI = getStartingXI(team);
   
+  // Defensive check for empty squad
+  if (!startingXI || startingXI.length === 0) {
+    console.warn('applyFormAndFitness: Empty starting XI for team:', team?.short_name);
+    return ratings;
+  }
+  
   // Calculate average form (1-10 scale) and fitness (1-20 scale)
-  const avgForm = startingXI.reduce((sum, p) => sum + p.form, 0) / startingXI.length;
-  const avgFitness = startingXI.reduce((sum, p) => sum + p.fitness, 0) / startingXI.length;
+  // With defensive checks for undefined values
+  const avgForm = startingXI.reduce((sum, p) => sum + (p.form ?? 6), 0) / startingXI.length;
+  const avgFitness = startingXI.reduce((sum, p) => sum + (p.fitness ?? 15), 0) / startingXI.length;
   
   // Form modifier: form of 6 = no change (average), 10 = +8%, 1 = -10%
   // Form is now on 1-10 scale (average of last 5 match ratings)
@@ -2097,6 +2104,47 @@ export interface LiteMatchResult {
  * ~5x faster than the full engine.
  */
 export function simulateMatchLite(homeTeam: Team, awayTeam: Team): LiteMatchResult {
+  // Defensive checks for invalid teams
+  if (!homeTeam || !homeTeam.squad || homeTeam.squad.length === 0) {
+    console.error('simulateMatchLite: Invalid home team', homeTeam?.short_name);
+    return {
+      homeScore: 0,
+      awayScore: 1,
+      stats: {
+        possession: { home: 50, away: 50 },
+        shots: { home: 0, away: 1 },
+        shotsOnTarget: { home: 0, away: 1 },
+        corners: { home: 0, away: 0 },
+        fouls: { home: 0, away: 0 },
+        yellowCards: { home: 0, away: 0 },
+        offsides: { home: 0, away: 0 },
+      },
+      playerRatings: {},
+      scorers: [],
+      injuries: [],
+    };
+  }
+  
+  if (!awayTeam || !awayTeam.squad || awayTeam.squad.length === 0) {
+    console.error('simulateMatchLite: Invalid away team', awayTeam?.short_name);
+    return {
+      homeScore: 1,
+      awayScore: 0,
+      stats: {
+        possession: { home: 50, away: 50 },
+        shots: { home: 1, away: 0 },
+        shotsOnTarget: { home: 1, away: 0 },
+        corners: { home: 0, away: 0 },
+        fouls: { home: 0, away: 0 },
+        yellowCards: { home: 0, away: 0 },
+        offsides: { home: 0, away: 0 },
+      },
+      playerRatings: {},
+      scorers: [],
+      injuries: [],
+    };
+  }
+
   // --- Same core calculations as full engine ---
   const homeTactics = getTeamTactics(homeTeam);
   const awayTactics = getTeamTactics(awayTeam);
