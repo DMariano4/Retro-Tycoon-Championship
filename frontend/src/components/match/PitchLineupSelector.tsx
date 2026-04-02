@@ -105,9 +105,35 @@ const FORMATION_TEMPLATES: Record<string, { position: string; x: number; y: numb
     { position: 'RM', x: 90, y: 50, label: 'RM' },
     { position: 'ST', x: 50, y: 80, label: 'ST' },
   ],
+  '4-1-4-1': [
+    { position: 'GK', x: 50, y: 5, label: 'GK' },
+    { position: 'LB', x: 15, y: 25, label: 'LB' },
+    { position: 'CB', x: 38, y: 20, label: 'CB' },
+    { position: 'CB', x: 62, y: 20, label: 'CB' },
+    { position: 'RB', x: 85, y: 25, label: 'RB' },
+    { position: 'DM', x: 50, y: 38, label: 'DM' },
+    { position: 'LM', x: 12, y: 55, label: 'LM' },
+    { position: 'CM', x: 38, y: 52, label: 'CM' },
+    { position: 'CM', x: 62, y: 52, label: 'CM' },
+    { position: 'RM', x: 88, y: 55, label: 'RM' },
+    { position: 'ST', x: 50, y: 80, label: 'ST' },
+  ],
+  '3-4-3': [
+    { position: 'GK', x: 50, y: 5, label: 'GK' },
+    { position: 'CB', x: 30, y: 20, label: 'CB' },
+    { position: 'CB', x: 50, y: 18, label: 'CB' },
+    { position: 'CB', x: 70, y: 20, label: 'CB' },
+    { position: 'LM', x: 15, y: 45, label: 'LM' },
+    { position: 'CM', x: 38, y: 42, label: 'CM' },
+    { position: 'CM', x: 62, y: 42, label: 'CM' },
+    { position: 'RM', x: 85, y: 45, label: 'RM' },
+    { position: 'LW', x: 20, y: 75, label: 'LW' },
+    { position: 'ST', x: 50, y: 80, label: 'ST' },
+    { position: 'RW', x: 80, y: 75, label: 'RW' },
+  ],
 };
 
-const AVAILABLE_FORMATIONS = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1'];
+const AVAILABLE_FORMATIONS = ['4-4-2', '4-3-3', '4-2-3-1', '3-5-2', '5-3-2', '4-5-1', '4-1-4-1', '3-4-3'];
 
 // Position compatibility mapping
 const POSITION_COMPATIBILITY: Record<string, string[]> = {
