@@ -24,6 +24,7 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
   if (!player || !team) return null;
 
   const isOwnPlayer = team.id === currentSave?.managed_team_id;
+  const currency = currentSave?.currency_symbol || '£';
 
   // Calculate player value
   const getPlayerValue = (): number => {
@@ -36,11 +37,11 @@ export function PlayerProfileModal({ visible, player, team, onClose, onBidSucces
 
   const estimatedValue = getPlayerValue();
 
-  // Format currency
+  // Format currency with user's chosen symbol
   const formatMoney = (amount: number): string => {
-    if (amount >= 1000000) return `£${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `£${(amount / 1000).toFixed(0)}K`;
-    return `£${amount}`;
+    if (amount >= 1000000) return `${currency}${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${currency}${(amount / 1000).toFixed(0)}K`;
+    return `${currency}${amount}`;
   };
 
   // Handle making a bid

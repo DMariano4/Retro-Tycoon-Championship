@@ -16,12 +16,13 @@ export default function TransferInboxScreen() {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const pendingOffers = getIncomingOffers();
+  const currency = currentSave?.currency_symbol || '£';
 
-  // Format currency
+  // Format currency with user's chosen symbol
   const formatMoney = (amount: number): string => {
-    if (amount >= 1000000) return `£${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `£${(amount / 1000).toFixed(0)}K`;
-    return `£${amount}`;
+    if (amount >= 1000000) return `${currency}${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${currency}${(amount / 1000).toFixed(0)}K`;
+    return `${currency}${amount}`;
   };
 
   // Get offer quality indicator

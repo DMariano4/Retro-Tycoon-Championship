@@ -63,12 +63,13 @@ export function TeamProfileModal({ visible, team, onClose }: TeamProfileModalPro
   if (!team) return null;
 
   const isOwnTeam = team.id === currentSave?.managed_team_id;
+  const currency = currentSave?.currency_symbol || '£';
 
-  // Format currency
+  // Format currency with user's chosen symbol
   const formatMoney = (amount: number): string => {
-    if (amount >= 1000000) return `£${(amount / 1000000).toFixed(1)}M`;
-    if (amount >= 1000) return `£${(amount / 1000).toFixed(0)}K`;
-    return `£${amount}`;
+    if (amount >= 1000000) return `${currency}${(amount / 1000000).toFixed(1)}M`;
+    if (amount >= 1000) return `${currency}${(amount / 1000).toFixed(0)}K`;
+    return `${currency}${amount}`;
   };
 
   // Get player value
