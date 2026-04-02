@@ -34,6 +34,8 @@ import {
 import {
   FriendlySlot,
   getAvailableTeamsForFriendly,
+  generateFriendlySlots,
+  generateAIFriendlySchedules,
 } from '../utils/gameGenerator';
 
 // Import extracted utility hooks
@@ -413,7 +415,17 @@ export function GameProvider({ children }: { children: ReactNode }) {
         };
       });
       
-      const enrichedGameData = { ...gameData, teams: teamsWithSponsors };
+      const enrichedGameData = { 
+        ...gameData, 
+        teams: teamsWithSponsors,
+        // Initialize friendly scheduling data if not present
+        aiFriendlySchedules: gameData.aiFriendlySchedules || generateAIFriendlySchedules(
+          teamsWithSponsors.map((t: any) => ({ id: t.id, name: t.name })),
+          teamId,
+          gameData.season || 2025
+        ),
+        friendlySlots: gameData.friendlySlots || generateFriendlySlots(gameData.season || 2025),
+      };
       setCurrentSave(enrichedGameData);
       
       // Save locally
@@ -2224,8 +2236,13 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const getAvailableOpponents = (slotId: string): { id: string; name: string; reputation: number }[] => {
     if (!currentSave) return [];
     
-    const slot = currentSave.friendlySlots?.find(s => s.id === slotId);
-    if (!slot) return [];
+    // Get slots (including fallback generated ones)
+    const slots = getFriendlySlots();
+    const slot = slots.find(s => s.id === slotId);
+    if (!slot) {
+      console.log('getAvailableOpponents: Slot not found:', slotId);
+      return [];
+    }
     
     // Get all teams with reputation
     const teams = currentSave.teams.map(t => ({
@@ -2235,13 +2252,16 @@ export function GameProvider({ children }: { children: ReactNode }) {
     }));
     
     // Use the availability checker
-    return getAvailableTeamsForFriendly(
+    const available = getAvailableTeamsForFriendly(
       slot.date,
       teams,
       currentSave.managed_team_id,
-      currentSave.friendlySlots || [],
+      slots, // Use the full slots list (including fallback)
       currentSave.aiFriendlySchedules || {}
     );
+    
+    console.log('getAvailableOpponents: Found', available.length, 'available teams for slot', slotId);
+    return available;
   };
 
   /** Schedule a friendly match with a specific opponent */
